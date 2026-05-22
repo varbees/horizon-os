@@ -1,0 +1,90 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Antharmaya//Horizon OS//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Horizon OS Foundry Week
+X-WR-TIMEZONE:Asia/Kolkata
+BEGIN:VTIMEZONE
+TZID:Asia/Kolkata
+X-LIC-LOCATION:Asia/Kolkata
+BEGIN:STANDARD
+TZOFFSETFROM:+0530
+TZOFFSETTO:+0530
+TZNAME:IST
+DTSTART:19700101T000000
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+UID:horizon-ground-20260525@antharmaya.local
+SUMMARY:Attention / Sit
+DTSTART;TZID=Asia/Kolkata:20260525T063000
+DTEND;TZID=Asia/Kolkata:20260525T070000
+RRULE:FREQ=DAILY;UNTIL=20280522T182959Z
+DESCRIPTION:30 minute silent sit before phone. Inquiry: Who is sitting?
+END:VEVENT
+BEGIN:VEVENT
+UID:horizon-instrument-20260525@antharmaya.local
+SUMMARY:Body / Movement
+DTSTART;TZID=Asia/Kolkata:20260525T070000
+DTEND;TZID=Asia/Kolkata:20260525T074500
+RRULE:FREQ=DAILY;UNTIL=20280522T182959Z
+DESCRIPTION:Yoga, mobility, basic strength, or loaded movement. Minimum 20 minutes.
+END:VEVENT
+BEGIN:VEVENT
+UID:horizon-income-20260525@antharmaya.local
+SUMMARY:Deep Work 1 / Income Engine
+DTSTART;TZID=Asia/Kolkata:20260525T083000
+DTEND;TZID=Asia/Kolkata:20260525T100000
+RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;UNTIL=20280522T182959Z
+DESCRIPTION:Service offer, outbound, buyer calls, or retainer delivery. Floor first.
+END:VEVENT
+BEGIN:VEVENT
+UID:horizon-photoselect-20260525@antharmaya.local
+SUMMARY:Deep Work 2 / PhotoSelect
+DTSTART;TZID=Asia/Kolkata:20260525T101500
+DTEND;TZID=Asia/Kolkata:20260525T114500
+RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;UNTIL=20280522T182959Z
+DESCRIPTION:PhotoSelect code, UX, pilot proof, distribution, or studio onboarding.
+END:VEVENT
+BEGIN:VEVENT
+UID:horizon-flex-20260525@antharmaya.local
+SUMMARY:Flex / Systems / Learning
+DTSTART;TZID=Asia/Kolkata:20260525T150000
+DTEND;TZID=Asia/Kolkata:20260525T163000
+RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;UNTIL=20280522T182959Z
+DESCRIPTION:Docs, infrastructure, HSKG, connectors, CS reading, or client overflow.
+END:VEVENT
+BEGIN:VEVENT
+UID:horizon-spec-20260530@antharmaya.local
+SUMMARY:Spec / Offgrid Research
+DTSTART;TZID=Asia/Kolkata:20260530T100000
+DTEND;TZID=Asia/Kolkata:20260530T113000
+RRULE:FREQ=WEEKLY;BYDAY=SA;UNTIL=20280522T182959Z
+DESCRIPTION:Land options, infra estimates, legal notes, and budget sheets.
+END:VEVENT
+BEGIN:VEVENT
+UID:horizon-review-20260525@antharmaya.local
+SUMMARY:Daily Review
+DTSTART;TZID=Asia/Kolkata:20260525T213000
+DTEND;TZID=Asia/Kolkata:20260525T214500
+RRULE:FREQ=DAILY;UNTIL=20280522T182959Z
+DESCRIPTION:Three lines: What did I forge? What did I see? What did I avoid?
+END:VEVENT
+BEGIN:VEVENT
+UID:horizon-sunday-review-20260531@antharmaya.local
+SUMMARY:Weekly Review & Income Check
+DTSTART;TZID=Asia/Kolkata:20260531T170000
+DTEND;TZID=Asia/Kolkata:20260531T174500
+RRULE:FREQ=WEEKLY;BYDAY=SU;UNTIL=20280522T182959Z
+DESCRIPTION:Review anchors, runway, outbound, conversations, one next-week move.
+END:VEVENT
+BEGIN:VEVENT
+UID:horizon-monthly-recalibration-20260531@antharmaya.local
+SUMMARY:Monthly Recalibration
+DTSTART;TZID=Asia/Kolkata:20260531T170000
+DTEND;TZID=Asia/Kolkata:20260531T183000
+RRULE:FREQ=MONTHLY;BYDAY=SU;BYSETPOS=-1;UNTIL=20280522T182959Z
+DESCRIPTION:Who was I this month? What is the most honest plan? What must be cut?
+END:VEVENT
+END:VCALENDAR
