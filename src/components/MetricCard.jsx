@@ -12,7 +12,7 @@ export default function MetricCard({ label, value, helper, progress, accent = "b
         </div>
         {children}
       </div>
-      <div className="mt-5 h-2 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/10">
+      <div className="mt-5 h-2 overflow-hidden rounded-full bg-outlineVariant ring-1 ring-white/10">
         <motion.div
           className={`h-full rounded-full ${accent}`}
           initial={{ width: 0 }}

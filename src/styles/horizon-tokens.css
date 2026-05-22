@@ -1,0 +1,85 @@
+:root {
+  color-scheme: light;
+
+  /* Reference tokens: raw Horizon palette */
+  --hz-ref-blue-40: #2558d8;
+  --hz-ref-blue-90: #dce4ff;
+  --hz-ref-green-40: #087861;
+  --hz-ref-green-90: #cdf4e6;
+  --hz-ref-amber-40: #9a6500;
+  --hz-ref-amber-90: #ffe2a8;
+  --hz-ref-coral-40: #ba4d35;
+  --hz-ref-coral-90: #ffdad2;
+  --hz-ref-neutral-10: #17201a;
+  --hz-ref-neutral-24: #37423b;
+  --hz-ref-neutral-87: #dbe5dc;
+  --hz-ref-neutral-94: #eef7ef;
+  --hz-ref-neutral-98: #fbfff9;
+  --hz-ref-white: #ffffff;
+
+  --hz-channel-primary: 37 88 216;
+  --hz-channel-on-primary: 255 255 255;
+  --hz-channel-primary-container: 220 228 255;
+  --hz-channel-on-primary-container: 8 27 96;
+  --hz-channel-secondary: 8 120 97;
+  --hz-channel-secondary-container: 205 244 230;
+  --hz-channel-tertiary: 154 101 0;
+  --hz-channel-tertiary-container: 255 226 168;
+  --hz-channel-coral: 186 77 53;
+  --hz-channel-surface: 255 255 255;
+  --hz-channel-surface-variant: 238 247 239;
+  --hz-channel-surface-container: 231 241 232;
+  --hz-channel-outline: 112 128 120;
+  --hz-channel-outline-variant: 219 229 220;
+  --hz-channel-on-surface: 23 32 26;
+
+  /* System tokens: semantic roles */
+  --md-sys-color-primary: var(--hz-ref-blue-40);
+  --md-sys-color-on-primary: var(--hz-ref-white);
+  --md-sys-color-primary-container: var(--hz-ref-blue-90);
+  --md-sys-color-on-primary-container: #081b60;
+
+  --md-sys-color-secondary: var(--hz-ref-green-40);
+  --md-sys-color-on-secondary: var(--hz-ref-white);
+  --md-sys-color-secondary-container: var(--hz-ref-green-90);
+  --md-sys-color-on-secondary-container: #002116;
+
+  --md-sys-color-tertiary: var(--hz-ref-amber-40);
+  --md-sys-color-on-tertiary: var(--hz-ref-white);
+  --md-sys-color-tertiary-container: var(--hz-ref-amber-90);
+  --md-sys-color-on-tertiary-container: #2f1d00;
+
+  --md-sys-color-error: #ba1a1a;
+  --md-sys-color-on-error: var(--hz-ref-white);
+  --md-sys-color-error-container: #ffdad6;
+  --md-sys-color-on-error-container: #410002;
+
+  --md-sys-color-background: var(--hz-ref-neutral-98);
+  --md-sys-color-on-background: var(--hz-ref-neutral-10);
+  --md-sys-color-surface: var(--hz-ref-white);
+  --md-sys-color-on-surface: var(--hz-ref-neutral-10);
+  --md-sys-color-surface-variant: var(--hz-ref-neutral-94);
+  --md-sys-color-on-surface-variant: var(--hz-ref-neutral-24);
+  --md-sys-color-surface-container-lowest: var(--hz-ref-white);
+  --md-sys-color-surface-container-low: #f6fbf4;
+  --md-sys-color-surface-container: #eef7ef;
+  --md-sys-color-surface-container-high: #e7f1e8;
+  --md-sys-color-outline: #708078;
+  --md-sys-color-outline-variant: var(--hz-ref-neutral-87);
+
+  /* Component tokens */
+  --hz-app-bg: var(--md-sys-color-background);
+  --hz-app-fg: var(--md-sys-color-on-background);
+  --hz-panel-bg: color-mix(in srgb, var(--md-sys-color-surface) 92%, var(--md-sys-color-primary-container));
+  --hz-panel-border: color-mix(in srgb, var(--md-sys-color-outline-variant) 76%, transparent);
+  --hz-panel-shadow: 0 18px 52px rgba(37, 88, 216, 0.12);
+  --hz-focus-ring: var(--md-sys-color-primary);
+  --hz-state-hover: rgba(37, 88, 216, 0.08);
+  --hz-state-pressed: rgba(37, 88, 216, 0.14);
+
+  --hz-radius-xs: 6px;
+  --hz-radius-sm: 10px;
+  --hz-radius-md: 14px;
+  --hz-radius-lg: 20px;
+  --hz-radius-xl: 28px;
+}

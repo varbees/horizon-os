@@ -415,7 +415,7 @@ export const portfolioLanes = [
     id: "Park",
     title: "Park",
     rule: "Good engineering, weak timing. Do not let it steal daily energy.",
-    color: "bg-paper",
+    color: "bg-surfaceContainer",
   },
   {
     id: "Archive",

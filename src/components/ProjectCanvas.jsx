@@ -8,7 +8,6 @@ import {
   Plus,
   RotateCcw,
   Target,
-  Workflow,
   Zap,
 } from "lucide-react";
 import { Arrow, Circle, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
@@ -47,7 +46,6 @@ export default function ProjectCanvas() {
   const [zoom, setZoom] = useState(0.82);
   const [pan, setPan] = useState({ x: 16, y: 18 });
   const selected = byId[selectedNodeId] ?? byId.calendar;
-  const selectedPosition = getPosition(nodePositions, selected);
   const revenueNodes = revenuePath.map((id) => byId[id]).filter(Boolean);
 
   const positionedNodes = useMemo(
@@ -70,7 +68,7 @@ export default function ProjectCanvas() {
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_23rem]">
       <Panel className="overflow-hidden">
-        <div className="flex flex-col gap-3 border-b border-white/10 p-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-3 border-b border-outlineVariant p-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">Node editor</p>
             <h2 className="mt-1 text-2xl font-black text-paper">Revenue Command Graph</h2>
@@ -79,7 +77,7 @@ export default function ProjectCanvas() {
             <ToolbarButton label="Zoom out" onClick={() => zoomBy(-0.08)}>
               <Minus className="h-4 w-4" aria-hidden="true" />
             </ToolbarButton>
-            <span className="rounded-md border border-white/10 bg-black/18 px-3 py-2 font-mono text-xs text-paper/56">
+            <span className="rounded-md border border-outlineVariant bg-surfaceVariant px-3 py-2 font-mono text-xs text-paper/56">
               {Math.round(zoom * 100)}%
             </span>
             <ToolbarButton label="Zoom in" onClick={() => zoomBy(0.08)}>
@@ -94,7 +92,7 @@ export default function ProjectCanvas() {
           </div>
         </div>
 
-        <div className="relative min-h-[35rem] overflow-hidden bg-black/22 rule-grid">
+        <div className="relative min-h-[35rem] overflow-hidden bg-surfaceContainer rule-grid">
           <Stage
             width={canvasWidth}
             height={canvasHeight}
@@ -116,7 +114,7 @@ export default function ProjectCanvas() {
                 <Line
                   key={`v-${index}`}
                   points={[index * 72, 0, index * 72, canvasHeight]}
-                  stroke="rgba(245,239,228,0.035)"
+                  stroke="rgba(37,88,216,0.07)"
                   strokeWidth={1}
                 />
               ))}
@@ -124,7 +122,7 @@ export default function ProjectCanvas() {
                 <Line
                   key={`h-${index}`}
                   points={[0, index * 72, canvasWidth, index * 72]}
-                  stroke="rgba(245,239,228,0.035)"
+                  stroke="rgba(37,88,216,0.07)"
                   strokeWidth={1}
                 />
               ))}
@@ -141,8 +139,8 @@ export default function ProjectCanvas() {
                   <Group key={`${edge.from}-${edge.to}`}>
                     <Arrow
                       points={points}
-                      stroke={active ? "rgba(31,191,143,0.82)" : "rgba(245,239,228,0.20)"}
-                      fill={active ? "rgba(31,191,143,0.82)" : "rgba(245,239,228,0.20)"}
+                      stroke={active ? "rgba(37,88,216,0.82)" : "rgba(112,128,120,0.38)"}
+                      fill={active ? "rgba(37,88,216,0.82)" : "rgba(112,128,120,0.38)"}
                       strokeWidth={active ? 3 : 2}
                       pointerLength={8}
                       pointerWidth={8}
@@ -155,7 +153,7 @@ export default function ProjectCanvas() {
                       width={68}
                       align="center"
                       text={edge.label}
-                      fill={active ? "#1fbf8f" : "rgba(245,239,228,0.36)"}
+                      fill={active ? "#2558d8" : "rgba(55,66,59,0.58)"}
                       fontSize={10}
                       fontStyle="bold"
                       fontFamily="IBM Plex Mono"
@@ -187,7 +185,7 @@ export default function ProjectCanvas() {
                       width={nodeWidth}
                       height={nodeHeight}
                       cornerRadius={8}
-                      fill={active ? "rgba(20,29,31,0.98)" : "rgba(11,15,18,0.94)"}
+                      fill={active ? "#ffffff" : "#fbfff9"}
                       stroke={node.color}
                       strokeWidth={active ? 3 : 1.5}
                       shadowColor={node.color}
@@ -195,14 +193,14 @@ export default function ProjectCanvas() {
                       shadowOpacity={active ? 0.42 : 0.16}
                     />
                     <Rect width={nodeWidth} height={6} cornerRadius={8} fill={node.color} opacity={0.92} />
-                    <Circle x={0} y={nodeHeight / 2} radius={5} fill="#0b0f12" stroke={node.color} strokeWidth={2} />
-                    <Circle x={nodeWidth} y={nodeHeight / 2} radius={5} fill="#0b0f12" stroke={node.color} strokeWidth={2} />
+                    <Circle x={0} y={nodeHeight / 2} radius={5} fill="#ffffff" stroke={node.color} strokeWidth={2} />
+                    <Circle x={nodeWidth} y={nodeHeight / 2} radius={5} fill="#ffffff" stroke={node.color} strokeWidth={2} />
                     <Text
                       x={12}
                       y={16}
                       width={nodeWidth - 24}
                       text={node.label}
-                      fill="#f5efe4"
+                      fill="#17201a"
                       fontSize={16}
                       fontStyle="bold"
                       fontFamily="Manrope"
@@ -212,7 +210,7 @@ export default function ProjectCanvas() {
                       y={42}
                       width={nodeWidth - 24}
                       text={node.kind}
-                      fill="rgba(245,239,228,0.50)"
+                      fill="rgba(55,66,59,0.70)"
                       fontSize={10}
                       fontFamily="IBM Plex Mono"
                     />
@@ -233,7 +231,7 @@ export default function ProjectCanvas() {
             </Layer>
           </Stage>
 
-          <div className="pointer-events-none absolute bottom-4 left-4 rounded-md border border-white/10 bg-ink/82 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-paper/46 backdrop-blur">
+          <div className="pointer-events-none absolute bottom-4 left-4 rounded-md border border-outlineVariant bg-ink/82 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-paper/46 backdrop-blur">
             Drag canvas to pan. Wheel to zoom. Drag nodes to rewire thinking.
           </div>
         </div>
@@ -252,13 +250,13 @@ export default function ProjectCanvas() {
             </div>
           </div>
           <p className="mt-4 text-sm leading-6 text-paper/64">{selected.note}</p>
-          <div className="mt-4 rounded-md border border-white/10 bg-black/18 p-3">
+          <div className="mt-4 rounded-md border border-outlineVariant bg-surfaceVariant p-3">
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/38">Next move</p>
             <p className="mt-2 text-sm font-bold leading-6 text-paper/78">{selected.next}</p>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-2">
             {selected.outputs.map((output) => (
-              <div key={output} className="rounded-md border border-white/10 bg-white/[0.035] p-2 text-center text-[11px] font-bold text-paper/58">
+              <div key={output} className="rounded-md border border-outlineVariant bg-white/[0.035] p-2 text-center text-[11px] font-bold text-paper/58">
                 {output}
               </div>
             ))}
@@ -275,8 +273,8 @@ export default function ProjectCanvas() {
                 onClick={() => selectNode(node.id)}
                 className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm font-bold transition ${
                   selectedNodeId === node.id
-                    ? "border-paper bg-paper text-ink"
-                    : "border-white/10 bg-white/[0.03] text-paper/68 hover:border-white/24 hover:text-paper"
+                    ? "border-primary bg-primaryContainer text-onPrimaryContainer"
+                    : "border-outlineVariant bg-white/[0.03] text-paper/68 hover:border-outline hover:text-paper"
                 }`}
               >
                 <span className="flex min-w-0 items-center gap-2">
@@ -300,9 +298,9 @@ export default function ProjectCanvas() {
                 key={node.id}
                 type="button"
                 onClick={() => selectNode(node.id)}
-                className="flex w-full items-center gap-3 rounded-md border border-white/10 bg-black/16 p-3 text-left transition hover:border-white/24"
+                className="flex w-full items-center gap-3 rounded-md border border-outlineVariant bg-surfaceVariant p-3 text-left transition hover:border-outline"
               >
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-paper text-xs font-black text-ink">{index + 1}</span>
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary text-xs font-black text-onPrimary">{index + 1}</span>
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-black text-paper">{node.label}</span>
                   <span className="block truncate text-xs text-paper/46">{node.status}</span>
@@ -335,7 +333,7 @@ function ToolbarButton({ label, onClick, children }) {
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/10 bg-black/18 text-paper/58 transition hover:border-white/28 hover:text-paper"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-outlineVariant bg-surfaceVariant text-paper/58 transition hover:border-outline hover:text-paper"
       aria-label={label}
       title={label}
     >
@@ -346,7 +344,7 @@ function ToolbarButton({ label, onClick, children }) {
 
 function MiniStat({ icon: Icon, label, value }) {
   return (
-    <div className="rounded-md border border-white/10 bg-black/18 p-2 text-center">
+    <div className="rounded-md border border-outlineVariant bg-surfaceVariant p-2 text-center">
       <Icon className="mx-auto h-4 w-4 text-signal" aria-hidden="true" />
       <p className="mt-2 font-mono text-[9px] uppercase tracking-[0.16em] text-paper/38">{label}</p>
       <p className="mt-1 text-xs font-black text-paper">{value}</p>

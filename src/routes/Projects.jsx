@@ -41,7 +41,7 @@ export default function Projects() {
                 key={project.id}
                 type="button"
                 onClick={() => setSelectedId(project.id)}
-                className="rounded-lg border border-white/10 bg-white/[0.04] p-4 text-left transition hover:-translate-y-0.5 hover:border-signal/50 hover:bg-white/[0.07]"
+                className="rounded-lg border border-outlineVariant bg-white/[0.04] p-4 text-left transition hover:-translate-y-0.5 hover:border-signal/50 hover:bg-white/[0.07]"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -51,7 +51,7 @@ export default function Projects() {
                   <Score score={project.score} />
                 </div>
                 <p className="mt-3 text-sm leading-6 text-paper/62">{project.role}</p>
-                <p className="mt-4 flex gap-2 border-t border-white/10 pt-3 text-sm font-bold leading-6 text-signal">
+                <p className="mt-4 flex gap-2 border-t border-outlineVariant pt-3 text-sm font-bold leading-6 text-signal">
                   <ArrowRight className="mt-1 h-4 w-4 shrink-0" aria-hidden="true" />
                   {project.next}
                 </p>
@@ -85,7 +85,7 @@ export default function Projects() {
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {[selectedProject.lane, selectedProject.status, selectedProject.leverage, selectedProject.effort].map((tag) => (
-              <span key={tag} className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-bold text-paper/66">
+              <span key={tag} className="rounded-full border border-outlineVariant bg-white/[0.04] px-3 py-1 text-xs font-bold text-paper/66">
                 {tag}
               </span>
             ))}
@@ -106,7 +106,7 @@ export default function Projects() {
               <p className="font-mono text-[11px] uppercase tracking-[0.26em] text-brass">Project registry</p>
               <h2 className="mt-2 font-display text-3xl font-bold">{filteredProjects.length} projects visible</h2>
             </div>
-            <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-2 text-paper/62">
+            <div className="flex items-center gap-2 rounded-full border border-outlineVariant bg-surfaceContainer px-3 py-2 text-paper/62">
               <Filter className="h-4 w-4" aria-hidden="true" />
               <span className="text-sm font-bold">{activeLane}</span>
             </div>
@@ -119,7 +119,7 @@ export default function Projects() {
                 type="button"
                 onClick={() => setActiveLane(lane)}
                 className={`rounded-full px-3 py-1.5 text-xs font-black transition ${
-                  activeLane === lane ? "bg-paper text-ink" : "border border-white/10 bg-white/[0.035] text-paper/58 hover:text-paper"
+                  activeLane === lane ? "bg-primaryContainer text-onPrimaryContainer" : "border border-outlineVariant bg-white/[0.035] text-paper/58 hover:text-paper"
                 }`}
               >
                 {lane}
@@ -136,13 +136,13 @@ export default function Projects() {
                 className={`grid w-full gap-3 rounded-md border p-3 text-left transition sm:grid-cols-[minmax(0,1fr)_5rem] ${
                   selectedProject.id === project.id
                     ? "border-signal/50 bg-signal/10"
-                    : "border-white/10 bg-white/[0.025] hover:border-white/24 hover:bg-white/[0.055]"
+                    : "border-outlineVariant bg-white/[0.025] hover:border-outline hover:bg-white/[0.055]"
                 }`}
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="truncate text-base font-black text-paper">{project.name}</h3>
-                    <span className="rounded-full border border-white/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-paper/42">
+                    <span className="rounded-full border border-outlineVariant px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-paper/42">
                       {project.lane}
                     </span>
                   </div>
@@ -167,7 +167,7 @@ export default function Projects() {
                 key={project.id}
                 type="button"
                 onClick={() => setSelectedId(project.id)}
-                className="w-full rounded-md border border-white/10 bg-black/18 p-4 text-left transition hover:border-rust/50 hover:bg-rust/10"
+                className="w-full rounded-md border border-outlineVariant bg-surfaceVariant p-4 text-left transition hover:border-rust/50 hover:bg-rust/10"
               >
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-lg font-black text-paper">{project.name}</h3>
@@ -184,7 +184,7 @@ export default function Projects() {
           <h2 className="mt-2 font-display text-3xl font-bold">How the agent keeps momentum</h2>
           <div className="mt-5 grid gap-3 md:grid-cols-5">
             {weeklyOperatingSystem.map((day) => (
-              <div key={day.day} className="rounded-md border border-white/10 bg-black/18 p-4">
+              <div key={day.day} className="rounded-md border border-outlineVariant bg-surfaceVariant p-4">
                 <p className="font-display text-2xl font-bold text-brass">{day.day}</p>
                 <h3 className="mt-2 text-base font-black text-paper">{day.theme}</h3>
                 <p className="mt-2 text-sm leading-6 text-paper/56">{day.output}</p>
@@ -209,7 +209,7 @@ export default function Projects() {
 function Score({ score, large = false }) {
   return (
     <div
-      className={`grid shrink-0 place-items-center rounded-full border border-white/10 bg-black/25 font-mono font-black text-signal ${
+      className={`grid shrink-0 place-items-center rounded-full border border-outlineVariant bg-surfaceVariant font-mono font-black text-signal ${
         large ? "h-16 w-16 text-xl" : "h-12 w-12 text-sm"
       }`}
       aria-label={`Viability score ${score}`}
@@ -221,7 +221,7 @@ function Score({ score, large = false }) {
 
 function DossierRow({ label, value, mono = false, highlight = false }) {
   return (
-    <div className="rounded-md border border-white/10 bg-black/18 p-4">
+    <div className="rounded-md border border-outlineVariant bg-surfaceVariant p-4">
       <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-paper/42">{label}</p>
       <p
         className={`mt-2 text-sm leading-6 ${highlight ? "font-bold text-signal" : "text-paper/64"} ${

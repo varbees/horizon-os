@@ -119,7 +119,7 @@ export default function CalendarMatrix() {
             </PrimaryButton>
             <a
               href="/horizon-calendar.ics"
-              className="inline-flex items-center gap-2 rounded-md border border-white/12 px-4 py-2.5 text-sm font-bold text-paper/76 transition hover:border-white/30 hover:text-paper"
+              className="inline-flex items-center gap-2 rounded-md border border-outlineVariant px-4 py-2.5 text-sm font-bold text-paper/76 transition hover:border-outline hover:text-paper"
             >
               Static file
               <ExternalLink className="h-4 w-4" aria-hidden="true" />
@@ -134,7 +134,7 @@ export default function CalendarMatrix() {
             <div className="flex items-center justify-between">
               <button
                 type="button"
-                className="grid h-8 w-8 place-items-center rounded-md border border-white/10 text-paper/58 transition hover:border-white/24 hover:text-paper"
+                className="grid h-8 w-8 place-items-center rounded-md border border-outlineVariant text-paper/58 transition hover:border-outline hover:text-paper"
                 aria-label="Previous week"
               >
                 <ChevronLeft className="h-4 w-4" aria-hidden="true" />
@@ -145,7 +145,7 @@ export default function CalendarMatrix() {
               </div>
               <button
                 type="button"
-                className="grid h-8 w-8 place-items-center rounded-md border border-white/10 text-paper/58 transition hover:border-white/24 hover:text-paper"
+                className="grid h-8 w-8 place-items-center rounded-md border border-outlineVariant text-paper/58 transition hover:border-outline hover:text-paper"
                 aria-label="Next week"
               >
                 <ChevronRight className="h-4 w-4" aria-hidden="true" />
@@ -163,8 +163,8 @@ export default function CalendarMatrix() {
                   }}
                   className={`rounded-md px-1 py-2 transition ${
                     selectedDay === day.key
-                      ? "bg-signal text-ink"
-                      : "border border-white/8 bg-white/[0.035] text-paper/64 hover:text-paper"
+                      ? "bg-secondaryContainer text-paper"
+                      : "border border-outlineVariant/70 bg-white/[0.035] text-paper/64 hover:text-paper"
                   }`}
                 >
                   <span className="block font-mono text-[9px] uppercase">{day.label}</span>
@@ -191,7 +191,7 @@ export default function CalendarMatrix() {
                     type="button"
                     onClick={() => toggleBlock(block.id)}
                     className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-left transition ${
-                      done ? "border-signal/50 bg-signal/12" : "border-white/10 bg-black/16 hover:border-white/24"
+                      done ? "border-signal/50 bg-signal/12" : "border-outlineVariant bg-surfaceVariant hover:border-outline"
                     }`}
                     aria-pressed={done}
                   >
@@ -207,10 +207,10 @@ export default function CalendarMatrix() {
             <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">Connector stack</p>
             <div className="mt-4 space-y-3">
               {calendarConnectors.map((connector) => (
-                <div key={connector.id} className="rounded-md border border-white/10 bg-black/16 p-3">
+                <div key={connector.id} className="rounded-md border border-outlineVariant bg-surfaceVariant p-3">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-black text-paper">{connector.provider}</p>
-                    <span className="rounded-full border border-white/10 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-paper/52">
+                    <span className="rounded-full border border-outlineVariant px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-paper/52">
                       {connector.priority}
                     </span>
                   </div>
@@ -223,19 +223,19 @@ export default function CalendarMatrix() {
         </aside>
 
         <Panel className="overflow-hidden">
-          <div className="flex flex-col gap-3 border-b border-white/10 p-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-3 border-b border-outlineVariant p-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">Live calendar</p>
               <h2 className="mt-1 text-2xl font-black text-paper">Foundry Week Command Grid</h2>
             </div>
-            <div className="grid grid-cols-4 rounded-lg border border-white/10 bg-black/18 p-1 text-xs font-bold">
+            <div className="grid grid-cols-4 rounded-lg border border-outlineVariant bg-surfaceVariant p-1 text-xs font-bold">
               {["week", "day", "month", "agenda"].map((view) => (
                 <button
                   key={view}
                   type="button"
                   onClick={() => setActiveView(view)}
                   className={`rounded-md px-3 py-2 capitalize transition ${
-                    activeView === view ? "bg-paper text-ink" : "text-paper/58 hover:text-paper"
+                    activeView === view ? "bg-primaryContainer text-onPrimaryContainer" : "text-paper/58 hover:text-paper"
                   }`}
                 >
                   {view}
@@ -247,8 +247,8 @@ export default function CalendarMatrix() {
           {activeView === "week" && (
             <div className="overflow-x-auto">
               <div className="min-w-[920px]">
-                <div className="grid grid-cols-[4rem_repeat(7,minmax(7.5rem,1fr))] border-b border-white/10">
-                  <div className="border-r border-white/10 p-3 font-mono text-[10px] uppercase tracking-[0.2em] text-paper/36">
+                <div className="grid grid-cols-[4rem_repeat(7,minmax(7.5rem,1fr))] border-b border-outlineVariant">
+                  <div className="border-r border-outlineVariant p-3 font-mono text-[10px] uppercase tracking-[0.2em] text-paper/36">
                     IST
                   </div>
                   {dayColumns.map((day) => (
@@ -256,7 +256,7 @@ export default function CalendarMatrix() {
                       key={day.key}
                       type="button"
                       onClick={() => setSelectedDay(day.key)}
-                      className={`border-r border-white/10 p-3 text-left transition last:border-r-0 ${
+                      className={`border-r border-outlineVariant p-3 text-left transition last:border-r-0 ${
                         selectedDay === day.key ? "bg-white/[0.06]" : "hover:bg-white/[0.035]"
                       }`}
                     >
@@ -270,18 +270,18 @@ export default function CalendarMatrix() {
                   className="grid grid-cols-[4rem_repeat(7,minmax(7.5rem,1fr))]"
                   style={{ minHeight: `${(hours.length - 1) * hourHeight}px` }}
                 >
-                  <div className="border-r border-white/10">
+                  <div className="border-r border-outlineVariant">
                     {hours.slice(0, -1).map((hour) => (
-                      <div key={hour} className="h-16 border-b border-white/8 px-2 py-1 text-right font-mono text-[10px] text-paper/32">
+                      <div key={hour} className="h-16 border-b border-outlineVariant/70 px-2 py-1 text-right font-mono text-[10px] text-paper/32">
                         {hour}:00
                       </div>
                     ))}
                   </div>
 
                   {dayColumns.map((day) => (
-                    <div key={day.key} className="relative border-r border-white/10 last:border-r-0">
+                    <div key={day.key} className="relative border-r border-outlineVariant last:border-r-0">
                       {hours.slice(0, -1).map((hour) => (
-                        <div key={hour} className="h-16 border-b border-white/8" />
+                        <div key={hour} className="h-16 border-b border-outlineVariant/70" />
                       ))}
                       {events
                         .filter((event) => event.dayKey === day.key)
@@ -296,7 +296,7 @@ export default function CalendarMatrix() {
                             className={`absolute left-1 right-1 overflow-hidden rounded-md border p-2 text-left shadow-rule transition hover:scale-[1.01] ${
                               selectedEventId === event.instanceId
                                 ? "border-signal bg-signal/18"
-                                : "border-white/12 bg-ink/92 hover:border-white/28"
+                                : "border-outlineVariant bg-ink/92 hover:border-outline"
                             }`}
                             style={{
                               top: `${minutesToOffset(event.start)}px`,
@@ -347,7 +347,7 @@ export default function CalendarMatrix() {
             <div className="p-4">
               <div className="grid grid-cols-7 gap-2">
                 {dayColumns.map((day) => (
-                  <div key={day.key} className="rounded-md border border-white/10 bg-black/16 p-3">
+                  <div key={day.key} className="rounded-md border border-outlineVariant bg-surfaceVariant p-3">
                     <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/42">{day.label}</p>
                     <p className="mt-1 text-2xl font-black text-paper">{day.date}</p>
                     <div className="mt-3 space-y-1">
@@ -410,7 +410,7 @@ export default function CalendarMatrix() {
               </div>
             </div>
             <p className="mt-4 text-sm leading-6 text-paper/62">{selectedEvent.activity}</p>
-            <div className="mt-4 rounded-md border border-white/10 bg-black/18 p-3">
+            <div className="mt-4 rounded-md border border-outlineVariant bg-surfaceVariant p-3">
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/38">Output contract</p>
               <p className="mt-2 text-sm font-bold leading-6 text-paper/76">{selectedEvent.output}</p>
             </div>
@@ -420,7 +420,7 @@ export default function CalendarMatrix() {
               className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md border px-4 py-2.5 text-sm font-black transition ${
                 completedBlocks[selectedEvent.id]
                   ? "border-signal/50 bg-signal/14 text-signal"
-                  : "border-white/12 bg-white/[0.035] text-paper/72 hover:border-white/28 hover:text-paper"
+                  : "border-outlineVariant bg-white/[0.035] text-paper/72 hover:border-outline hover:text-paper"
               }`}
             >
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
@@ -451,7 +451,7 @@ export default function CalendarMatrix() {
                   className={`rounded-md border px-3 py-2 text-left text-xs font-bold transition ${
                     promptId === prompt.id
                       ? "border-signal bg-signal/12 text-paper"
-                      : "border-white/10 bg-black/16 text-paper/58 hover:text-paper"
+                      : "border-outlineVariant bg-surfaceVariant text-paper/58 hover:text-paper"
                   }`}
                 >
                   {prompt.title}
@@ -464,11 +464,11 @@ export default function CalendarMatrix() {
               <textarea
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
-                className="mt-2 min-h-28 w-full resize-none rounded-md border border-white/10 bg-black/24 p-3 text-sm leading-6 text-paper/78"
+                className="mt-2 min-h-28 w-full resize-none rounded-md border border-outlineVariant bg-surfaceContainer p-3 text-sm leading-6 text-paper/78"
               />
             </label>
 
-            <div className="mt-4 rounded-md border border-white/10 bg-black/18 p-3">
+            <div className="mt-4 rounded-md border border-outlineVariant bg-surfaceVariant p-3">
               <p className="flex items-center gap-2 text-xs font-black text-signal">
                 <MessageSquareText className="h-4 w-4" aria-hidden="true" />
                 Simulated agent response
@@ -481,7 +481,7 @@ export default function CalendarMatrix() {
             <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">Chosen course</p>
             <div className="mt-4 space-y-3">
               {strategicCourse.slice(0, 3).map((item) => (
-                <div key={item.id} className="rounded-md border border-white/10 bg-black/16 p-3">
+                <div key={item.id} className="rounded-md border border-outlineVariant bg-surfaceVariant p-3">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-black text-paper">{item.title}</p>
                     <span className="font-mono text-[10px] font-black text-brass">{item.rank}</span>
@@ -504,7 +504,7 @@ export default function CalendarMatrix() {
               </div>
             </div>
             <p className="mt-3 text-sm leading-6 text-paper/60">{openSourceSignal.thesis}</p>
-            <div className="mt-4 rounded-md border border-white/10 bg-black/18 p-3">
+            <div className="mt-4 rounded-md border border-outlineVariant bg-surfaceVariant p-3">
               <div className="flex items-end justify-between gap-3">
                 <div>
                   <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/38">Star target</p>
@@ -518,7 +518,7 @@ export default function CalendarMatrix() {
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
               {openSourceSignal.milestones.slice(0, 4).map((milestone) => (
-                <div key={milestone.stars} className="rounded-md border border-white/10 bg-black/16 p-3">
+                <div key={milestone.stars} className="rounded-md border border-outlineVariant bg-surfaceVariant p-3">
                   <p className="font-mono text-[10px] font-black text-brass">{milestone.stars.toLocaleString()} stars</p>
                   <p className="mt-1 text-xs font-bold text-paper/68">{milestone.label}</p>
                 </div>
@@ -549,7 +549,7 @@ export default function CalendarMatrix() {
           ].map((item) => {
             const Icon = item.icon;
             return (
-              <div key={item.title} className="rounded-md border border-white/10 bg-black/18 p-4">
+              <div key={item.title} className="rounded-md border border-outlineVariant bg-surfaceVariant p-4">
                 <Icon className="h-5 w-5 text-signal" aria-hidden="true" />
                 <h3 className="mt-3 text-sm font-black text-paper">{item.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-paper/56">{item.text}</p>
@@ -566,7 +566,7 @@ function CalendarListEvent({ event, selected, completed, onSelect, onToggle }) {
   return (
     <div
       className={`grid gap-3 rounded-lg border p-3 transition sm:grid-cols-[7rem_minmax(0,1fr)_7rem] sm:items-center ${
-        selected ? "border-signal bg-signal/12" : "border-white/10 bg-white/[0.035]"
+        selected ? "border-signal bg-signal/12" : "border-outlineVariant bg-white/[0.035]"
       }`}
     >
       <button type="button" onClick={onSelect} className="text-left">
@@ -586,7 +586,7 @@ function CalendarListEvent({ event, selected, completed, onSelect, onToggle }) {
         type="button"
         onClick={onToggle}
         className={`inline-flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-xs font-black transition ${
-          completed ? "border-signal/50 text-signal" : "border-white/10 text-paper/46 hover:text-paper"
+          completed ? "border-signal/50 text-signal" : "border-outlineVariant text-paper/46 hover:text-paper"
         }`}
         aria-pressed={completed}
       >

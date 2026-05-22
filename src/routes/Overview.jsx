@@ -94,7 +94,7 @@ export default function Overview() {
               <Link
                 key={project.id}
                 to={project.id === "hskg" ? "/hskg" : "/projects"}
-                className="block rounded-md border border-white/10 bg-white/[0.035] p-4 transition hover:-translate-y-0.5 hover:border-white/24 hover:bg-white/[0.06]"
+                className="block rounded-md border border-outlineVariant bg-white/[0.035] p-4 transition hover:-translate-y-0.5 hover:border-outline hover:bg-white/[0.06]"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -116,7 +116,7 @@ export default function Overview() {
             <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">{anchor.label}</p>
             <h2 className="mt-2 text-xl font-black text-paper">{anchor.title}</h2>
             <p className="mt-3 text-sm leading-6 text-paper/64">{anchor.target}</p>
-            <p className="mt-4 border-t border-white/10 pt-4 font-mono text-xs leading-5 text-paper/46">{anchor.measure}</p>
+            <p className="mt-4 border-t border-outlineVariant pt-4 font-mono text-xs leading-5 text-paper/46">{anchor.measure}</p>
           </Panel>
         ))}
       </section>
@@ -126,7 +126,7 @@ export default function Overview() {
           <p className="font-mono text-[11px] uppercase tracking-[0.26em] text-brass">Two-year horizon</p>
           <div className="mt-5 grid gap-3 md:grid-cols-5">
             {phaseGates.map((phase) => (
-              <div key={phase.label} className="rounded-md border border-white/10 bg-black/20 p-4">
+              <div key={phase.label} className="rounded-md border border-outlineVariant bg-surfaceContainer p-4">
                 <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-paper/42">{phase.label}</p>
                 <h3 className="mt-2 text-base font-black text-paper">{phase.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-paper/58">{phase.target}</p>
@@ -141,13 +141,13 @@ export default function Overview() {
 
 function NumberField({ label, value, onChange }) {
   return (
-    <label className="block rounded-md border border-white/10 bg-black/18 p-3">
+    <label className="block rounded-md border border-outlineVariant bg-surfaceVariant p-3">
       <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-paper/42">{label}</span>
       <input
         type="number"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-2 w-full rounded-md border border-white/10 bg-ink px-3 py-2 text-base font-bold text-paper outline-none transition focus:border-signal"
+        className="mt-2 w-full rounded-md border border-outlineVariant bg-surface px-3 py-2 text-base font-bold text-paper outline-none transition focus:border-primary"
       />
     </label>
   );

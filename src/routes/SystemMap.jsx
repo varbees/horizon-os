@@ -99,7 +99,7 @@ export default function SystemMap() {
               ["Tasks", counts.tasks],
               ["Ctx", counts.contexts],
             ].map(([label, value]) => (
-              <div key={label} className="rounded-md border border-white/10 bg-black/18 p-2">
+              <div key={label} className="rounded-md border border-outlineVariant bg-surfaceVariant p-2">
                 <p className="text-lg font-black text-paper">{value}</p>
                 <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-paper/38">{label}</p>
               </div>
@@ -119,7 +119,7 @@ export default function SystemMap() {
             <button
               type="button"
               onClick={() => void load()}
-              className="grid h-10 w-10 place-items-center rounded-md border border-white/10 text-paper/58 transition hover:border-white/24 hover:text-paper"
+              className="grid h-10 w-10 place-items-center rounded-md border border-outlineVariant text-paper/58 transition hover:border-outline hover:text-paper"
               aria-label="Refresh command base"
             >
               <RefreshCw className="h-4 w-4" aria-hidden="true" />

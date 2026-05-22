@@ -43,7 +43,7 @@ export default function HskgLaunch() {
             href="https://hskg.vercel.app"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-md bg-paper px-4 py-2.5 text-sm font-extrabold text-ink transition hover:-translate-y-0.5 hover:bg-white"
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-extrabold text-onPrimary transition hover:-translate-y-0.5 hover:bg-white"
           >
             Open domain
             <ExternalLink className="h-4 w-4" aria-hidden="true" />
@@ -74,16 +74,16 @@ export default function HskgLaunch() {
         </Panel>
 
         <Panel className="overflow-hidden">
-          <div className="border-b border-white/10 bg-paper p-5 text-ink">
-            <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-ink/58">Landing page wireframe</p>
+          <div className="border-b border-outlineVariant bg-primaryContainer p-5 text-onPrimaryContainer">
+            <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-onPrimaryContainer/70">Landing page wireframe</p>
             <h2 className="mt-2 font-display text-4xl font-bold">HSKG</h2>
-            <p className="mt-2 max-w-xl text-sm font-semibold leading-6 text-ink/68">
+            <p className="mt-2 max-w-xl text-sm font-semibold leading-6 text-onPrimaryContainer/72">
               Replace this copy with the exact business category once details are confirmed. The design should feel trustworthy, local, and direct.
             </p>
           </div>
           <div className="grid gap-3 p-5 sm:grid-cols-2">
             {sections.map((section) => (
-              <div key={section.title} className="rounded-md border border-white/10 bg-black/20 p-4">
+              <div key={section.title} className="rounded-md border border-outlineVariant bg-surfaceContainer p-4">
                 <h3 className="text-lg font-black text-paper">{section.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-paper/58">{section.copy}</p>
               </div>

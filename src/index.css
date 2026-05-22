@@ -1,12 +1,12 @@
 @import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,760&family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap");
+@import "./styles/horizon-tokens.css";
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
-  background: #0b0f12;
+  background: var(--hz-app-bg);
 }
 
 * {
@@ -21,10 +21,10 @@ body {
   min-width: 320px;
   margin: 0;
   background:
-    radial-gradient(circle at top left, rgba(200, 132, 42, 0.18), transparent 34rem),
-    radial-gradient(circle at 70% 12%, rgba(31, 191, 143, 0.12), transparent 28rem),
-    linear-gradient(135deg, #0b0f12 0%, #12181d 46%, #18201d 100%);
-  color: #f5efe4;
+    linear-gradient(180deg, rgba(220, 228, 255, 0.64) 0, rgba(251, 255, 249, 0) 22rem),
+    linear-gradient(90deg, rgba(205, 244, 230, 0.52), rgba(255, 226, 168, 0.30) 54%, rgba(255, 255, 255, 0)),
+    var(--hz-app-bg);
+  color: var(--hz-app-fg);
   font-family: "Manrope", ui-sans-serif, system-ui;
 }
 
@@ -37,7 +37,7 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #1fbf8f;
+  outline: 2px solid var(--hz-focus-ring);
   outline-offset: 4px;
 }
 
@@ -47,22 +47,22 @@ textarea:focus-visible {
   position: fixed;
   inset: 0;
   z-index: 60;
-  opacity: 0.045;
-  mix-blend-mode: overlay;
+  opacity: 0.035;
+  mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.78' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.7'/%3E%3C/svg%3E");
 }
 
 .glass {
-  background: rgba(15, 21, 24, 0.74);
-  border: 1px solid rgba(245, 239, 228, 0.1);
-  box-shadow: 0 24px 80px rgba(5, 8, 10, 0.22);
-  backdrop-filter: blur(18px);
+  background: var(--hz-panel-bg);
+  border: 1px solid var(--hz-panel-border);
+  box-shadow: var(--hz-panel-shadow);
+  backdrop-filter: blur(18px) saturate(1.1);
 }
 
 .rule-grid {
   background-image:
-    linear-gradient(rgba(245, 239, 228, 0.065) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(245, 239, 228, 0.065) 1px, transparent 1px);
+    linear-gradient(rgba(37, 88, 216, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 88, 216, 0.08) 1px, transparent 1px);
   background-size: 28px 28px;
 }
 

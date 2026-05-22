@@ -45,6 +45,7 @@ npm run build
 - `docs/hskg-launch-brief.md`
 - `docs/component-forge-offer.md`
 - `docs/calendar-connector-architecture.md`
+- `docs/horizon-design-tokens.md`
 - `docs/local-command-base.md`
 - `docs/vertical-ai-course.md`
 
