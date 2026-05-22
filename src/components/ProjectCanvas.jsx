@@ -1,99 +1,355 @@
-import { ArrowRight } from "lucide-react";
-import { Circle, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
+import { useMemo, useState } from "react";
+import {
+  ArrowRight,
+  Bot,
+  Crosshair,
+  Gem,
+  Minus,
+  Plus,
+  RotateCcw,
+  Target,
+  Workflow,
+  Zap,
+} from "lucide-react";
+import { Arrow, Circle, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
 import { systemEdges, systemNodes } from "../data/horizon.js";
+import { persistNodePosition } from "../lib/commandBase.js";
 import { useHorizonStore } from "../store/horizonStore.js";
+import Panel from "./Panel.jsx";
 
 const byId = Object.fromEntries(systemNodes.map((node) => [node.id, node]));
+const nodeWidth = 164;
+const nodeHeight = 92;
+const canvasWidth = 1080;
+const canvasHeight = 720;
+const revenuePath = ["income-engine", "photoselect", "studio-ai-ops", "antharmaya-agents", "oss-signal", "safe-haven"];
+
+function getPosition(positions, node) {
+  return positions[node.id] ?? { x: node.x, y: node.y };
+}
+
+function getEdgePoints(from, to) {
+  const horizontal = Math.abs(to.x - from.x) > Math.abs(to.y - from.y);
+  if (horizontal) {
+    const fromPort = from.x < to.x ? from.x + nodeWidth / 2 : from.x - nodeWidth / 2;
+    const toPort = from.x < to.x ? to.x - nodeWidth / 2 : to.x + nodeWidth / 2;
+    const midX = fromPort + (toPort - fromPort) / 2;
+    return [fromPort, from.y, midX, from.y, midX, to.y, toPort, to.y];
+  }
+  const fromPort = from.y < to.y ? from.y + nodeHeight / 2 : from.y - nodeHeight / 2;
+  const toPort = from.y < to.y ? to.y - nodeHeight / 2 : to.y + nodeHeight / 2;
+  const midY = fromPort + (toPort - fromPort) / 2;
+  return [from.x, fromPort, from.x, midY, to.x, midY, to.x, toPort];
+}
 
 export default function ProjectCanvas() {
-  const { nodePositions, moveNode, selectedNodeId, selectNode } = useHorizonStore();
-  const selected = byId[selectedNodeId] ?? byId.engine;
+  const { nodePositions, moveNode, selectedNodeId, selectNode, resetNodePositions } = useHorizonStore();
+  const [zoom, setZoom] = useState(0.82);
+  const [pan, setPan] = useState({ x: 16, y: 18 });
+  const selected = byId[selectedNodeId] ?? byId.calendar;
+  const selectedPosition = getPosition(nodePositions, selected);
+  const revenueNodes = revenuePath.map((id) => byId[id]).filter(Boolean);
+
+  const positionedNodes = useMemo(
+    () => systemNodes.map((node) => ({ ...node, position: getPosition(nodePositions, node) })),
+    [nodePositions],
+  );
+
+  const zoomBy = (delta) => setZoom((value) => Math.min(1.3, Math.max(0.55, Number((value + delta).toFixed(2)))));
+
+  const resetView = () => {
+    setZoom(0.82);
+    setPan({ x: 16, y: 18 });
+  };
+
+  const resetAll = () => {
+    resetNodePositions();
+    resetView();
+  };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <div className="min-h-[440px] overflow-hidden rounded-lg border border-white/10 bg-black/25 rule-grid shadow-lift">
-        <Stage width={920} height={520} className="touch-action-none max-w-full" aria-label="Interactive system map canvas">
-          <Layer>
-            {systemEdges.map(([from, to]) => {
-              const start = nodePositions[from];
-              const end = nodePositions[to];
-              return (
-                <Line
-                  key={`${from}-${to}`}
-                  points={[start.x, start.y, end.x, end.y]}
-                  stroke="rgba(245,239,228,0.22)"
-                  strokeWidth={2}
-                  dash={[8, 8]}
-                  lineCap="round"
-                />
-              );
-            })}
-            {systemNodes.map((node) => {
-              const pos = nodePositions[node.id] ?? { x: node.x, y: node.y };
-              const active = selectedNodeId === node.id;
-              return (
-                <Group
-                  key={node.id}
-                  x={pos.x}
-                  y={pos.y}
-                  draggable
-                  onDragMove={(event) => moveNode(node.id, event.target.x(), event.target.y())}
-                  onClick={() => selectNode(node.id)}
-                  onTap={() => selectNode(node.id)}
-                >
-                  <Circle
-                    radius={active ? 52 : 46}
-                    fill="rgba(11,15,18,0.92)"
-                    stroke={node.color}
-                    strokeWidth={active ? 4 : 2}
-                    shadowColor={node.color}
-                    shadowBlur={active ? 20 : 6}
-                    shadowOpacity={active ? 0.52 : 0.2}
-                  />
-                  <Rect x={-36} y={-11} width={72} height={22} cornerRadius={4} fill={node.color} opacity={active ? 1 : 0.88} />
-                  <Text
-                    x={-34}
-                    y={-7}
-                    width={68}
-                    align="center"
-                    text={node.label}
-                    fill="#0b0f12"
-                    fontSize={10}
-                    fontStyle="bold"
-                    fontFamily="Manrope"
-                  />
-                </Group>
-              );
-            })}
-          </Layer>
-        </Stage>
-      </div>
-
-      <aside className="glass rounded-lg p-5" aria-label="System map node controls">
-        <p className="font-mono text-[11px] uppercase tracking-[0.26em] text-brass">Selected node</p>
-        <h2 className="mt-2 font-display text-3xl font-bold text-paper">{selected.label}</h2>
-        <p className="mt-3 text-sm leading-6 text-paper/64">{selected.note}</p>
-        <div className="mt-5 space-y-2">
-          {systemNodes.map((node) => (
-            <button
-              key={node.id}
-              type="button"
-              onClick={() => selectNode(node.id)}
-              className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm font-bold transition ${
-                selectedNodeId === node.id
-                  ? "border-paper bg-paper text-ink"
-                  : "border-white/10 bg-white/[0.03] text-paper/68 hover:border-white/24 hover:text-paper"
-              }`}
-            >
-              {node.label}
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </button>
-          ))}
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_23rem]">
+      <Panel className="overflow-hidden">
+        <div className="flex flex-col gap-3 border-b border-white/10 p-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">Node editor</p>
+            <h2 className="mt-1 text-2xl font-black text-paper">Revenue Command Graph</h2>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <ToolbarButton label="Zoom out" onClick={() => zoomBy(-0.08)}>
+              <Minus className="h-4 w-4" aria-hidden="true" />
+            </ToolbarButton>
+            <span className="rounded-md border border-white/10 bg-black/18 px-3 py-2 font-mono text-xs text-paper/56">
+              {Math.round(zoom * 100)}%
+            </span>
+            <ToolbarButton label="Zoom in" onClick={() => zoomBy(0.08)}>
+              <Plus className="h-4 w-4" aria-hidden="true" />
+            </ToolbarButton>
+            <ToolbarButton label="Reset view" onClick={resetView}>
+              <Crosshair className="h-4 w-4" aria-hidden="true" />
+            </ToolbarButton>
+            <ToolbarButton label="Reset graph" onClick={resetAll}>
+              <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            </ToolbarButton>
+          </div>
         </div>
-        <p className="mt-5 text-xs leading-5 text-paper/46">
-          Drag nodes on desktop or tap a node on touch screens. The button list keeps the map accessible when the canvas is not ideal.
-        </p>
+
+        <div className="relative min-h-[35rem] overflow-hidden bg-black/22 rule-grid">
+          <Stage
+            width={canvasWidth}
+            height={canvasHeight}
+            x={pan.x}
+            y={pan.y}
+            scaleX={zoom}
+            scaleY={zoom}
+            draggable
+            onDragEnd={(event) => setPan({ x: event.target.x(), y: event.target.y() })}
+            onWheel={(event) => {
+              event.evt.preventDefault();
+              zoomBy(event.evt.deltaY > 0 ? -0.05 : 0.05);
+            }}
+            className="touch-action-none"
+            aria-label="Nodify-style interactive command graph"
+          >
+            <Layer>
+              {Array.from({ length: 18 }, (_, index) => (
+                <Line
+                  key={`v-${index}`}
+                  points={[index * 72, 0, index * 72, canvasHeight]}
+                  stroke="rgba(245,239,228,0.035)"
+                  strokeWidth={1}
+                />
+              ))}
+              {Array.from({ length: 12 }, (_, index) => (
+                <Line
+                  key={`h-${index}`}
+                  points={[0, index * 72, canvasWidth, index * 72]}
+                  stroke="rgba(245,239,228,0.035)"
+                  strokeWidth={1}
+                />
+              ))}
+
+              {systemEdges.map((edge) => {
+                const fromNode = byId[edge.from];
+                const toNode = byId[edge.to];
+                if (!fromNode || !toNode) return null;
+                const from = getPosition(nodePositions, fromNode);
+                const to = getPosition(nodePositions, toNode);
+                const active = selectedNodeId === edge.from || selectedNodeId === edge.to;
+                const points = getEdgePoints(from, to);
+                return (
+                  <Group key={`${edge.from}-${edge.to}`}>
+                    <Arrow
+                      points={points}
+                      stroke={active ? "rgba(31,191,143,0.82)" : "rgba(245,239,228,0.20)"}
+                      fill={active ? "rgba(31,191,143,0.82)" : "rgba(245,239,228,0.20)"}
+                      strokeWidth={active ? 3 : 2}
+                      pointerLength={8}
+                      pointerWidth={8}
+                      lineCap="round"
+                      lineJoin="round"
+                    />
+                    <Text
+                      x={(points[points.length - 4] + points[points.length - 2]) / 2 - 34}
+                      y={(points[points.length - 3] + points[points.length - 1]) / 2 - 18}
+                      width={68}
+                      align="center"
+                      text={edge.label}
+                      fill={active ? "#1fbf8f" : "rgba(245,239,228,0.36)"}
+                      fontSize={10}
+                      fontStyle="bold"
+                      fontFamily="IBM Plex Mono"
+                    />
+                  </Group>
+                );
+              })}
+
+              {positionedNodes.map((node) => {
+                const active = selectedNodeId === node.id;
+                return (
+                  <Group
+                    key={node.id}
+                    x={node.position.x - nodeWidth / 2}
+                    y={node.position.y - nodeHeight / 2}
+                    draggable
+                    onDragStart={() => selectNode(node.id)}
+                    onDragMove={(event) => moveNode(node.id, event.target.x() + nodeWidth / 2, event.target.y() + nodeHeight / 2)}
+                    onDragEnd={(event) => {
+                      const x = event.target.x() + nodeWidth / 2;
+                      const y = event.target.y() + nodeHeight / 2;
+                      moveNode(node.id, x, y);
+                      void persistNodePosition(node.id, x, y).catch(() => {});
+                    }}
+                    onClick={() => selectNode(node.id)}
+                    onTap={() => selectNode(node.id)}
+                  >
+                    <Rect
+                      width={nodeWidth}
+                      height={nodeHeight}
+                      cornerRadius={8}
+                      fill={active ? "rgba(20,29,31,0.98)" : "rgba(11,15,18,0.94)"}
+                      stroke={node.color}
+                      strokeWidth={active ? 3 : 1.5}
+                      shadowColor={node.color}
+                      shadowBlur={active ? 20 : 8}
+                      shadowOpacity={active ? 0.42 : 0.16}
+                    />
+                    <Rect width={nodeWidth} height={6} cornerRadius={8} fill={node.color} opacity={0.92} />
+                    <Circle x={0} y={nodeHeight / 2} radius={5} fill="#0b0f12" stroke={node.color} strokeWidth={2} />
+                    <Circle x={nodeWidth} y={nodeHeight / 2} radius={5} fill="#0b0f12" stroke={node.color} strokeWidth={2} />
+                    <Text
+                      x={12}
+                      y={16}
+                      width={nodeWidth - 24}
+                      text={node.label}
+                      fill="#f5efe4"
+                      fontSize={16}
+                      fontStyle="bold"
+                      fontFamily="Manrope"
+                    />
+                    <Text
+                      x={12}
+                      y={42}
+                      width={nodeWidth - 24}
+                      text={node.kind}
+                      fill="rgba(245,239,228,0.50)"
+                      fontSize={10}
+                      fontFamily="IBM Plex Mono"
+                    />
+                    <Rect x={12} y={62} width={nodeWidth - 24} height={18} cornerRadius={4} fill={node.color} opacity={0.18} />
+                    <Text
+                      x={16}
+                      y={66}
+                      width={nodeWidth - 32}
+                      text={node.status}
+                      fill={node.color}
+                      fontSize={10}
+                      fontStyle="bold"
+                      fontFamily="IBM Plex Mono"
+                    />
+                  </Group>
+                );
+              })}
+            </Layer>
+          </Stage>
+
+          <div className="pointer-events-none absolute bottom-4 left-4 rounded-md border border-white/10 bg-ink/82 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-paper/46 backdrop-blur">
+            Drag canvas to pan. Wheel to zoom. Drag nodes to rewire thinking.
+          </div>
+        </div>
+      </Panel>
+
+      <aside className="space-y-4" aria-label="System map node controls">
+        <Panel className="p-5">
+          <p className="font-mono text-[11px] uppercase tracking-[0.26em] text-brass">Selected node</p>
+          <div className="mt-3 flex items-start gap-3">
+            <span className="mt-2 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: selected.color }} />
+            <div>
+              <h2 className="font-display text-3xl font-bold text-paper">{selected.label}</h2>
+              <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.2em] text-paper/42">
+                {selected.kind} / {selected.status}
+              </p>
+            </div>
+          </div>
+          <p className="mt-4 text-sm leading-6 text-paper/64">{selected.note}</p>
+          <div className="mt-4 rounded-md border border-white/10 bg-black/18 p-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/38">Next move</p>
+            <p className="mt-2 text-sm font-bold leading-6 text-paper/78">{selected.next}</p>
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            {selected.outputs.map((output) => (
+              <div key={output} className="rounded-md border border-white/10 bg-white/[0.035] p-2 text-center text-[11px] font-bold text-paper/58">
+                {output}
+              </div>
+            ))}
+          </div>
+        </Panel>
+
+        <Panel className="p-5">
+          <p className="font-mono text-[11px] uppercase tracking-[0.26em] text-brass">Node palette</p>
+          <div className="mt-4 grid gap-2">
+            {systemNodes.map((node) => (
+              <button
+                key={node.id}
+                type="button"
+                onClick={() => selectNode(node.id)}
+                className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm font-bold transition ${
+                  selectedNodeId === node.id
+                    ? "border-paper bg-paper text-ink"
+                    : "border-white/10 bg-white/[0.03] text-paper/68 hover:border-white/24 hover:text-paper"
+                }`}
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: node.color }} />
+                  <span className="truncate">{node.label}</span>
+                </span>
+                <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+              </button>
+            ))}
+          </div>
+        </Panel>
+
+        <Panel className="p-5">
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-signal" aria-hidden="true" />
+            <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">Revenue path</p>
+          </div>
+          <div className="mt-4 space-y-2">
+            {revenueNodes.map((node, index) => (
+              <button
+                key={node.id}
+                type="button"
+                onClick={() => selectNode(node.id)}
+                className="flex w-full items-center gap-3 rounded-md border border-white/10 bg-black/16 p-3 text-left transition hover:border-white/24"
+              >
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-paper text-xs font-black text-ink">{index + 1}</span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-black text-paper">{node.label}</span>
+                  <span className="block truncate text-xs text-paper/46">{node.status}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </Panel>
+
+        <Panel className="p-5">
+          <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">Caveman next steps</p>
+          <div className="mt-4 space-y-3 text-sm font-bold leading-6 text-paper/68">
+            <p>Sell PhotoSelect. Then studio AI ops.</p>
+            <p>Extract OSS only from real command-center work.</p>
+            <p>Calendar block must create artifact.</p>
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <MiniStat icon={Target} label="Revenue" value="Now" />
+            <MiniStat icon={Bot} label="Agent" value="Next" />
+            <MiniStat icon={Gem} label="OSS" value="Weekly" />
+          </div>
+        </Panel>
       </aside>
+    </div>
+  );
+}
+
+function ToolbarButton({ label, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/10 bg-black/18 text-paper/58 transition hover:border-white/28 hover:text-paper"
+      aria-label={label}
+      title={label}
+    >
+      {children}
+    </button>
+  );
+}
+
+function MiniStat({ icon: Icon, label, value }) {
+  return (
+    <div className="rounded-md border border-white/10 bg-black/18 p-2 text-center">
+      <Icon className="mx-auto h-4 w-4 text-signal" aria-hidden="true" />
+      <p className="mt-2 font-mono text-[9px] uppercase tracking-[0.16em] text-paper/38">{label}</p>
+      <p className="mt-1 text-xs font-black text-paper">{value}</p>
     </div>
   );
 }

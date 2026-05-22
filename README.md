@@ -6,7 +6,21 @@ Local command center for the Antharmaya foundry plan: service engine, PhotoSelec
 
 ```bash
 npm install
+npm run dev:full
+```
+
+`npm run dev:full` starts the local SQLite API on `127.0.0.1:8787` and the Vite app on `127.0.0.1:5177`.
+
+Frontend only:
+
+```bash
 npm run dev
+```
+
+Database setup/check:
+
+```bash
+npm run db:init
 ```
 
 ## Build
@@ -20,7 +34,7 @@ npm run build
 - `/` - control tower and daily anchors
 - `/calendar` - recurring Foundry Week calendar matrix
 - `/projects` - portfolio hub for `~/Desktop/bolting/*`
-- `/system` - interactive system map
+- `/map` - node-editor command graph backed by local SQLite API
 - `/documents` - docs and connector artifacts
 - `/hskg` - launch brief for `hskg.vercel.app`
 
@@ -30,6 +44,9 @@ npm run build
 - `docs/portfolio-command-map.md`
 - `docs/hskg-launch-brief.md`
 - `docs/component-forge-offer.md`
+- `docs/calendar-connector-architecture.md`
+- `docs/local-command-base.md`
+- `docs/vertical-ai-course.md`
 
 ## Calendar
 

@@ -4,7 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "api": "node scripts/horizon-api.mjs",
     "dev": "vite --host 127.0.0.1",
+    "dev:full": "node scripts/dev-full.mjs",
+    "db:init": "node scripts/horizon-db.mjs",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1"
   },

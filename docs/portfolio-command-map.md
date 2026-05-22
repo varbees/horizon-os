@@ -7,16 +7,18 @@ This document turns `~/Desktop/bolting/*` into one managed portfolio instead of 
 1. PhotoSelect is the primary revenue proof.
 2. HSKG is the fast public delivery proof.
 3. Horizon OS / Component Forge is the sales-engine wrapper.
-4. Agent Linux Control and RateGuard are strategic assets, not daily distractions.
-5. Old projects can donate patterns, components, docs, and proof, but they do not become active unless they pass buyer validation.
+4. Wedding Studio AI Ops is the first adjacent vertical AI upsell after PhotoSelect revenue proof.
+5. Agent Linux Control and RateGuard are strategic assets, not daily distractions.
+6. Old projects can donate patterns, components, docs, and proof, but they do not become active unless they pass buyer validation.
+7. `agent-calendar-os` is the short public OSS goal: extract reusable calendar/agent blocks without exposing the private command center.
 
 ## Active Lanes
 
 | Lane | Rule | Projects |
 | --- | --- | --- |
 | Focus Now | Revenue, proof, or public trust within 30 days | PhotoSelect, HSKG, Antharmaya Labs, Component Forge |
-| Strategic Asset | High leverage, one weekly block only | Agent Linux Control, SecureClaw |
-| Resurrect | Valid idea, must be constrained before code | RateGuard, Layers Green AI Studio, WidgetForge, InvoAI |
+| Strategic Asset | High leverage, one weekly block only | Agent Linux Control, SecureClaw, agent-calendar-os |
+| Resurrect | Valid idea, must be constrained before code | RateGuard, Layers Green AI Studio, WidgetForge, InvoAI, Wedding Studio AI Ops |
 | Park | Good engineering, wrong timing | Desktop PhotoSelect, Kriate, Vault-Wealth, Anthar Vault |
 | Archive | Reference only | HomeBase, EcoLogistix, Gravita8, SHOP, deskold, misc folders |
 
@@ -27,12 +29,14 @@ This document turns `~/Desktop/bolting/*` into one managed portfolio instead of 
 - Ship `hskg.vercel.app` to a reviewable page.
 - Finish PhotoSelect live-payment proof path or document the exact blocker.
 - Extract 3 Horizon OS components as Component Forge samples.
+- Draft the public `agent-calendar-os` README and screenshot plan.
 
 ### Week 2
 
 - Run PhotoSelect pilot outreach to 10 studios.
 - Add active proofs to `antharmaya.com`.
 - Package one Agent Linux Control demo as a public engineering artifact.
+- Extract the first shadcn-style calendar block from Horizon OS.
 
 ### Week 3
 

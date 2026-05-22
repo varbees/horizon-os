@@ -7,7 +7,7 @@ export const useHorizonStore = create(
     (set) => ({
       metrics: defaultMetrics,
       completedBlocks: {},
-      selectedNodeId: "engine",
+      selectedNodeId: "calendar",
       nodePositions: Object.fromEntries(systemNodes.map((node) => [node.id, { x: node.x, y: node.y }])),
       updateMetric: (key, value) =>
         set((state) => ({
@@ -31,6 +31,10 @@ export const useHorizonStore = create(
             [id]: { x, y },
           },
         })),
+      resetNodePositions: () =>
+        set({
+          nodePositions: Object.fromEntries(systemNodes.map((node) => [node.id, { x: node.x, y: node.y }])),
+        }),
     }),
     {
       name: "horizon-os-state",
