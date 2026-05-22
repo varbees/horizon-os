@@ -12,6 +12,15 @@
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
+    "@schedule-x/calendar": "^4.6.0",
+    "@schedule-x/calendar-controls": "^4.6.0",
+    "@schedule-x/current-time": "^4.6.0",
+    "@schedule-x/event-modal": "^4.6.0",
+    "@schedule-x/event-recurrence": "^4.6.0",
+    "@schedule-x/events-service": "^4.6.0",
+    "@schedule-x/react": "^4.1.0",
+    "@schedule-x/scroll-controller": "^4.6.0",
+    "@schedule-x/theme-default": "^4.6.0",
     "framer-motion": "^12.23.24",
     "konva": "^9.3.22",
     "lucide-react": "^0.468.0",
@@ -19,6 +28,7 @@
     "react-dom": "^18.3.1",
     "react-konva": "^18.2.10",
     "react-router-dom": "^6.30.1",
+    "temporal-polyfill": "^0.3.0",
     "zustand": "^5.0.8"
   },
   "devDependencies": {

@@ -1,0 +1,107 @@
+.horizon-schedule {
+  --sx-color-primary: var(--md-sys-color-primary);
+  --sx-color-on-primary: var(--md-sys-color-on-primary);
+  --sx-color-primary-container: var(--md-sys-color-primary-container);
+  --sx-color-on-primary-container: var(--md-sys-color-on-primary-container);
+  --sx-color-secondary: var(--md-sys-color-secondary);
+  --sx-color-on-secondary: var(--md-sys-color-on-secondary);
+  --sx-color-secondary-container: var(--md-sys-color-secondary-container);
+  --sx-color-on-secondary-container: var(--md-sys-color-on-secondary-container);
+  --sx-color-tertiary: var(--md-sys-color-tertiary);
+  --sx-color-on-tertiary: var(--md-sys-color-on-tertiary);
+  --sx-color-tertiary-container: var(--md-sys-color-tertiary-container);
+  --sx-color-on-tertiary-container: var(--md-sys-color-on-tertiary-container);
+  --sx-color-surface: var(--md-sys-color-surface);
+  --sx-color-surface-dim: var(--md-sys-color-surface-container);
+  --sx-color-surface-bright: var(--md-sys-color-surface);
+  --sx-color-on-surface: var(--md-sys-color-on-surface);
+  --sx-color-surface-container: var(--md-sys-color-surface-container);
+  --sx-color-surface-container-low: var(--md-sys-color-surface-container-low);
+  --sx-color-surface-container-high: var(--md-sys-color-surface-container-high);
+  --sx-color-background: var(--md-sys-color-background);
+  --sx-color-on-background: var(--md-sys-color-on-background);
+  --sx-color-outline: var(--md-sys-color-outline);
+  --sx-color-outline-variant: var(--md-sys-color-outline-variant);
+  --sx-color-shadow: #2558d8;
+  --sx-color-surface-tint: var(--md-sys-color-primary);
+  --sx-internal-color-gray-ripple-background: rgba(37, 88, 216, 0.1);
+  --sx-internal-color-light-gray: var(--md-sys-color-surface-container-low);
+  --sx-internal-color-text: var(--md-sys-color-on-surface);
+  --sx-box-shadow-level3: 0 18px 52px rgba(37, 88, 216, 0.12);
+  --sx-rounding-extra-small: var(--hz-radius-xs);
+  --sx-rounding-small: var(--hz-radius-sm);
+  --sx-rounding-extra-large: var(--hz-radius-lg);
+  min-height: 780px;
+  background:
+    linear-gradient(180deg, rgba(220, 228, 255, 0.36), rgba(255, 255, 255, 0)),
+    var(--md-sys-color-surface);
+}
+
+.horizon-schedule .sx-react-calendar-wrapper {
+  width: 100%;
+  height: min(82vh, 900px);
+  min-height: 780px;
+}
+
+.horizon-schedule .sx__calendar-wrapper {
+  border: 0;
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font-family: "Manrope", ui-sans-serif, system-ui;
+}
+
+.horizon-schedule .sx__calendar-header,
+.horizon-schedule .sx__view-selection,
+.horizon-schedule .sx__date-input,
+.horizon-schedule .sx__date-picker-wrapper {
+  background-color: color-mix(in srgb, var(--md-sys-color-surface) 92%, var(--md-sys-color-primary-container));
+}
+
+.horizon-schedule .sx__calendar-header {
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  padding: 14px 16px;
+}
+
+.horizon-schedule .sx__time-grid-event,
+.horizon-schedule .sx__month-grid-event {
+  border-radius: var(--hz-radius-sm);
+  box-shadow: 0 10px 22px rgba(37, 88, 216, 0.14);
+}
+
+.horizon-schedule .sx__time-grid-event-title,
+.horizon-schedule .sx__month-grid-event-title {
+  font-weight: 900;
+}
+
+.horizon-schedule .sx__week-grid__hour,
+.horizon-schedule .sx__time-axis {
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 46%, transparent);
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.68rem;
+}
+
+.horizon-schedule .sx__current-time-indicator {
+  background-color: var(--md-sys-color-error);
+}
+
+.horizon-event-modal {
+  width: min(28rem, calc(100vw - 2rem));
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--hz-radius-lg);
+  background:
+    linear-gradient(135deg, rgba(220, 228, 255, 0.72), rgba(255, 255, 255, 0.94) 38%, rgba(205, 244, 230, 0.52)),
+    var(--md-sys-color-surface);
+  box-shadow: 0 24px 80px rgba(37, 88, 216, 0.2);
+  padding: 20px;
+}
+
+@media (max-width: 720px) {
+  .horizon-schedule {
+    min-height: 680px;
+  }
+
+  .horizon-schedule .sx-react-calendar-wrapper {
+    height: 76vh;
+    min-height: 680px;
+  }
+}

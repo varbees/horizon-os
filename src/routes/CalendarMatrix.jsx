@@ -1,18 +1,37 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ScheduleXCalendar, useCalendarApp } from "@schedule-x/react";
+import {
+  createViewDay,
+  createViewList,
+  createViewMonthAgenda,
+  createViewMonthGrid,
+  createViewWeek,
+  createViewWeekAgenda,
+} from "@schedule-x/calendar";
+import { createCalendarControlsPlugin } from "@schedule-x/calendar-controls";
+import { createCurrentTimePlugin } from "@schedule-x/current-time";
+import { createEventModalPlugin } from "@schedule-x/event-modal";
+import { createEventRecurrencePlugin, createEventsServicePlugin } from "@schedule-x/event-recurrence";
+import { createScrollControllerPlugin } from "@schedule-x/scroll-controller";
+import "@schedule-x/theme-default/dist/index.css";
+import "../styles/schedule-x-horizon.css";
 import {
   Bot,
   CalendarClock,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   Cloud,
   Download,
   ExternalLink,
   Gem,
   Link2,
   MessageSquareText,
+  Plus,
+  RefreshCw,
+  Save,
   ShieldCheck,
+  Sparkles,
   Star,
+  Trash2,
 } from "lucide-react";
 import Panel from "../components/Panel.jsx";
 import PrimaryButton from "../components/PrimaryButton.jsx";
@@ -25,75 +44,193 @@ import {
   strategicCourse,
   timeBlocks,
 } from "../data/horizon.js";
+import {
+  createCalendarEvent,
+  createCommandTask,
+  deleteCalendarEvent,
+  fetchCalendarEvents,
+  updateCalendarEvent,
+} from "../lib/commandBase.js";
+import {
+  HORIZON_TIMEZONE,
+  HORIZON_WEEK_START,
+  buildTimeBlockCalendarEvents,
+  calendarOptions,
+  defaultCalendarDraft,
+  draftFromEvent,
+  draftToScheduleEvent,
+  formatSelectedRange,
+  horizonCalendars,
+  rowToScheduleEvent,
+  scheduleEventToApi,
+} from "../lib/calendarEvents.js";
 import { useHorizonStore } from "../store/horizonStore.js";
 
-const dayColumns = [
-  { key: "MO", label: "Mon", date: "25", name: "May 25" },
-  { key: "TU", label: "Tue", date: "26", name: "May 26" },
-  { key: "WE", label: "Wed", date: "27", name: "May 27" },
-  { key: "TH", label: "Thu", date: "28", name: "May 28" },
-  { key: "FR", label: "Fri", date: "29", name: "May 29" },
-  { key: "SA", label: "Sat", date: "30", name: "May 30" },
-  { key: "SU", label: "Sun", date: "31", name: "May 31" },
+const quickDates = [
+  { label: "Fri", date: "2026-05-22", detail: "Today" },
+  { label: "Mon", date: "2026-05-25", detail: "Foundry start" },
+  { label: "Sat", date: "2026-05-30", detail: "Spec" },
+  { label: "Sun", date: "2026-05-31", detail: "Review" },
 ];
 
-const hours = Array.from({ length: 17 }, (_, index) => index + 6);
-const gridStart = 6 * 60;
-const hourHeight = 64;
+const recurrenceOptions = [
+  { value: "none", label: "Does not repeat" },
+  { value: "daily", label: "Daily" },
+  { value: "weekdays", label: "Every weekday" },
+  { value: "weekly", label: "Weekly" },
+];
 
-function parseTimeRange(block) {
-  const match = block.time.match(/(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})/);
-  if (!match) return { start: 9 * 60, end: 10 * 60 };
-  const [, startHour, startMinute, endHour, endMinute] = match;
-  return {
-    start: Number(startHour) * 60 + Number(startMinute),
-    end: Number(endHour) * 60 + Number(endMinute),
-  };
-}
-
-function dayKeysFor(block) {
-  if (block.days === "Daily") return dayColumns.map((day) => day.key);
-  if (block.days === "Mon-Fri") return ["MO", "TU", "WE", "TH", "FR"];
-  if (block.days === "Sunday") return ["SU"];
-  if (block.time.startsWith("Sat")) return ["SA"];
-  return ["MO"];
-}
-
-function buildEvents() {
-  return timeBlocks.flatMap((block) => {
-    const { start, end } = parseTimeRange(block);
-    return dayKeysFor(block).map((dayKey) => ({
-      ...block,
-      instanceId: `${block.id}-${dayKey}`,
-      dayKey,
-      start,
-      end,
-      startLabel: block.time.match(/(\d{2}:\d{2})/)?.[1] ?? block.time,
-      endLabel: block.time.match(/-\s*(\d{2}:\d{2})/)?.[1] ?? "",
-    }));
-  });
-}
-
-function minutesToOffset(minutes) {
-  return ((minutes - gridStart) / 60) * hourHeight;
-}
-
-function minutesToHeight(start, end) {
-  return Math.max(((end - start) / 60) * hourHeight - 6, 28);
+function compareEvents(a, b) {
+  return a.start.toString().localeCompare(b.start.toString()) || String(a.title).localeCompare(String(b.title));
 }
 
 export default function CalendarMatrix() {
   const { completedBlocks, toggleBlock } = useHorizonStore();
-  const [activeView, setActiveView] = useState("week");
-  const [selectedDay, setSelectedDay] = useState("MO");
-  const [selectedEventId, setSelectedEventId] = useState("income-engine-MO");
+  const [calendarEvents, setCalendarEvents] = useState(() => buildTimeBlockCalendarEvents());
+  const [selectedEventId, setSelectedEventId] = useState("income-engine");
   const [promptId, setPromptId] = useState("protect-week");
-  const [draft, setDraft] = useState("Codex, audit this block against the foundry objective.");
-  const events = useMemo(() => buildEvents(), []);
-  const selectedEvent = events.find((event) => event.instanceId === selectedEventId) ?? events[0];
+  const [draftPrompt, setDraftPrompt] = useState("Codex, audit this block against the foundry objective.");
+  const [eventDraft, setEventDraft] = useState(defaultCalendarDraft);
+  const [panelMode, setPanelMode] = useState("details");
+  const [activeView, setActiveView] = useState("week");
+  const [visibleRange, setVisibleRange] = useState(null);
+  const [syncStatus, setSyncStatus] = useState("local seed loaded");
+  const [syncError, setSyncError] = useState("");
+
+  const [eventsService] = useState(() => createEventsServicePlugin());
+  const [recurrencePlugin] = useState(() => createEventRecurrencePlugin());
+  const [calendarControls] = useState(() => createCalendarControlsPlugin());
+  const [currentTime] = useState(() => createCurrentTimePlugin({ fullWeekWidth: true }));
+  const [eventModal] = useState(() => createEventModalPlugin());
+  const [scrollController] = useState(() => createScrollControllerPlugin({ initialScroll: "06:15" }));
+
+  const views = useMemo(
+    () => [createViewWeek(), createViewDay(), createViewMonthGrid(), createViewMonthAgenda(), createViewWeekAgenda(), createViewList()],
+    [],
+  );
+
+  const viewButtons = useMemo(
+    () => [
+      { label: "Week", view: views[0].name },
+      { label: "Day", view: views[1].name },
+      { label: "Month", view: views[2].name },
+      { label: "Agenda", view: views[3].name },
+      { label: "List", view: views[5].name },
+    ],
+    [views],
+  );
+
+  const selectedEvent = useMemo(
+    () => calendarEvents.find((event) => String(event.id) === String(selectedEventId)) ?? calendarEvents[0],
+    [calendarEvents, selectedEventId],
+  );
   const selectedPrompt = agentCalendarPrompts.find((prompt) => prompt.id === promptId) ?? agentCalendarPrompts[0];
   const completed = timeBlocks.filter((block) => completedBlocks[block.id]).length;
-  const dayEvents = events.filter((event) => event.dayKey === selectedDay).sort((a, b) => a.start - b.start);
+  const upcomingEvents = useMemo(() => calendarEvents.slice().sort(compareEvents).slice(0, 10), [calendarEvents]);
+
+  const selectEvent = (event) => {
+    if (!event) return;
+    setSelectedEventId(String(event.id));
+    setEventDraft(draftFromEvent(event));
+    setPanelMode("details");
+  };
+
+  const config = useMemo(
+    () => ({
+      views,
+      events: calendarEvents,
+      calendars: horizonCalendars,
+      selectedDate: Temporal.PlainDate.from(HORIZON_WEEK_START),
+      defaultView: views[0].name,
+      timezone: HORIZON_TIMEZONE,
+      firstDayOfWeek: 1,
+      showWeekNumbers: true,
+      dayBoundaries: {
+        start: "06:00",
+        end: "22:00",
+      },
+      weekOptions: {
+        gridHeight: 1280,
+        nDays: 7,
+        eventWidth: 96,
+        eventOverlap: false,
+        gridStep: 15,
+        timeAxisFormatOptions: { hour: "2-digit", minute: "2-digit" },
+      },
+      monthGridOptions: {
+        nEventsPerDay: 5,
+      },
+      callbacks: {
+        onRangeUpdate(range) {
+          setVisibleRange(range);
+        },
+        onEventClick(calendarEvent) {
+          selectEvent(calendarEvent);
+        },
+        onDoubleClickEvent(calendarEvent) {
+          selectEvent(calendarEvent);
+          setPanelMode("edit");
+        },
+        onClickDate(date) {
+          setEventDraft((current) => ({ ...current, date: date.toString() }));
+          setPanelMode("create");
+        },
+        onClickDateTime(dateTime) {
+          setEventDraft((current) => ({
+            ...current,
+            date: `${dateTime.year}-${String(dateTime.month).padStart(2, "0")}-${String(dateTime.day).padStart(2, "0")}`,
+            startTime: `${String(dateTime.hour).padStart(2, "0")}:${String(dateTime.minute).padStart(2, "0")}`,
+          }));
+          setPanelMode("create");
+        },
+        onSelectedDateUpdate(date) {
+          setSyncStatus(`selected ${date.toString()}`);
+        },
+      },
+    }),
+    [calendarEvents, views],
+  );
+
+  const plugins = useMemo(
+    () => [recurrencePlugin, eventsService, eventModal, currentTime, calendarControls, scrollController],
+    [calendarControls, currentTime, eventModal, eventsService, recurrencePlugin, scrollController],
+  );
+
+  const calendarApp = useCalendarApp(config, plugins);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchCalendarEvents()
+      .then(({ events }) => {
+        if (cancelled || !events?.length) return;
+        const parsedEvents = events.map(rowToScheduleEvent);
+        setCalendarEvents(parsedEvents);
+        setSelectedEventId((current) => (parsedEvents.some((event) => String(event.id) === String(current)) ? current : String(parsedEvents[0].id)));
+        setSyncStatus(`loaded ${parsedEvents.length} local events from SQLite`);
+        setSyncError("");
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setSyncError(error.message);
+        setSyncStatus("SQLite API offline; using in-browser seed events");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!calendarApp) return;
+    try {
+      eventsService.set(calendarEvents);
+    } catch (error) {
+      setSyncError(error.message);
+    }
+  }, [calendarApp, calendarEvents, eventsService]);
+
+  useEffect(() => {
+    if (selectedEvent) setEventDraft(draftFromEvent(selectedEvent));
+  }, [selectedEvent]);
 
   const downloadCalendar = () => {
     const blob = new Blob([calendarIcs], { type: "text/calendar;charset=utf-8" });
@@ -105,21 +242,126 @@ export default function CalendarMatrix() {
     URL.revokeObjectURL(url);
   };
 
+  const setCalendarView = (view) => {
+    setActiveView(view);
+    try {
+      calendarControls.setView(view);
+    } catch {
+      // Calendar controls initialize after the first render; local state keeps the UI responsive.
+    }
+  };
+
+  const jumpToDate = (date) => {
+    try {
+      calendarControls.setDate(Temporal.PlainDate.from(date));
+    } catch {
+      setSyncStatus(`date queued ${date}`);
+    }
+  };
+
+  const saveCreatedEvent = async () => {
+    const event = draftToScheduleEvent(eventDraft);
+    setCalendarEvents((current) => [...current.filter((item) => String(item.id) !== String(event.id)), event]);
+    setSelectedEventId(String(event.id));
+    setPanelMode("details");
+    try {
+      await createCalendarEvent(scheduleEventToApi(event));
+      setSyncStatus("event saved to SQLite");
+      setSyncError("");
+    } catch (error) {
+      setSyncError(error.message);
+      setSyncStatus("event saved locally only");
+    }
+  };
+
+  const saveEditedEvent = async () => {
+    if (!selectedEvent) return;
+    const event = draftToScheduleEvent(eventDraft, selectedEvent.id);
+    setCalendarEvents((current) => current.map((item) => (String(item.id) === String(event.id) ? event : item)));
+    setPanelMode("details");
+    try {
+      await updateCalendarEvent(event.id, scheduleEventToApi(event));
+      setSyncStatus("event update persisted");
+      setSyncError("");
+    } catch (error) {
+      setSyncError(error.message);
+      setSyncStatus("event update local only");
+    }
+  };
+
+  const removeSelectedEvent = async () => {
+    if (!selectedEvent) return;
+    const id = String(selectedEvent.id);
+    const nextEvents = calendarEvents.filter((event) => String(event.id) !== id);
+    setCalendarEvents(nextEvents);
+    setSelectedEventId(String(nextEvents[0]?.id ?? ""));
+    setPanelMode("details");
+    try {
+      await deleteCalendarEvent(id);
+      setSyncStatus("event removed from SQLite");
+      setSyncError("");
+    } catch (error) {
+      setSyncError(error.message);
+      setSyncStatus("event removed locally only");
+    }
+  };
+
+  const createTaskFromSelected = async () => {
+    if (!selectedEvent) return;
+    try {
+      await createCommandTask({
+        event_id: selectedEvent.id,
+        title: `Output proof: ${selectedEvent.title}`,
+        priority: selectedEvent.calendarId === "capital" ? "high" : "normal",
+        revenue_impact: selectedEvent.calendarId === "capital" || selectedEvent.calendarId === "product" ? 1 : 0,
+      });
+      setSyncStatus("task created from selected block");
+      setSyncError("");
+    } catch (error) {
+      setSyncError(error.message);
+    }
+  };
+
+  const customComponents = useMemo(
+    () => ({
+      eventModal: ({ calendarEvent }) => (
+        <HorizonEventModal
+          event={calendarEvent}
+          completed={Boolean(completedBlocks[calendarEvent.id])}
+          onDone={() => toggleBlock(calendarEvent.id)}
+          onEdit={() => {
+            selectEvent(calendarEvent);
+            setPanelMode("edit");
+          }}
+        />
+      ),
+    }),
+    [completedBlocks, toggleBlock],
+  );
+
   return (
     <div>
       <SectionHeader
         eyebrow="Calendar command surface"
-        title="A Google-class calendar built around the foundry."
-        copy="Use the calendar as the repetitive operating surface: time blocks, connector sync, selected-event context, and agent prompts live in one place."
+        title="A real calendar surface for the foundry."
+        copy="Schedule-X now handles the heavy calendar UI: week, day, month, agenda, recurrence, current time, modal details, controls, and local persistence."
         action={
           <div className="flex flex-wrap gap-2">
-            <PrimaryButton onClick={downloadCalendar}>
-              <Download className="h-4 w-4" aria-hidden="true" />
-              Download ICS
+            <PrimaryButton onClick={() => setPanelMode("create")}>
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              New block
             </PrimaryButton>
+            <button
+              type="button"
+              onClick={downloadCalendar}
+              className="inline-flex items-center gap-2 rounded-md border border-outlineVariant bg-surface px-4 py-2.5 text-sm font-bold text-paper/76 transition hover:border-outline hover:text-paper"
+            >
+              <Download className="h-4 w-4" aria-hidden="true" />
+              Export ICS
+            </button>
             <a
               href="/horizon-calendar.ics"
-              className="inline-flex items-center gap-2 rounded-md border border-outlineVariant px-4 py-2.5 text-sm font-bold text-paper/76 transition hover:border-outline hover:text-paper"
+              className="inline-flex items-center gap-2 rounded-md border border-outlineVariant bg-surface px-4 py-2.5 text-sm font-bold text-paper/76 transition hover:border-outline hover:text-paper"
             >
               Static file
               <ExternalLink className="h-4 w-4" aria-hidden="true" />
@@ -128,47 +370,47 @@ export default function CalendarMatrix() {
         }
       />
 
-      <section className="grid gap-4 xl:grid-cols-[18rem_minmax(0,1fr)_22rem]">
-        <aside className="space-y-4">
+      <section className="grid gap-4 xl:grid-cols-[17rem_minmax(0,1fr)] 2xl:grid-cols-[17rem_minmax(52rem,1fr)_23rem]">
+        <aside className="space-y-4 xl:col-start-1 xl:row-start-1">
           <Panel className="p-4">
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                className="grid h-8 w-8 place-items-center rounded-md border border-outlineVariant text-paper/58 transition hover:border-outline hover:text-paper"
-                aria-label="Previous week"
-              >
-                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-              </button>
-              <div className="text-center">
-                <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-brass">Foundry Week</p>
-                <p className="text-sm font-black text-paper">May 25 - 31, 2026</p>
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-md bg-primaryContainer text-onPrimaryContainer">
+                <CalendarClock className="h-5 w-5" aria-hidden="true" />
               </div>
-              <button
-                type="button"
-                className="grid h-8 w-8 place-items-center rounded-md border border-outlineVariant text-paper/58 transition hover:border-outline hover:text-paper"
-                aria-label="Next week"
-              >
-                <ChevronRight className="h-4 w-4" aria-hidden="true" />
-              </button>
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-brass">Calendar state</p>
+                <h2 className="text-base font-black text-paper">Asia/Kolkata</h2>
+              </div>
             </div>
-
-            <div className="mt-4 grid grid-cols-7 gap-1 text-center">
-              {dayColumns.map((day) => (
+            <p className="mt-4 rounded-md border border-outlineVariant bg-surfaceVariant p-3 text-sm font-bold leading-6 text-paper/64">
+              {formatSelectedRange(visibleRange)}
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {quickDates.map((date) => (
                 <button
-                  key={day.key}
+                  key={date.date}
                   type="button"
-                  onClick={() => {
-                    setSelectedDay(day.key);
-                    setActiveView("day");
-                  }}
-                  className={`rounded-md px-1 py-2 transition ${
-                    selectedDay === day.key
-                      ? "bg-secondaryContainer text-paper"
-                      : "border border-outlineVariant/70 bg-white/[0.035] text-paper/64 hover:text-paper"
+                  onClick={() => jumpToDate(date.date)}
+                  className="rounded-md border border-outlineVariant bg-surfaceVariant p-3 text-left transition hover:border-primary/40 hover:bg-primaryContainer/50"
+                >
+                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-paper/44">{date.label}</span>
+                  <span className="mt-1 block text-sm font-black text-paper">{date.detail}</span>
+                </button>
+              ))}
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {viewButtons.map((view) => (
+                <button
+                  key={view.view}
+                  type="button"
+                  onClick={() => setCalendarView(view.view)}
+                  className={`rounded-md border px-3 py-2 text-xs font-black transition ${
+                    activeView === view.view
+                      ? "border-primary bg-primaryContainer text-onPrimaryContainer"
+                      : "border-outlineVariant bg-surface text-paper/58 hover:text-paper"
                   }`}
                 >
-                  <span className="block font-mono text-[9px] uppercase">{day.label}</span>
-                  <span className="mt-1 block text-sm font-black">{day.date}</span>
+                  {view.label}
                 </button>
               ))}
             </div>
@@ -179,9 +421,7 @@ export default function CalendarMatrix() {
             <h2 className="mt-2 font-display text-3xl font-bold">
               {completed}/{timeBlocks.length}
             </h2>
-            <p className="mt-2 text-sm leading-6 text-paper/62">
-              Local checks are a friction marker. The Sunday review decides what becomes truth.
-            </p>
+            <p className="mt-2 text-sm leading-6 text-paper/62">Done only counts when there is an artifact, sent message, updated doc, or logged metric.</p>
             <div className="mt-4 grid gap-2">
               {timeBlocks.slice(0, 5).map((block) => {
                 const done = Boolean(completedBlocks[block.id]);
@@ -222,211 +462,46 @@ export default function CalendarMatrix() {
           </Panel>
         </aside>
 
-        <Panel className="overflow-hidden">
+        <Panel className="overflow-hidden xl:col-start-2 xl:row-start-1">
           <div className="flex flex-col gap-3 border-b border-outlineVariant p-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">Live calendar</p>
-              <h2 className="mt-1 text-2xl font-black text-paper">Foundry Week Command Grid</h2>
+              <h2 className="mt-1 text-2xl font-black text-paper">Foundry Calendar Grid</h2>
             </div>
-            <div className="grid grid-cols-4 rounded-lg border border-outlineVariant bg-surfaceVariant p-1 text-xs font-bold">
-              {["week", "day", "month", "agenda"].map((view) => (
-                <button
-                  key={view}
-                  type="button"
-                  onClick={() => setActiveView(view)}
-                  className={`rounded-md px-3 py-2 capitalize transition ${
-                    activeView === view ? "bg-primaryContainer text-onPrimaryContainer" : "text-paper/58 hover:text-paper"
-                  }`}
-                >
-                  {view}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
+              <span className="inline-flex items-center gap-2 rounded-full border border-outlineVariant bg-surface px-3 py-2 text-paper/58">
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                {syncStatus}
+              </span>
+              {syncError && <span className="rounded-full border border-coral/30 bg-coral/10 px-3 py-2 text-coral">{syncError}</span>}
             </div>
           </div>
-
-          {activeView === "week" && (
-            <div className="overflow-x-auto">
-              <div className="min-w-[920px]">
-                <div className="grid grid-cols-[4rem_repeat(7,minmax(7.5rem,1fr))] border-b border-outlineVariant">
-                  <div className="border-r border-outlineVariant p-3 font-mono text-[10px] uppercase tracking-[0.2em] text-paper/36">
-                    IST
-                  </div>
-                  {dayColumns.map((day) => (
-                    <button
-                      key={day.key}
-                      type="button"
-                      onClick={() => setSelectedDay(day.key)}
-                      className={`border-r border-outlineVariant p-3 text-left transition last:border-r-0 ${
-                        selectedDay === day.key ? "bg-white/[0.06]" : "hover:bg-white/[0.035]"
-                      }`}
-                    >
-                      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/44">{day.label}</span>
-                      <span className="ml-2 text-lg font-black text-paper">{day.date}</span>
-                    </button>
-                  ))}
-                </div>
-
-                <div
-                  className="grid grid-cols-[4rem_repeat(7,minmax(7.5rem,1fr))]"
-                  style={{ minHeight: `${(hours.length - 1) * hourHeight}px` }}
-                >
-                  <div className="border-r border-outlineVariant">
-                    {hours.slice(0, -1).map((hour) => (
-                      <div key={hour} className="h-16 border-b border-outlineVariant/70 px-2 py-1 text-right font-mono text-[10px] text-paper/32">
-                        {hour}:00
-                      </div>
-                    ))}
-                  </div>
-
-                  {dayColumns.map((day) => (
-                    <div key={day.key} className="relative border-r border-outlineVariant last:border-r-0">
-                      {hours.slice(0, -1).map((hour) => (
-                        <div key={hour} className="h-16 border-b border-outlineVariant/70" />
-                      ))}
-                      {events
-                        .filter((event) => event.dayKey === day.key)
-                        .map((event) => (
-                          <button
-                            key={event.instanceId}
-                            type="button"
-                            onClick={() => {
-                              setSelectedEventId(event.instanceId);
-                              setSelectedDay(event.dayKey);
-                            }}
-                            className={`absolute left-1 right-1 overflow-hidden rounded-md border p-2 text-left shadow-rule transition hover:scale-[1.01] ${
-                              selectedEventId === event.instanceId
-                                ? "border-signal bg-signal/18"
-                                : "border-outlineVariant bg-ink/92 hover:border-outline"
-                            }`}
-                            style={{
-                              top: `${minutesToOffset(event.start)}px`,
-                              height: `${minutesToHeight(event.start, event.end)}px`,
-                            }}
-                          >
-                            <span className="block font-mono text-[10px] text-paper/46">
-                              {event.startLabel} - {event.endLabel}
-                            </span>
-                            <span className="mt-1 block truncate text-xs font-black text-paper">{event.title}</span>
-                            <span className="mt-1 block truncate text-[11px] font-bold text-paper/50">{event.lane}</span>
-                          </button>
-                        ))}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeView === "day" && (
-            <div className="p-4">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-paper/42">
-                    {dayColumns.find((day) => day.key === selectedDay)?.name}
-                  </p>
-                  <h3 className="text-xl font-black text-paper">Single-day operating lane</h3>
-                </div>
-                <CalendarClock className="h-6 w-6 text-paper/38" aria-hidden="true" />
-              </div>
-              <div className="space-y-3">
-                {dayEvents.map((event) => (
-                  <CalendarListEvent
-                    key={event.instanceId}
-                    event={event}
-                    selected={selectedEventId === event.instanceId}
-                    onSelect={() => setSelectedEventId(event.instanceId)}
-                    completed={Boolean(completedBlocks[event.id])}
-                    onToggle={() => toggleBlock(event.id)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeView === "month" && (
-            <div className="p-4">
-              <div className="grid grid-cols-7 gap-2">
-                {dayColumns.map((day) => (
-                  <div key={day.key} className="rounded-md border border-outlineVariant bg-surfaceVariant p-3">
-                    <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/42">{day.label}</p>
-                    <p className="mt-1 text-2xl font-black text-paper">{day.date}</p>
-                    <div className="mt-3 space-y-1">
-                      {events
-                        .filter((event) => event.dayKey === day.key)
-                        .slice(0, 4)
-                        .map((event) => (
-                          <button
-                            key={event.instanceId}
-                            type="button"
-                            onClick={() => {
-                              setSelectedEventId(event.instanceId);
-                              setSelectedDay(event.dayKey);
-                              setActiveView("day");
-                            }}
-                            className="block w-full truncate rounded-sm px-2 py-1 text-left text-[11px] font-bold text-paper/68 transition hover:bg-white/8 hover:text-paper"
-                          >
-                            {event.startLabel} {event.title}
-                          </button>
-                        ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeView === "agenda" && (
-            <div className="space-y-3 p-4">
-              {events
-                .slice()
-                .sort((a, b) => dayColumns.findIndex((day) => day.key === a.dayKey) - dayColumns.findIndex((day) => day.key === b.dayKey) || a.start - b.start)
-                .map((event) => (
-                  <CalendarListEvent
-                    key={event.instanceId}
-                    event={event}
-                    selected={selectedEventId === event.instanceId}
-                    onSelect={() => {
-                      setSelectedEventId(event.instanceId);
-                      setSelectedDay(event.dayKey);
-                    }}
-                    completed={Boolean(completedBlocks[event.id])}
-                    onToggle={() => toggleBlock(event.id)}
-                  />
-                ))}
-            </div>
-          )}
+          <div className="horizon-schedule">
+            <ScheduleXCalendar calendarApp={calendarApp} customComponents={customComponents} />
+          </div>
         </Panel>
 
-        <aside className="space-y-4">
-          <Panel className="p-5">
-            <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">Selected block</p>
-            <div className="mt-4 flex items-start gap-3">
-              <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: selectedEvent.color }} />
-              <div>
-                <h2 className="text-xl font-black text-paper">{selectedEvent.title}</h2>
-                <p className="mt-1 font-mono text-xs uppercase tracking-[0.18em] text-paper/42">
-                  {selectedEvent.dayKey} / {selectedEvent.startLabel} - {selectedEvent.endLabel}
-                </p>
-              </div>
-            </div>
-            <p className="mt-4 text-sm leading-6 text-paper/62">{selectedEvent.activity}</p>
-            <div className="mt-4 rounded-md border border-outlineVariant bg-surfaceVariant p-3">
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/38">Output contract</p>
-              <p className="mt-2 text-sm font-bold leading-6 text-paper/76">{selectedEvent.output}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => toggleBlock(selectedEvent.id)}
-              className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md border px-4 py-2.5 text-sm font-black transition ${
-                completedBlocks[selectedEvent.id]
-                  ? "border-signal/50 bg-signal/14 text-signal"
-                  : "border-outlineVariant bg-white/[0.035] text-paper/72 hover:border-outline hover:text-paper"
-              }`}
-            >
-              <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-              {completedBlocks[selectedEvent.id] ? "Marked done" : "Mark local done"}
-            </button>
-          </Panel>
+        <aside className="space-y-4 xl:col-start-2 xl:row-start-2 2xl:col-start-3 2xl:row-start-1">
+          {panelMode === "create" || panelMode === "edit" ? (
+            <CalendarEditor
+              mode={panelMode}
+              draft={eventDraft}
+              onChange={setEventDraft}
+              onCancel={() => setPanelMode("details")}
+              onCreate={saveCreatedEvent}
+              onUpdate={saveEditedEvent}
+              onDelete={removeSelectedEvent}
+              canDelete={Boolean(selectedEvent)}
+            />
+          ) : (
+            <SelectedEventPanel
+              event={selectedEvent}
+              completed={Boolean(completedBlocks[selectedEvent?.id])}
+              onDone={() => selectedEvent && toggleBlock(selectedEvent.id)}
+              onEdit={() => setPanelMode("edit")}
+              onTask={createTaskFromSelected}
+            />
+          )}
 
           <Panel className="p-5">
             <div className="flex items-center gap-3">
@@ -446,7 +521,7 @@ export default function CalendarMatrix() {
                   type="button"
                   onClick={() => {
                     setPromptId(prompt.id);
-                    setDraft(prompt.prompt);
+                    setDraftPrompt(prompt.prompt);
                   }}
                   className={`rounded-md border px-3 py-2 text-left text-xs font-bold transition ${
                     promptId === prompt.id
@@ -462,8 +537,8 @@ export default function CalendarMatrix() {
             <label className="mt-4 block">
               <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/38">Prompt draft</span>
               <textarea
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
+                value={draftPrompt}
+                onChange={(event) => setDraftPrompt(event.target.value)}
                 className="mt-2 min-h-28 w-full resize-none rounded-md border border-outlineVariant bg-surfaceContainer p-3 text-sm leading-6 text-paper/78"
               />
             </label>
@@ -478,50 +553,25 @@ export default function CalendarMatrix() {
           </Panel>
 
           <Panel className="p-5">
-            <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">Chosen course</p>
-            <div className="mt-4 space-y-3">
-              {strategicCourse.slice(0, 3).map((item) => (
-                <div key={item.id} className="rounded-md border border-outlineVariant bg-surfaceVariant p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-black text-paper">{item.title}</p>
-                    <span className="font-mono text-[10px] font-black text-brass">{item.rank}</span>
+            <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">Upcoming base blocks</p>
+            <div className="mt-4 space-y-2">
+              {upcomingEvents.map((event) => (
+                <button
+                  key={event.id}
+                  type="button"
+                  onClick={() => selectEvent(event)}
+                  className={`w-full rounded-md border p-3 text-left transition hover:border-primary/40 ${
+                    String(selectedEvent?.id) === String(event.id) ? "border-primary bg-primaryContainer/60" : "border-outlineVariant bg-surfaceVariant"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-xs font-black text-paper">{event.title}</span>
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: horizonCalendars[event.calendarId]?.lightColors?.main }} />
                   </div>
-                  <p className="mt-1 text-xs font-bold text-signal">{item.stance}</p>
-                  <p className="mt-2 text-xs leading-5 text-paper/54">{item.calendarRule}</p>
-                </div>
-              ))}
-            </div>
-          </Panel>
-
-          <Panel className="p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">Open source signal</p>
-                <h2 className="mt-2 text-xl font-black text-paper">{openSourceSignal.repoName}</h2>
-              </div>
-              <div className="grid h-10 w-10 place-items-center rounded-md border border-brass/30 bg-brass/12 text-brass">
-                <Gem className="h-5 w-5" aria-hidden="true" />
-              </div>
-            </div>
-            <p className="mt-3 text-sm leading-6 text-paper/60">{openSourceSignal.thesis}</p>
-            <div className="mt-4 rounded-md border border-outlineVariant bg-surfaceVariant p-3">
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/38">Star target</p>
-                  <p className="mt-1 text-2xl font-black text-paper">{openSourceSignal.targetStars.toLocaleString()}</p>
-                </div>
-                <Star className="h-6 w-6 fill-brass text-brass" aria-hidden="true" />
-              </div>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                <div className="h-full w-[2%] rounded-full bg-brass" />
-              </div>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              {openSourceSignal.milestones.slice(0, 4).map((milestone) => (
-                <div key={milestone.stars} className="rounded-md border border-outlineVariant bg-surfaceVariant p-3">
-                  <p className="font-mono text-[10px] font-black text-brass">{milestone.stars.toLocaleString()} stars</p>
-                  <p className="mt-1 text-xs font-bold text-paper/68">{milestone.label}</p>
-                </div>
+                  <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-paper/44">
+                    {event.calendarId} / {event.start.toString().slice(11, 16)}
+                  </p>
+                </button>
               ))}
             </div>
           </Panel>
@@ -534,17 +584,17 @@ export default function CalendarMatrix() {
             {
               icon: Cloud,
               title: "Native sync path",
-              text: "ICS now. Google OAuth and event sync next. Microsoft Graph after the Google contract is stable.",
+              text: "ICS now. Google OAuth and event sync next. Microsoft Graph after the local event contract is stable.",
             },
             {
               icon: Link2,
               title: "Provider identity",
-              text: "Every block needs a local id, provider id, recurrence rule, sync token, and source ownership flag.",
+              text: "Each block now carries local id, calendar id, recurrence rule, sync state, and output contract.",
             },
             {
               icon: ShieldCheck,
               title: "Agent safety",
-              text: "Agent chat can propose calendar, docs, and git actions, but writes should require explicit confirmation.",
+              text: "Agent chat can propose edits and tasks. Calendar writes stay explicit through this local command surface.",
             },
           ].map((item) => {
             const Icon = item.icon;
@@ -558,41 +608,265 @@ export default function CalendarMatrix() {
           })}
         </div>
       </Panel>
+
+      <Panel className="mt-4 p-4">
+        <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">Chosen course</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {strategicCourse.slice(0, 3).map((item) => (
+                <div key={item.id} className="rounded-md border border-outlineVariant bg-surfaceVariant p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-black text-paper">{item.title}</p>
+                    <span className="font-mono text-[10px] font-black text-brass">{item.rank}</span>
+                  </div>
+                  <p className="mt-1 text-xs font-bold text-signal">{item.stance}</p>
+                  <p className="mt-2 text-xs leading-5 text-paper/54">{item.calendarRule}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-lg border border-outlineVariant bg-primaryContainer/50 p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">Open source signal</p>
+                <h2 className="mt-2 text-xl font-black text-paper">{openSourceSignal.repoName}</h2>
+              </div>
+              <div className="grid h-10 w-10 place-items-center rounded-md border border-brass/30 bg-brass/12 text-brass">
+                <Gem className="h-5 w-5" aria-hidden="true" />
+              </div>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-paper/60">{openSourceSignal.thesis}</p>
+            <div className="mt-4 flex items-end justify-between rounded-md border border-outlineVariant bg-surface p-3">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/38">Star target</p>
+                <p className="mt-1 text-2xl font-black text-paper">{openSourceSignal.targetStars.toLocaleString()}</p>
+              </div>
+              <Star className="h-6 w-6 fill-brass text-brass" aria-hidden="true" />
+            </div>
+          </div>
+        </div>
+      </Panel>
     </div>
   );
 }
 
-function CalendarListEvent({ event, selected, completed, onSelect, onToggle }) {
+function SelectedEventPanel({ event, completed, onDone, onEdit, onTask }) {
+  if (!event) {
+    return (
+      <Panel className="p-5">
+        <p className="text-sm font-bold text-paper/64">Select a calendar event to inspect it.</p>
+      </Panel>
+    );
+  }
+
   return (
-    <div
-      className={`grid gap-3 rounded-lg border p-3 transition sm:grid-cols-[7rem_minmax(0,1fr)_7rem] sm:items-center ${
-        selected ? "border-signal bg-signal/12" : "border-outlineVariant bg-white/[0.035]"
-      }`}
-    >
-      <button type="button" onClick={onSelect} className="text-left">
-        <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-paper/42">{event.dayKey}</p>
-        <p className="mt-1 text-sm font-black text-paper">
-          {event.startLabel} - {event.endLabel}
-        </p>
-      </button>
-      <button type="button" onClick={onSelect} className="min-w-0 text-left">
-        <div className="flex items-center gap-2">
-          <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: event.color }} aria-hidden="true" />
-          <h3 className="truncate text-base font-extrabold text-paper">{event.title}</h3>
+    <Panel className="p-5">
+      <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">Selected block</p>
+      <div className="mt-4 flex items-start gap-3">
+        <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: horizonCalendars[event.calendarId]?.lightColors?.main }} />
+        <div>
+          <h2 className="text-xl font-black text-paper">{event.title}</h2>
+          <p className="mt-1 font-mono text-xs uppercase tracking-[0.18em] text-paper/42">
+            {event.calendarId} / {event.start.toString().slice(0, 16)}
+          </p>
         </div>
-        <p className="mt-1 line-clamp-2 text-sm leading-6 text-paper/58">{event.activity}</p>
-      </button>
+      </div>
+      <p className="mt-4 text-sm leading-6 text-paper/62">{event.description}</p>
+      <div className="mt-4 rounded-md border border-outlineVariant bg-surfaceVariant p-3">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/38">Output contract</p>
+        <p className="mt-2 text-sm font-bold leading-6 text-paper/76">{event.output || "Define one visible output before the block starts."}</p>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={onDone}
+          className={`inline-flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-xs font-black transition ${
+            completed ? "border-signal/50 bg-signal/14 text-signal" : "border-outlineVariant bg-surface text-paper/68 hover:border-outline"
+          }`}
+        >
+          <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+          {completed ? "Done" : "Mark done"}
+        </button>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="inline-flex items-center justify-center gap-2 rounded-md border border-outlineVariant bg-surface px-3 py-2 text-xs font-black text-paper/68 transition hover:border-outline"
+        >
+          <Save className="h-4 w-4" aria-hidden="true" />
+          Edit
+        </button>
+      </div>
       <button
         type="button"
-        onClick={onToggle}
-        className={`inline-flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-xs font-black transition ${
-          completed ? "border-signal/50 text-signal" : "border-outlineVariant text-paper/46 hover:text-paper"
-        }`}
-        aria-pressed={completed}
+        onClick={onTask}
+        className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-black text-onPrimary transition hover:brightness-105"
       >
-        <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-        {completed ? "Done" : event.lane}
+        <Sparkles className="h-4 w-4" aria-hidden="true" />
+        Create task from block
       </button>
+    </Panel>
+  );
+}
+
+function CalendarEditor({ mode, draft, onChange, onCancel, onCreate, onUpdate, onDelete, canDelete }) {
+  const update = (key, value) => onChange({ ...draft, [key]: value });
+
+  return (
+    <Panel className="p-5">
+      <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">{mode === "create" ? "Create block" : "Edit block"}</p>
+      <div className="mt-4 space-y-3">
+        <label className="block">
+          <span className="text-xs font-black text-paper/58">Title</span>
+          <input
+            value={draft.title}
+            onChange={(event) => update("title", event.target.value)}
+            className="mt-1 w-full rounded-md border border-outlineVariant bg-surface px-3 py-2 text-sm font-bold text-paper"
+          />
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block">
+            <span className="text-xs font-black text-paper/58">Date</span>
+            <input
+              type="date"
+              value={draft.date}
+              onChange={(event) => update("date", event.target.value)}
+              className="mt-1 w-full rounded-md border border-outlineVariant bg-surface px-3 py-2 text-sm font-bold text-paper"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-black text-paper/58">Calendar</span>
+            <select
+              value={draft.calendarId}
+              onChange={(event) => {
+                const option = calendarOptions.find((item) => item.id === event.target.value);
+                onChange({ ...draft, calendarId: event.target.value, lane: option?.label ?? draft.lane });
+              }}
+              className="mt-1 w-full rounded-md border border-outlineVariant bg-surface px-3 py-2 text-sm font-bold text-paper"
+            >
+              {calendarOptions.map((calendar) => (
+                <option key={calendar.id} value={calendar.id}>
+                  {calendar.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block">
+            <span className="text-xs font-black text-paper/58">Start</span>
+            <input
+              type="time"
+              value={draft.startTime}
+              onChange={(event) => update("startTime", event.target.value)}
+              className="mt-1 w-full rounded-md border border-outlineVariant bg-surface px-3 py-2 text-sm font-bold text-paper"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-black text-paper/58">End</span>
+            <input
+              type="time"
+              value={draft.endTime}
+              onChange={(event) => update("endTime", event.target.value)}
+              className="mt-1 w-full rounded-md border border-outlineVariant bg-surface px-3 py-2 text-sm font-bold text-paper"
+            />
+          </label>
+        </div>
+        <label className="block">
+          <span className="text-xs font-black text-paper/58">Repeat</span>
+          <select
+            value={draft.recurrence}
+            onChange={(event) => update("recurrence", event.target.value)}
+            className="mt-1 w-full rounded-md border border-outlineVariant bg-surface px-3 py-2 text-sm font-bold text-paper"
+          >
+            {recurrenceOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-xs font-black text-paper/58">Location</span>
+          <input
+            value={draft.location}
+            onChange={(event) => update("location", event.target.value)}
+            className="mt-1 w-full rounded-md border border-outlineVariant bg-surface px-3 py-2 text-sm font-bold text-paper"
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs font-black text-paper/58">Description</span>
+          <textarea
+            value={draft.description}
+            onChange={(event) => update("description", event.target.value)}
+            className="mt-1 min-h-20 w-full resize-none rounded-md border border-outlineVariant bg-surface px-3 py-2 text-sm leading-6 text-paper"
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs font-black text-paper/58">Output contract</span>
+          <textarea
+            value={draft.output}
+            onChange={(event) => update("output", event.target.value)}
+            className="mt-1 min-h-20 w-full resize-none rounded-md border border-outlineVariant bg-surface px-3 py-2 text-sm leading-6 text-paper"
+          />
+        </label>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <button type="button" onClick={onCancel} className="rounded-md border border-outlineVariant px-3 py-2 text-sm font-black text-paper/60">
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={mode === "create" ? onCreate : onUpdate}
+          className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-black text-onPrimary"
+        >
+          <Save className="h-4 w-4" aria-hidden="true" />
+          {mode === "create" ? "Create" : "Save"}
+        </button>
+      </div>
+      {mode === "edit" && canDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-md border border-coral/30 bg-coral/10 px-3 py-2 text-sm font-black text-coral"
+        >
+          <Trash2 className="h-4 w-4" aria-hidden="true" />
+          Delete block
+        </button>
+      )}
+    </Panel>
+  );
+}
+
+function HorizonEventModal({ event, completed, onDone, onEdit }) {
+  return (
+    <div className="horizon-event-modal">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-brass">{event.calendarId}</p>
+          <h2 className="mt-1 text-xl font-black text-paper">{event.title}</h2>
+        </div>
+        <span className="h-3 w-3 rounded-full" style={{ backgroundColor: horizonCalendars[event.calendarId]?.lightColors?.main }} />
+      </div>
+      <p className="mt-3 text-sm leading-6 text-paper/64">{event.description}</p>
+      <div className="mt-4 rounded-md border border-outlineVariant bg-surfaceVariant p-3">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/38">Output</p>
+        <p className="mt-1 text-sm font-bold leading-6 text-paper/74">{event.output || "Define output before this block starts."}</p>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={onDone}
+          className={`rounded-md border px-3 py-2 text-xs font-black ${
+            completed ? "border-signal/50 bg-signal/14 text-signal" : "border-outlineVariant bg-surface text-paper/62"
+          }`}
+        >
+          {completed ? "Marked done" : "Mark done"}
+        </button>
+        <button type="button" onClick={onEdit} className="rounded-md border border-outlineVariant bg-surface px-3 py-2 text-xs font-black text-paper/62">
+          Edit block
+        </button>
+      </div>
     </div>
   );
 }
