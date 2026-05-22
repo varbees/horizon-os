@@ -54,12 +54,29 @@ function calendarEventPayload(body) {
   };
 }
 
+function taskPayload(body) {
+  return {
+    node_id: body.node_id ?? null,
+    event_id: body.event_id ?? null,
+    project_id: body.project_id ?? "",
+    phase_id: body.phase_id ?? "",
+    lane: body.lane ?? "General",
+    title: String(body.title ?? "").trim() || "Untitled task",
+    status: body.status ?? "open",
+    priority: body.priority ?? "normal",
+    revenue_impact: Number(body.revenue_impact ?? 0),
+    due_at: body.due_at ?? null,
+    evidence: body.evidence ?? "",
+    sort_order: Number(body.sort_order ?? 0),
+  };
+}
+
 function getCommandBase() {
   return {
     nodes: all("SELECT * FROM graph_nodes ORDER BY kind, label"),
     edges: all("SELECT * FROM graph_edges ORDER BY created_at"),
     events: all("SELECT * FROM calendar_events ORDER BY coalesce(start_at, time_label), title"),
-    tasks: all("SELECT * FROM tasks ORDER BY created_at DESC LIMIT 50"),
+    tasks: all("SELECT * FROM tasks ORDER BY sort_order, due_at, created_at DESC LIMIT 100"),
     contexts: all("SELECT id, kind, title, source, status, updated_at FROM contexts ORDER BY updated_at DESC LIMIT 50"),
     decisions: all("SELECT * FROM decisions ORDER BY created_at DESC LIMIT 25"),
   };
@@ -175,6 +192,12 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true, id });
     }
 
+    if (req.method === "GET" && url.pathname === "/api/tasks") {
+      return json(res, 200, {
+        tasks: all("SELECT * FROM tasks ORDER BY status, sort_order, due_at, created_at DESC"),
+      });
+    }
+
     if (req.method === "GET" && url.pathname === "/api/search") {
       const query = toFtsQuery(url.searchParams.get("q"));
       if (!query) return json(res, 200, { results: [] });
@@ -199,19 +222,64 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/tasks") {
       const body = await readJson(req);
       const id = randomUUID();
+      const task = taskPayload(body);
       db.prepare(`
-        INSERT INTO tasks (id, node_id, event_id, title, priority, revenue_impact, due_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO tasks (
+          id, node_id, event_id, project_id, phase_id, lane, title, status,
+          priority, revenue_impact, due_at, evidence, sort_order
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         id,
-        body.node_id ?? null,
-        body.event_id ?? null,
-        body.title ?? "Untitled task",
-        body.priority ?? "normal",
-        Number(body.revenue_impact ?? 0),
-        body.due_at ?? null,
+        task.node_id,
+        task.event_id,
+        task.project_id,
+        task.phase_id,
+        task.lane,
+        task.title,
+        task.status,
+        task.priority,
+        task.revenue_impact,
+        task.due_at,
+        task.evidence,
+        task.sort_order,
       );
       return json(res, 201, { ok: true, id });
+    }
+
+    if (req.method === "PATCH" && url.pathname.startsWith("/api/tasks/")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/tasks/", ""));
+      const existing = db.prepare("SELECT * FROM tasks WHERE id = ?").get(id);
+      if (!existing) return json(res, 404, { ok: false, error: "task_not_found" });
+      const task = taskPayload({ ...existing, ...(await readJson(req)) });
+      db.prepare(`
+        UPDATE tasks
+        SET node_id = ?, event_id = ?, project_id = ?, phase_id = ?, lane = ?, title = ?,
+            status = ?, priority = ?, revenue_impact = ?, due_at = ?, evidence = ?,
+            sort_order = ?, updated_at = datetime('now')
+        WHERE id = ?
+      `).run(
+        task.node_id,
+        task.event_id,
+        task.project_id,
+        task.phase_id,
+        task.lane,
+        task.title,
+        task.status,
+        task.priority,
+        task.revenue_impact,
+        task.due_at,
+        task.evidence,
+        task.sort_order,
+        id,
+      );
+      return json(res, 200, { ok: true, id });
+    }
+
+    if (req.method === "DELETE" && url.pathname.startsWith("/api/tasks/")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/tasks/", ""));
+      db.prepare("DELETE FROM tasks WHERE id = ?").run(id);
+      return json(res, 200, { ok: true, id });
     }
 
     if (req.method === "POST" && url.pathname === "/api/context") {

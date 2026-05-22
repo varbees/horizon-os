@@ -24,6 +24,30 @@ export async function createCommandTask(task) {
   return response.json();
 }
 
+export async function fetchCommandTasks() {
+  const response = await fetch("/api/tasks");
+  if (!response.ok) throw new Error(`tasks unavailable: ${response.status}`);
+  return response.json();
+}
+
+export async function updateCommandTask(id, task) {
+  const response = await fetch(`/api/tasks/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(task),
+  });
+  if (!response.ok) throw new Error(`task update failed: ${response.status}`);
+  return response.json();
+}
+
+export async function deleteCommandTask(id) {
+  const response = await fetch(`/api/tasks/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) throw new Error(`task delete failed: ${response.status}`);
+  return response.json();
+}
+
 export async function fetchCalendarEvents() {
   const response = await fetch("/api/calendar/events");
   if (!response.ok) throw new Error(`calendar events unavailable: ${response.status}`);

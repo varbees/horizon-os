@@ -73,12 +73,16 @@ CREATE TABLE IF NOT EXISTS tasks (
   id TEXT PRIMARY KEY,
   node_id TEXT REFERENCES graph_nodes(id) ON DELETE SET NULL,
   event_id TEXT REFERENCES calendar_events(id) ON DELETE SET NULL,
+  project_id TEXT NOT NULL DEFAULT '',
+  phase_id TEXT NOT NULL DEFAULT '',
+  lane TEXT NOT NULL DEFAULT 'General',
   title TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'open',
   priority TEXT NOT NULL DEFAULT 'normal',
   revenue_impact INTEGER NOT NULL DEFAULT 0,
   due_at TEXT,
   evidence TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

@@ -9,6 +9,7 @@ export default {
         brass: "rgb(var(--hz-channel-tertiary) / <alpha-value>)",
         signal: "rgb(var(--hz-channel-secondary) / <alpha-value>)",
         rust: "rgb(var(--hz-channel-coral) / <alpha-value>)",
+        coral: "rgb(var(--hz-channel-coral) / <alpha-value>)",
         night: "rgb(var(--hz-channel-surface-container) / <alpha-value>)",
         primary: "rgb(var(--hz-channel-primary) / <alpha-value>)",
         onPrimary: "rgb(var(--hz-channel-on-primary) / <alpha-value>)",

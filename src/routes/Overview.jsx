@@ -1,6 +1,7 @@
 import { Activity, ArrowRight, DollarSign, ShieldCheck, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { anchors, phaseGates, projects } from "../data/horizon.js";
+import ActionBoard from "../components/ActionBoard.jsx";
 import MetricCard from "../components/MetricCard.jsx";
 import Panel from "../components/Panel.jsx";
 import PrimaryButton from "../components/PrimaryButton.jsx";
@@ -109,6 +110,8 @@ export default function Overview() {
           </div>
         </Panel>
       </section>
+
+      <ActionBoard />
 
       <section className="mt-5 grid gap-4 lg:grid-cols-4" aria-label="Four anchors">
         {anchors.map((anchor) => (

@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
-import { systemEdges, systemNodes, timeBlocks } from "../src/data/horizon.js";
+import { actionTasks, systemEdges, systemNodes, timeBlocks } from "../src/data/horizon.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dbPath = process.env.HORIZON_DB_PATH ?? resolve(root, ".horizon", "horizon.sqlite");
@@ -13,6 +13,7 @@ export function openHorizonDb() {
   const db = new DatabaseSync(dbPath);
   db.exec(readFileSync(schemaPath, "utf8"));
   ensureCalendarColumns(db);
+  ensureTaskColumns(db);
   seed(db);
   return db;
 }
@@ -41,6 +42,25 @@ function ensureCalendarColumns(db) {
 
   db.exec("CREATE INDEX IF NOT EXISTS idx_calendar_events_start ON calendar_events(start_at)");
   db.exec("CREATE INDEX IF NOT EXISTS idx_calendar_events_calendar ON calendar_events(calendar_id)");
+}
+
+function ensureTaskColumns(db) {
+  const existingColumns = new Set(db.prepare("PRAGMA table_info(tasks)").all().map((column) => column.name));
+  const columns = [
+    ["project_id", "TEXT NOT NULL DEFAULT ''"],
+    ["phase_id", "TEXT NOT NULL DEFAULT ''"],
+    ["lane", "TEXT NOT NULL DEFAULT 'General'"],
+    ["sort_order", "INTEGER NOT NULL DEFAULT 0"],
+  ];
+
+  for (const [name, definition] of columns) {
+    if (!existingColumns.has(name)) {
+      db.exec(`ALTER TABLE tasks ADD COLUMN ${name} ${definition}`);
+    }
+  }
+
+  db.exec("CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_tasks_phase ON tasks(phase_id)");
 }
 
 function parseTimeRange(timeLabel) {
@@ -158,6 +178,44 @@ function seed(db) {
     );
   }
 
+  const insertTask = db.prepare(`
+    INSERT INTO tasks (
+      id, node_id, event_id, project_id, phase_id, lane, title, status,
+      priority, revenue_impact, due_at, evidence, sort_order
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      node_id = excluded.node_id,
+      event_id = excluded.event_id,
+      project_id = excluded.project_id,
+      phase_id = excluded.phase_id,
+      lane = excluded.lane,
+      title = excluded.title,
+      priority = excluded.priority,
+      revenue_impact = excluded.revenue_impact,
+      due_at = excluded.due_at,
+      sort_order = excluded.sort_order,
+      updated_at = datetime('now')
+  `);
+
+  for (const task of actionTasks) {
+    insertTask.run(
+      task.id,
+      task.nodeId ?? null,
+      task.eventId ?? null,
+      task.projectId ?? "",
+      task.phaseId ?? "",
+      task.lane ?? "General",
+      task.title,
+      "open",
+      task.priority ?? "normal",
+      Number(task.revenueImpact ?? 0),
+      task.dueAt ?? null,
+      task.evidence ?? "",
+      Number(task.sortOrder ?? 0),
+    );
+  }
+
   const insertContext = db.prepare(`
     INSERT OR IGNORE INTO contexts (id, kind, title, body, source)
     VALUES (?, ?, ?, ?, ?)
@@ -192,6 +250,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const db = openHorizonDb();
   const nodeCount = db.prepare("SELECT count(*) AS count FROM graph_nodes").get().count;
   const eventCount = db.prepare("SELECT count(*) AS count FROM calendar_events").get().count;
-  console.log(JSON.stringify({ ok: true, dbPath, nodeCount, eventCount }, null, 2));
+  const taskCount = db.prepare("SELECT count(*) AS count FROM tasks").get().count;
+  console.log(JSON.stringify({ ok: true, dbPath, nodeCount, eventCount, taskCount }, null, 2));
   db.close();
 }
