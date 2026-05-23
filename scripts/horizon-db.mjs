@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
-import { actionTasks, systemEdges, systemNodes, timeBlocks } from "../src/data/horizon.js";
+import { actionTasks, hackathonEvents, systemEdges, systemNodes, timeBlocks } from "../src/data/horizon.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dbPath = process.env.HORIZON_DB_PATH ?? resolve(root, ".horizon", "horizon.sqlite");
@@ -173,6 +173,26 @@ function seed(db) {
       rrule ? `RRULE:${rrule}` : "",
       block.output,
       block.color,
+      "confirmed",
+      "seeded",
+    );
+  }
+
+  for (const event of hackathonEvents) {
+    const { start, end } = parseTimeRange(event.time);
+    insertEvent.run(
+      event.id,
+      event.title,
+      event.lane,
+      event.time,
+      `${event.date}T${start}:00+05:30[Asia/Kolkata]`,
+      `${event.date}T${end}:00+05:30[Asia/Kolkata]`,
+      calendarIdForLane(event.lane),
+      event.activity,
+      "",
+      "",
+      event.output,
+      event.color,
       "confirmed",
       "seeded",
     );

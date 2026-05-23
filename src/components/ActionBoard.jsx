@@ -40,7 +40,7 @@ function compareTasks(a, b) {
 
 export default function ActionBoard() {
   const [tasks, setTasks] = useState(fallbackTasks);
-  const [activePhase, setActivePhase] = useState("weeks-1-4");
+  const [activePhase, setActivePhase] = useState("hackathon-week");
   const [activeLane, setActiveLane] = useState("All");
   const [syncStatus, setSyncStatus] = useState("loading tasks");
   const [draftTitle, setDraftTitle] = useState("");

@@ -89,7 +89,7 @@ export default function Overview() {
 
         <Panel className="p-5">
           <p className="font-mono text-[11px] uppercase tracking-[0.26em] text-brass">Build now</p>
-          <h2 className="mt-2 font-display text-3xl font-bold">First two moves</h2>
+          <h2 className="mt-2 font-display text-3xl font-bold">Active moves</h2>
           <div className="mt-5 space-y-3">
             {buildNow.map((project) => (
               <Link

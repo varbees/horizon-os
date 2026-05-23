@@ -1,5 +1,5 @@
 import "temporal-polyfill/global";
-import { timeBlocks } from "../data/horizon.js";
+import { hackathonEvents, timeBlocks } from "../data/horizon.js";
 
 export const HORIZON_TIMEZONE = "Asia/Kolkata";
 export const HORIZON_WEEK_START = "2026-05-25";
@@ -66,6 +66,15 @@ export const horizonCalendars = {
       main: "#6f5d00",
       container: "#ffe575",
       onContainer: "#221b00",
+    },
+  },
+  hackathon: {
+    colorName: "hackathon",
+    label: "Hackathon",
+    lightColors: {
+      main: "#ba4d35",
+      container: "#ffdad2",
+      onContainer: "#410002",
     },
   },
   manual: {
@@ -164,7 +173,7 @@ function parsePeople(peopleJson) {
 }
 
 export function buildTimeBlockCalendarEvents() {
-  return timeBlocks.map((block) => {
+  const recurringEvents = timeBlocks.map((block) => {
     const date = anchorDateForBlock(block);
     const { startTime, endTime } = parseTimeRange(block.time);
     const calendarId = calendarIdForLane(block.lane);
@@ -191,6 +200,34 @@ export function buildTimeBlockCalendarEvents() {
       },
     };
   });
+
+  const oneOffEvents = hackathonEvents.map((event) => {
+    const { startTime, endTime } = parseTimeRange(event.time);
+    const calendarId = calendarIdForLane(event.lane);
+
+    return {
+      id: event.id,
+      title: event.title,
+      start: zonedFrom(event.date, startTime),
+      end: zonedFrom(event.date, endTime),
+      calendarId,
+      lane: event.lane,
+      location: "Virtual / Horizon OS",
+      description: event.activity,
+      output: event.output,
+      color: event.color,
+      source: "seed",
+      rrule: "",
+      _customContent: {
+        timeGrid: `${event.title}\n${event.lane}`,
+        monthGrid: event.title,
+        monthAgenda: event.title,
+        weekAgenda: `${startTime} ${event.title}`,
+      },
+    };
+  });
+
+  return [...recurringEvents, ...oneOffEvents];
 }
 
 export function rowToScheduleEvent(row) {

@@ -1,5 +1,21 @@
 export const portfolioProjects = [
   {
+    id: "dialysis-saathi",
+    name: "DialysisSaathi",
+    path: "~/Desktop/bolting/dialysissaathi",
+    lane: "Focus Now",
+    status: "Hackathon Sprint",
+    score: 94,
+    leverage: "Deadline proof",
+    effort: "Very High",
+    market: "Indian hemodialysis caregivers and families",
+    role: "Approved OpenAI x Outskill sprint for a WhatsApp-first renal-care copilot. This is a one-week proof build, not a permanent pivot away from PhotoSelect.",
+    evidence:
+      "Approval PDF confirms a selected-builder slot; local docs define WhatsApp ingest, renal lab OCR, IFCT diet stoplight, family thread, and nephrologist one-pager.",
+    next: "Organize docs, create AGENTS.md, prepare credentials, attend May 25 kickoff, and ship a scoped WhatsApp MVP by May 30.",
+    cadence: "Daily hackathon sprint until final submission",
+  },
+  {
     id: "photoselect",
     name: "PhotoSelect",
     path: "~/Desktop/bolting/photoselect",
