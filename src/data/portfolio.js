@@ -11,9 +11,9 @@ export const portfolioProjects = [
     market: "Indian hemodialysis caregivers and families",
     role: "Approved OpenAI x Outskill sprint for a WhatsApp-first renal-care copilot. This is a one-week proof build, not a permanent pivot away from PhotoSelect.",
     evidence:
-      "Approval PDF confirms a selected-builder slot; local docs define WhatsApp ingest, renal lab OCR, IFCT diet stoplight, family thread, and nephrologist one-pager.",
-    next: "Organize docs, create AGENTS.md, prepare credentials, attend May 25 kickoff, and ship a scoped WhatsApp MVP by May 30.",
-    cadence: "Daily hackathon sprint until final submission",
+      "Approval PDF confirms a selected-builder slot; updated event plan is group onboarding, Wednesday product brief, and May 30 final launch submission.",
+    next: "Before onboarding: push AGENTS.md + scaffold, verify WhatsApp echo, collect anonymized fixtures, and prepare Codex questions.",
+    cadence: "Daily compressed sprint until May 30 submission",
   },
   {
     id: "photoselect",

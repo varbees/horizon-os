@@ -214,6 +214,7 @@ function seed(db) {
       priority = excluded.priority,
       revenue_impact = excluded.revenue_impact,
       due_at = excluded.due_at,
+      evidence = excluded.evidence,
       sort_order = excluded.sort_order,
       updated_at = datetime('now')
   `);
