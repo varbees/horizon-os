@@ -9,15 +9,16 @@ This document turns `~/Desktop/bolting/*` into one managed portfolio instead of 
 3. Horizon OS / Component Forge is the sales-engine wrapper.
 4. Wedding Studio AI Ops is the first adjacent vertical AI upsell after PhotoSelect revenue proof.
 5. Agent Linux Control and RateGuard are strategic assets, not daily distractions.
-6. Old projects can donate patterns, components, docs, and proof, but they do not become active unless they pass buyer validation.
-7. `agent-calendar-os` is the short public OSS goal: extract reusable calendar/agent blocks without exposing the private command center.
+6. PlantSage is a strategic field-product proof: real data, real app/backend contracts, and reusable ingestion/storage lessons, but not the daily revenue lane.
+7. Old projects can donate patterns, components, docs, and proof, but they do not become active unless they pass buyer validation.
+8. `agent-calendar-os` is the short public OSS goal: extract reusable calendar/agent blocks without exposing the private command center.
 
 ## Active Lanes
 
 | Lane | Rule | Projects |
 | --- | --- | --- |
 | Focus Now | Revenue, proof, or public trust within 30 days | PhotoSelect, HSKG, Antharmaya Labs, Component Forge |
-| Strategic Asset | High leverage, one weekly block only | Agent Linux Control, SecureClaw, agent-calendar-os |
+| Strategic Asset | High leverage, one weekly block only | PlantSage, Agent Linux Control, SecureClaw, agent-calendar-os |
 | Resurrect | Valid idea, must be constrained before code | RateGuard, Layers Green AI Studio, WidgetForge, InvoAI, Wedding Studio AI Ops |
 | Park | Good engineering, wrong timing | Desktop PhotoSelect, Kriate, Vault-Wealth, Anthar Vault |
 | Archive | Reference only | HomeBase, EcoLogistix, Gravita8, SHOP, deskold, misc folders |
@@ -30,6 +31,7 @@ This document turns `~/Desktop/bolting/*` into one managed portfolio instead of 
 - Finish PhotoSelect live-payment proof path or document the exact blocker.
 - Extract 3 Horizon OS components as Component Forge samples.
 - Draft the public `agent-calendar-os` README and screenshot plan.
+- Capture PlantSage progress in Horizon OS and keep Stage 2 gated to media/storage/capture consistency.
 
 ### Week 2
 
@@ -37,6 +39,7 @@ This document turns `~/Desktop/bolting/*` into one managed portfolio instead of 
 - Add active proofs to `antharmaya.com`.
 - Package one Agent Linux Control demo as a public engineering artifact.
 - Extract the first shadcn-style calendar block from Horizon OS.
+- Finish one PlantSage Stage 2 proof: MinIO/R2 media payload from backend into Flutter model fields.
 
 ### Week 3
 

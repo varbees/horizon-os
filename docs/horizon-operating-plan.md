@@ -11,6 +11,7 @@ Build a two-year Antharmaya foundry path from full-time execution to a stable sa
 - Antharmaya public foundry positioning
 - PhotoSelect public product proof
 - Current local portfolio scan across `~/Desktop/bolting/*`
+- PlantSage field-product proof from `plantsage_app`, `ff_planter`, and the 2026-05-29 Hariharakhona ridge session
 
 ## Operating Rule
 
@@ -19,6 +20,7 @@ Build a two-year Antharmaya foundry path from full-time execution to a stable sa
 3. The daily spiritual/body scaffold is the backbone, not an optional habit.
 4. HSKG is the clean public delivery win.
 5. Old projects become inputs unless they pass buyer validation.
+6. PlantSage is a strategic field-data proof, worked in bounded Stage 2 blocks, not a replacement for the revenue floor.
 
 ## Immediate Build Order
 
@@ -38,6 +40,10 @@ Build a two-year Antharmaya foundry path from full-time execution to a stable sa
    - Goal: force safe-haven decisions into numbers.
    - Output: region shortlist, resource sheet, monthly decision memo.
 
+5. PlantSage Stage 2 Consistency
+   - Goal: preserve the real fieldwork and app/backend progress without letting it fragment the revenue week.
+   - Output: shared media payload, MinIO/R2 ingest proof, unified capture contract, safe ledger card, Hariharakhona Place Pack.
+
 ## Daily Floor
 
 - 06:30 - 07:00: Attention / Sit
@@ -54,3 +60,5 @@ Build a two-year Antharmaya foundry path from full-time execution to a stable sa
 - Last Sunday 17:00 - 18:30: Monthly Recalibration
 
 Track outbound count, buyer conversations, cash in/out, runway, PhotoSelect proof, one learned buyer truth, one spec decision, and one next-week move.
+
+PlantSage review line: only count progress that creates durable field evidence, a verified app/backend contract, or a reusable ingestion/storage lesson for the foundry.

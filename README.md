@@ -48,6 +48,7 @@ npm run build
 - `docs/horizon-design-tokens.md`
 - `docs/local-command-base.md`
 - `docs/vertical-ai-course.md`
+- `docs/plantsage-progress-ledger.md`
 
 ## Calendar
 

@@ -77,6 +77,22 @@ export const portfolioProjects = [
     cadence: "Two build blocks per week",
   },
   {
+    id: "plantsage",
+    name: "PlantSage",
+    path: "~/Desktop/bolting/plantsage_app + ~/Desktop/bolting/ff_planter",
+    lane: "Strategic Asset",
+    status: "Stage 2 Consistency Gate",
+    score: 84,
+    leverage: "Real field-data proof",
+    effort: "High",
+    market: "Field naturalists, ecology learners, ethnobotany researchers, and place-based education teams",
+    role: "A GPS-anchored ecological memory product: Flutter field app plus FastAPI research backend, seeded from Hariharakhona Region #001.",
+    evidence:
+      "2026-05-29 ridge session captured 50 photos, 5 videos, Charaka text, confirmed Bauhinia vahlii and Euphorbia caducifolia, documented Wrightia flowers+pods, lichen communities, geology, and a valley-to-ridge Jangala transect. Backend has Gemini ID/research, SQLite, async job shape, MinIO/R2 storage path, Vercel prototype, media payload, and ingest dry-run. App has Stage 1 routes, quick-ID/research pipeline, seeded atlas, media fields, and tests.",
+    next: "Finish Stage 2 consistency: one app/backend media payload, MinIO/R2-backed ingest proof, unified live capture controller, full safe ledger card, and first Place Pack model.",
+    cadence: "One protected strategic block after hackathon pressure; never steals Income Engine or PhotoSelect blocks",
+  },
+  {
     id: "agent-linux-control",
     name: "Agent Linux Control",
     path: "~/Desktop/bolting/agent-linux-control",
@@ -445,6 +461,7 @@ export const orchestrationRules = [
   "Only two active build projects at once: PhotoSelect plus HSKG/Component Forge.",
   "Every resurrected project needs a named buyer, one paid pain, and a two-week MVP path.",
   "No new app starts until PhotoSelect has live payment proof and HSKG is deployed.",
+  "PlantSage is strategic field proof: batch it into explicit Stage 2 blocks instead of letting field excitement rewrite the revenue week.",
   "Archived projects may donate components, docs, or patterns, but not become active roadmaps.",
   "Friday review updates scores, lane, and next action. Daily work follows the lane, not mood.",
 ];
@@ -468,7 +485,7 @@ export const weeklyOperatingSystem = [
   {
     day: "Thu",
     theme: "Agent/tool leverage",
-    output: "Agent Linux Control, RateGuard, or Component Forge asset improved.",
+    output: "Agent Linux Control, PlantSage, RateGuard, or Component Forge asset improved.",
   },
   {
     day: "Fri",
