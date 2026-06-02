@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlantSage — UX Design Context & Agent Prompts</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&family=Lora:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  /* PlantSage palette — locked */
+  --forest:#1a3a1e;
+  --forest-deep:#0d1f0f;
+  --forest-mid:#2d5a32;
+  --cream:#f0ebe0;
+  --cream-dim:#d8d2c4;
+  --amber:#c8943a;
+  --amber-light:#e8b84b;
+  --stone:#8c7b6b;
+  --leaf:#4a7c4a;
+  --mist:#e8e2d8;
+  --bg:#07090a;
+  --surface:#0e1210;
+  --border:rgba(255,255,255,0.07);
+  --text:#e4e0d8;
+  --muted:#6a7a6a;
+}
+
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Lora',Georgia,serif;
+  font-size:15px;line-height:1.75;
+}
+
+/* ── NAV ── */
+nav{
+  background:rgba(7,9,10,0.96);
+  border-bottom:1px solid var(--border);
+  padding:0.9rem 2.5rem;
+  display:flex;gap:2rem;align-items:center;
+  position:sticky;top:0;z-index:100;
+  backdrop-filter:blur(12px);
+  overflow-x:auto;
+}
+.nav-logo{
+  font-family:'Syne',sans-serif;font-size:13px;font-weight:700;
+  color:var(--amber);letter-spacing:0.05em;white-space:nowrap;
+  margin-right:1rem;
+}
+nav a{
+  font-family:'Fira Code',monospace;font-size:10px;
+  letter-spacing:0.18em;color:var(--muted);text-decoration:none;
+  text-transform:uppercase;white-space:nowrap;transition:color 0.2s;
+}
+nav a:hover{color:var(--text)}
+
+/* ── LAYOUT ── */
+.wrap{max-width:1040px;margin:0 auto;padding:5rem 2.5rem}
+@media(max-width:700px){.wrap{padding:3rem 1.25rem}}
+
+/* ── SEC HEADER ── */
+.sec-eye{
+  font-family:'Fira Code',monospace;font-size:10px;
+  letter-spacing:0.25em;color:var(--amber);text-transform:uppercase;
+  display:flex;align-items:center;gap:1rem;margin-bottom:0.75rem;
+}
+.sec-eye::after{content:'';flex:1;height:1px;background:rgba(200,148,58,0.2)}
+.sec-title{
+  font-family:'Syne',sans-serif;font-size:clamp(1.8rem,4vw,2.6rem);
+  font-weight:800;color:#fff;line-height:1.05;margin-bottom:1rem;
+}
+.sec-lead{
+  color:var(--muted);font-size:1rem;max-width:660px;
+  line-height:1.8;margin-bottom:3rem;
+}
+
+/* ── DIVIDER ── */
+.rule{
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent);
+  margin:0;
+}
+
+/* ── PALETTE GRID ── */
+.palette{display:flex;gap:0;flex-wrap:wrap;border:1px solid var(--border);margin:2rem 0}
+.swatch{flex:1;min-width:120px;padding:1.5rem 1rem 1rem}
+.swatch-color{width:100%;height:48px;border-radius:3px;margin-bottom:0.75rem}
+.swatch-name{font-family:'Fira Code',monospace;font-size:10px;color:var(--muted);letter-spacing:0.1em}
+.swatch-hex{font-family:'Fira Code',monospace;font-size:12px;color:var(--text);margin-top:0.2rem}
+.swatch-use{font-size:11px;color:var(--muted);margin-top:0.4rem;font-style:italic}
+
+/* ── TYPE SPECIMEN ── */
+.type-row{padding:1.5rem 2rem;border-bottom:1px solid var(--border);display:flex;align-items:baseline;gap:2rem}
+.type-row:last-child{border-bottom:none}
+.type-meta{font-family:'Fira Code',monospace;font-size:10px;color:var(--muted);width:160px;flex-shrink:0;letter-spacing:0.1em}
+.type-sample{flex:1}
+
+/* ── SCREEN GRID ── */
+.screens{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1.5rem;margin:2rem 0}
+.screen-card{background:var(--surface);border:1px solid var(--border);padding:0;overflow:hidden;cursor:pointer;transition:border-color 0.2s}
+.screen-card:hover{border-color:rgba(200,148,58,0.4)}
+.screen-preview{
+  width:100%;aspect-ratio:9/19;
+  display:flex;flex-direction:column;
+  position:relative;overflow:hidden;
+}
+.screen-label{
+  font-family:'Fira Code',monospace;font-size:10px;
+  color:var(--muted);letter-spacing:0.12em;
+  padding:0.75rem 0.9rem;border-top:1px solid var(--border);
+  text-transform:uppercase;
+}
+
+/* Mini screen mockups */
+.mock-map{background:linear-gradient(160deg,#0d1f0f 0%,#152a18 40%,#1a3a1e 100%);flex:1;position:relative}
+.mock-map-dot{position:absolute;width:12px;height:12px;background:var(--amber);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);box-shadow:0 0 20px var(--amber)}
+.mock-map-ring{position:absolute;width:40px;height:40px;border:1px solid rgba(200,148,58,0.3);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:0.3;transform:translate(-50%,-50%) scale(1)}50%{opacity:0.7;transform:translate(-50%,-50%) scale(1.3)}}
+.mock-status{height:32px;background:rgba(26,58,30,0.9);display:flex;align-items:center;padding:0 0.75rem;gap:0.5rem}
+.mock-dot{width:6px;height:6px;border-radius:50%;background:var(--amber)}
+.mock-text{font-family:'Fira Code',monospace;font-size:8px;color:rgba(255,255,255,0.5)}
+
+.mock-camera{background:#000;flex:1;display:flex;align-items:center;justify-content:center;position:relative}
+.mock-reticle{width:60px;height:60px;border:1.5px solid rgba(255,255,255,0.6);position:relative}
+.mock-reticle::before,.mock-reticle::after{content:'';position:absolute;background:var(--amber-light)}
+.mock-reticle::before{width:12px;height:1.5px;top:-1px;left:-1px}
+.mock-reticle::after{width:1.5px;height:12px;top:-1px;left:-1px}
+
+.mock-card{background:var(--cream);flex:1;padding:0.75rem;display:flex;flex-direction:column;gap:0.4rem}
+.mock-card-img{width:100%;height:50px;background:var(--forest);border-radius:2px}
+.mock-card-line{height:4px;background:rgba(26,58,30,0.2);border-radius:2px}
+.mock-card-line.short{width:60%}
+.mock-card-line.v-short{width:35%}
+.mock-card-tag{height:14px;width:48px;background:var(--amber);border-radius:1px;opacity:0.7}
+
+.mock-atlas{background:#080e09;flex:1;padding:0.5rem;display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.mock-atlas-item{background:rgba(26,58,30,0.4);border-radius:1px;display:flex;align-items:flex-end;padding:3px;aspect-ratio:1}
+.mock-atlas-item.rare{background:rgba(200,148,58,0.25)}
+.mock-atlas-item.legendary{background:rgba(155,127,232,0.25)}
+.mock-atlas-dot{width:5px;height:5px;border-radius:50%;background:var(--leaf)}
+.mock-atlas-item.rare .mock-atlas-dot{background:var(--amber)}
+.mock-atlas-item.legendary .mock-atlas-dot{background:#9b7fe8}
+
+.mock-profile{background:#080e09;flex:1;padding:0.75rem;display:flex;flex-direction:column;align-items:center;gap:0.4rem}
+.mock-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--forest),var(--amber))}
+.mock-bar-wrap{width:100%;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden}
+.mock-bar{height:100%;background:linear-gradient(90deg,var(--leaf),var(--amber));width:40%}
+.mock-level{font-family:'Fira Code',monospace;font-size:8px;color:var(--amber);text-transform:uppercase;letter-spacing:0.1em}
+
+.mock-onboard{background:var(--forest-deep);flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.5rem;padding:0.75rem}
+.mock-onboard-pin{width:20px;height:20px;background:var(--amber);border-radius:50% 50% 50% 0;transform:rotate(-45deg);margin-bottom:0.25rem}
+.mock-onboard-line{height:4px;background:rgba(255,255,255,0.12);border-radius:2px;width:80%}
+.mock-onboard-line.short{width:55%}
+
+/* ── PROMPT CARDS ── */
+.prompt-section{margin-bottom:4rem}
+.prompt-order{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:36px;height:36px;border:1px solid var(--amber);
+  font-family:'Fira Code',monospace;font-size:11px;color:var(--amber);
+  margin-right:1rem;flex-shrink:0;
+}
+.prompt-header{display:flex;align-items:center;margin-bottom:1.5rem}
+.prompt-meta{flex:1}
+.prompt-title{font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:700;color:#fff}
+.prompt-desc{font-size:13px;color:var(--muted);margin-top:0.25rem}
+.prompt-target{
+  font-family:'Fira Code',monospace;font-size:9px;
+  letter-spacing:0.15em;color:var(--leaf);
+  border:1px solid rgba(74,124,74,0.3);
+  padding:0.2rem 0.5rem;margin-left:auto;flex-shrink:0;
+  text-transform:uppercase;
+}
+
+.prompt-box{
+  background:#060a07;
+  border:1px solid rgba(74,124,74,0.2);
+  border-left:3px solid var(--leaf);
+  position:relative;margin-bottom:0.5rem;
+}
+.prompt-box.design{border-left-color:var(--amber)}
+.prompt-box.arch{border-left-color:#9b7fe8}
+
+.prompt-box-label{
+  font-family:'Fira Code',monospace;font-size:9px;
+  letter-spacing:0.2em;text-transform:uppercase;
+  padding:0.6rem 1.25rem;
+  border-bottom:1px solid rgba(255,255,255,0.05);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.prompt-box-label .pl-type{color:var(--leaf)}
+.prompt-box-label.design .pl-type{color:var(--amber)}
+.prompt-box-label.arch .pl-type{color:#9b7fe8}
+.copy-btn{
+  font-family:'Fira Code',monospace;font-size:9px;
+  background:transparent;border:1px solid rgba(255,255,255,0.08);
+  color:var(--muted);padding:0.25rem 0.6rem;cursor:pointer;
+  transition:all 0.2s;letter-spacing:0.1em;
+}
+.copy-btn:hover{background:rgba(255,255,255,0.05);color:var(--text)}
+.copy-btn.copied{color:var(--leaf);border-color:rgba(74,124,74,0.4)}
+
+.prompt-text{
+  font-family:'Fira Code',monospace;font-size:11.5px;
+  color:#c8d8c0;line-height:1.8;
+  padding:1.25rem 1.5rem;white-space:pre-wrap;
+  word-break:break-word;
+}
+
+/* ── MOTION SPEC ── */
+.motion-table{width:100%;border-collapse:collapse;margin:2rem 0}
+.motion-table th{
+  font-family:'Fira Code',monospace;font-size:10px;
+  text-transform:uppercase;letter-spacing:0.12em;color:var(--muted);
+  text-align:left;padding:0.6rem 1rem;
+  border-bottom:1px solid var(--border);
+  background:rgba(255,255,255,0.02);
+}
+.motion-table td{
+  padding:0.8rem 1rem;border-bottom:1px solid rgba(255,255,255,0.03);
+  font-size:13px;vertical-align:top;
+}
+.motion-table td:first-child{
+  font-family:'Fira Code',monospace;font-size:11px;color:var(--amber);
+}
+.motion-table td:nth-child(2){color:#fff}
+.motion-table td:nth-child(3){color:var(--muted);font-style:italic}
+
+/* ── MAP REFERENCE ── */
+.map-compare{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);margin:2rem 0}
+@media(max-width:600px){.map-compare{grid-template-columns:1fr}}
+.map-col{background:var(--surface);padding:1.75rem}
+.map-col-title{
+  font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;
+  color:#fff;margin-bottom:0.5rem;
+}
+.map-col-sub{font-family:'Fira Code',monospace;font-size:10px;color:var(--muted);margin-bottom:1rem;letter-spacing:0.1em}
+.map-col ul{list-style:none;display:flex;flex-direction:column;gap:0.4rem}
+.map-col ul li{font-size:12.5px;color:rgba(228,224,216,0.6);padding-left:1rem;position:relative}
+.map-col ul li::before{content:'·';position:absolute;left:0;color:var(--amber)}
+.map-col-badge{
+  display:inline-block;margin-top:1rem;
+  font-family:'Fira Code',monospace;font-size:9px;
+  padding:0.3rem 0.6rem;letter-spacing:0.1em;text-transform:uppercase;
+}
+.badge-take{background:rgba(91,196,196,0.1);color:#5bc4c4;border:1px solid rgba(91,196,196,0.2)}
+.badge-avoid{background:rgba(224,112,112,0.1);color:#e07070;border:1px solid rgba(224,112,112,0.2)}
+.badge-build{background:rgba(200,148,58,0.1);color:var(--amber);border:1px solid rgba(200,148,58,0.2)}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">PlantSage UX</div>
+  <a href="#tokens">Tokens</a>
+  <a href="#screens">Screens</a>
+  <a href="#map">Map UX</a>
+  <a href="#motion">Motion</a>
+  <a href="#prompts">Agent Prompts</a>
+</nav>
+
+<!-- ══════════════ HERO ══════════════ -->
+<div class="wrap">
+  <div class="sec-eye">Design System · v1 · Hariharakhona Pilot</div>
+  <h1 class="sec-title">PlantSage<br>UX Context</h1>
+  <p class="sec-lead">Everything a coding agent needs to produce expert Flutter UI from a single paste. Design tokens, screen architecture, motion spec, map UX reference, and ordered agent prompts — copy any block into Claude Code or Codex and it executes with full context.</p>
+</div>
+
+<div class="rule"></div>
+
+<!-- ══════════════ TOKENS ══════════════ -->
+<div class="wrap" id="tokens">
+  <div class="sec-eye">01 — Design Tokens</div>
+  <h2 class="sec-title">Color · Type · Space</h2>
+  <p class="sec-lead">These are locked. Every screen inherits from this set. Agents should import <code style="font-family:monospace;font-size:12px;color:var(--amber)">app_theme.dart</code> before generating any widget.</p>
+
+  <div class="palette">
+    <div class="swatch" style="background:rgba(26,58,30,0.15)">
+      <div class="swatch-color" style="background:#1a3a1e"></div>
+      <div class="swatch-name">forest</div>
+      <div class="swatch-hex">#1a3a1e</div>
+      <div class="swatch-use">Primary, headers, sign green</div>
+    </div>
+    <div class="swatch" style="background:rgba(13,31,15,0.15)">
+      <div class="swatch-color" style="background:#0d1f0f"></div>
+      <div class="swatch-name">forest-deep</div>
+      <div class="swatch-hex">#0d1f0f</div>
+      <div class="swatch-use">Map bg, card backs</div>
+    </div>
+    <div class="swatch" style="background:rgba(240,235,224,0.08)">
+      <div class="swatch-color" style="background:#f0ebe0"></div>
+      <div class="swatch-name">cream</div>
+      <div class="swatch-hex">#f0ebe0</div>
+      <div class="swatch-use">Species cards, text on dark</div>
+    </div>
+    <div class="swatch" style="background:rgba(200,148,58,0.12)">
+      <div class="swatch-color" style="background:#c8943a"></div>
+      <div class="swatch-name">amber</div>
+      <div class="swatch-hex">#c8943a</div>
+      <div class="swatch-use">Rarity, XP, streak, GPS dot</div>
+    </div>
+    <div class="swatch" style="background:rgba(74,124,74,0.12)">
+      <div class="swatch-color" style="background:#4a7c4a"></div>
+      <div class="swatch-name">leaf</div>
+      <div class="swatch-hex">#4a7c4a</div>
+      <div class="swatch-use">Common rarity, live indicators</div>
+    </div>
+    <div class="swatch" style="background:rgba(155,127,232,0.1)">
+      <div class="swatch-color" style="background:#9b7fe8"></div>
+      <div class="swatch-name">ancient</div>
+      <div class="swatch-hex">#9b7fe8</div>
+      <div class="swatch-use">Legendary rarity, classical text layer</div>
+    </div>
+  </div>
+
+  <!-- Type spec -->
+  <div style="border:1px solid var(--border);margin-top:2rem">
+    <div class="type-row">
+      <div class="type-meta">DISPLAY · Syne 800</div>
+      <div class="type-sample" style="font-family:'Syne',sans-serif;font-size:2.2rem;font-weight:800;color:#fff;letter-spacing:-0.02em">Wrightia tinctoria</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">TELUGU · Noto Serif Telugu 700</div>
+      <div class="type-sample" style="font-family:'Noto Serif Telugu',serif;font-size:1.6rem;font-weight:700;color:#fff">అడవిపాల</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">BODY · Lora 400</div>
+      <div class="type-sample" style="font-family:'Lora',serif;font-size:1rem;color:rgba(228,224,216,0.75)">A guest takes only what is offered — fruits, fallen wood, water.</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">MONO · Fira Code 400</div>
+      <div class="type-sample" style="font-family:'Fira Code',monospace;font-size:11px;color:var(--amber);letter-spacing:0.12em">FAMILY: APOCYNACEAE · RARITY: COMMON · #001</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">ITALIC · Lora 400i</div>
+      <div class="type-sample" style="font-family:'Lora',serif;font-style:italic;font-size:0.95rem;color:var(--muted)">"The body is the temple. The plant is the key." — Thirumoolar</div>
+    </div>
+  </div>
+</div>
+
+<div class="rule"></div>
+
+<!-- ══════════════ SCREENS ══════════════ -->
+<div class="wrap" id="screens">
+  <div class="sec-eye">02 — Screen Architecture</div>
+  <h2 class="sec-title">Six core screens</h2>
+  <p class="sec-lead">Ordered by the core loop: Map → Camera → Card Reveal → Atlas → Profile → Onboarding. Every screen has one primary action. No hamburger menus. Bottom nav with 3 items maximum.</p>
+
+  <div class="screens">
+
+    <!-- Map screen -->
+    <div class="screen-card">
+      <div class="screen-preview">
+        <div class="mock-map">
+          <div class="mock-map-ring"></div>
+          <div class="mock-map-dot"></div>
+          <!-- Trail dots -->
+          <div style="position:absolute;width:4px;height:4px;background:rgba(200,148,58,0.6);border-radius:50%;top:35%;left:42%"></div>
+          <div style="position:absolute;width:4px;height:4px;background:rgba(200,148,58,0.6);border-radius:50%;top:45%;left:38%"></div>
+          <div style="position:absolute;width:4px;height:4px;background:rgba(74,124,74,0.8);border-radius:50%;top:60%;left:55%"></div>
+          <!-- FAB -->
+          <div style="position:absolute;bottom:12px;right:12px;width:28px;height:28px;background:var(--amber);border-radius:50%;display:flex;align-items:center;justify-content:center">
+            <div style="width:12px;height:12px;border:2px solid #fff;border-radius:50%"></div>
+          </div>
+        </div>
+        <div class="mock-status">
+          <div class="mock-dot"></div>
+          <div class="mock-text">HARIHARAKHONA · 3 undiscovered</div>
+        </div>
+      </div>
+      <div class="screen-label">01 · Live Map</div>
+    </div>
+
+    <!-- Camera -->
+    <div class="screen-card">
+      <div class="screen-preview">
+        <div class="mock-camera">
+          <div class="mock-reticle">
+            <div style="position:absolute;top:-1px;right:-1px;width:12px;height:1.5px;background:var(--amber-light)"></div>
+            <div style="position:absolute;top:-1px;right:-1px;width:1.5px;height:12px;background:var(--amber-light)"></div>
+            <div style="position:absolute;bottom:-1px;left:-1px;width:12px;height:1.5px;background:var(--amber-light)"></div>
+            <div style="position:absolute;bottom:-1px;left:-1px;width:1.5px;height:12px;background:var(--amber-light)"></div>
+            <div style="position:absolute;bottom:-1px;right:-1px;width:12px;height:1.5px;background:var(--amber-light)"></div>
+            <div style="position:absolute;bottom:-1px;right:-1px;width:1.5px;height:12px;background:var(--amber-light)"></div>
+          </div>
+          <!-- Scanning bar -->
+          <div style="position:absolute;top:30%;left:10%;right:10%;height:1px;background:linear-gradient(90deg,transparent,var(--amber),transparent);opacity:0.6"></div>
+        </div>
+        <div class="mock-status">
+          <div class="mock-dot" style="background:var(--leaf)"></div>
+          <div class="mock-text">AIM AT LEAF OR FLOWER</div>
+        </div>
+      </div>
+      <div class="screen-label">02 · Identify</div>
+    </div>
+
+    <!-- Card reveal -->
+    <div class="screen-card">
+      <div class="screen-preview">
+        <div class="mock-card">
+          <div class="mock-card-img" style="background:linear-gradient(135deg,#1a3a1e,#2d5a32)"></div>
+          <div style="display:flex;gap:4px;align-items:center;margin-top:2px">
+            <div class="mock-card-tag"></div>
+            <div style="font-family:monospace;font-size:7px;color:var(--amber)">COMMON</div>
+          </div>
+          <div class="mock-card-line" style="margin-top:4px"></div>
+          <div class="mock-card-line short"></div>
+          <div style="height:1px;background:rgba(26,58,30,0.15);margin:6px 0"></div>
+          <div class="mock-card-line v-short"></div>
+          <div class="mock-card-line"></div>
+          <div class="mock-card-line short"></div>
+        </div>
+      </div>
+      <div class="screen-label">03 · Species Card</div>
+    </div>
+
+    <!-- Atlas -->
+    <div class="screen-card">
+      <div class="screen-preview">
+        <div class="mock-status" style="background:#080e09;border-bottom:1px solid rgba(255,255,255,0.05)">
+          <div class="mock-text" style="color:var(--amber)">ATLAS · 12 / 200</div>
+        </div>
+        <div class="mock-atlas">
+          <div class="mock-atlas-item"><div class="mock-atlas-dot"></div></div>
+          <div class="mock-atlas-item rare"><div class="mock-atlas-dot"></div></div>
+          <div class="mock-atlas-item"><div class="mock-atlas-dot"></div></div>
+          <div class="mock-atlas-item legendary"><div class="mock-atlas-dot"></div></div>
+          <div class="mock-atlas-item"><div class="mock-atlas-dot"></div></div>
+          <div class="mock-atlas-item" style="background:rgba(255,255,255,0.03)"><div class="mock-atlas-dot" style="background:rgba(255,255,255,0.1)"></div></div>
+          <div class="mock-atlas-item" style="background:rgba(255,255,255,0.03)"><div class="mock-atlas-dot" style="background:rgba(255,255,255,0.1)"></div></div>
+          <div class="mock-atlas-item"><div class="mock-atlas-dot"></div></div>
+        </div>
+      </div>
+      <div class="screen-label">04 · Atlas</div>
+    </div>
+
+    <!-- Profile -->
+    <div class="screen-card">
+      <div class="screen-preview">
+        <div class="mock-profile">
+          <div class="mock-avatar"></div>
+          <div class="mock-level">VANACARTA · SCHOLAR</div>
+          <div class="mock-bar-wrap"><div class="mock-bar"></div></div>
+          <div style="height:20px"></div>
+          <div style="width:100%;height:4px;background:rgba(200,148,58,0.2);border-radius:2px"><div style="width:65%;height:100%;background:var(--amber);border-radius:2px"></div></div>
+          <div style="font-family:monospace;font-size:7px;color:var(--muted);margin-top:2px">STREAK · 32 DAYS</div>
+          <div style="height:12px"></div>
+          <div class="mock-bar-wrap" style="height:3px"><div class="mock-bar" style="width:90%;background:#9b7fe8"></div></div>
+          <div style="font-family:monospace;font-size:7px;color:var(--muted);margin-top:2px">ANCIENT TEXTS · UNLOCKING</div>
+        </div>
+      </div>
+      <div class="screen-label">05 · Sage Level</div>
+    </div>
+
+    <!-- Onboarding -->
+    <div class="screen-card">
+      <div class="screen-preview">
+        <div class="mock-onboard">
+          <div class="mock-onboard-pin"></div>
+          <div style="font-family:monospace;font-size:8px;color:var(--amber);margin-top:4px;letter-spacing:0.1em">REGISTER YOUR FOREST</div>
+          <div class="mock-onboard-line" style="margin-top:8px"></div>
+          <div class="mock-onboard-line short"></div>
+          <div style="height:12px"></div>
+          <div style="width:60%;height:18px;background:var(--amber);border-radius:2px;opacity:0.8"></div>
+        </div>
+      </div>
+      <div class="screen-label">00 · Onboarding</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="rule"></div>
+
+<!-- ══════════════ MAP UX ══════════════ -->
+<div class="wrap" id="map">
+  <div class="sec-eye">03 — Map UX Reference</div>
+  <h2 class="sec-title">Better than Google Earth.<br>Simpler than Snapchat.</h2>
+  <p class="sec-lead">The map is the game world. It needs to feel alive — not like a data layer on top of satellite imagery, but like the forest itself rendered as information. Here's what to take, avoid, and build toward.</p>
+
+  <div class="map-compare">
+    <div class="map-col">
+      <div class="map-col-title">Google Earth</div>
+      <div class="map-col-sub">What to borrow</div>
+      <ul>
+        <li>Smooth satellite imagery blend</li>
+        <li>Terrain extrusion / 3D hills</li>
+        <li>GPS trail breadcrumb rendering</li>
+        <li>Altitude contour reading</li>
+        <li>High-res zoom into specific rock faces</li>
+      </ul>
+      <span class="map-col-badge badge-take">Take this</span>
+    </div>
+    <div class="map-col">
+      <div class="map-col-title">Snapchat Map</div>
+      <div class="map-col-sub">What to borrow</div>
+      <ul>
+        <li>Realtime presence dot — you're here, now</li>
+        <li>Zero-friction — map IS the home screen</li>
+        <li>Friend/community layer light touch</li>
+        <li>Tap a hotspot, something reveals</li>
+        <li>Live activity pulses around you</li>
+      </ul>
+      <span class="map-col-badge badge-take">Take this</span>
+    </div>
+    <div class="map-col">
+      <div class="map-col-title">PlantSage Map</div>
+      <div class="map-col-sub">What we build</div>
+      <ul>
+        <li>Forest floor green base, not grey city tiles</li>
+        <li>Species dots pulse when you're in range</li>
+        <li>Trail you've walked glows amber behind you</li>
+        <li>Undiscovered zones are darker, misted</li>
+        <li>Tap a dot → card flip right there on the map</li>
+        <li>Rainfall / season overlay (monsoon fungi mode)</li>
+      </ul>
+      <span class="map-col-badge badge-build">Build this</span>
+    </div>
+  </div>
+
+  <div style="background:rgba(200,148,58,0.06);border:1px solid rgba(200,148,58,0.2);padding:1.5rem 2rem;margin-top:0">
+    <div style="font-family:'Fira Code',monospace;font-size:10px;color:var(--amber);letter-spacing:0.2em;margin-bottom:0.75rem">THE ONE RULE FOR MAP UX</div>
+    <p style="font-size:0.95rem;color:rgba(228,224,216,0.8);line-height:1.7">The map must make you <em>want to walk further</em>. Every design decision is evaluated against this single question. Darker undiscovered zones, pulsing undocumented species dots just off your trail, the amber glow of your own history — all of it exists to pull you 50m deeper into the forest than you planned.</p>
+  </div>
+</div>
+
+<div class="rule"></div>
+
+<!-- ══════════════ MOTION ══════════════ -->
+<div class="wrap" id="motion">
+  <div class="sec-eye">04 — Motion Spec</div>
+  <h2 class="sec-title">Animation language</h2>
+  <p class="sec-lead">Every animation has a reason. The card flip is the moment of discovery — it deserves 600ms. The GPS dot pulse is ambient — it should never demand attention. Codex and Claude Code must know these values before generating any animated widget.</p>
+
+  <table class="motion-table">
+    <thead>
+      <tr>
+        <th>Interaction</th>
+        <th>Animation</th>
+        <th>Spec</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Species identified</td>
+        <td>Card flip 3D reveal + particle burst</td>
+        <td>600ms · cubic-bezier(0.34, 1.56, 0.64, 1) · Lottie particles optional</td>
+      </tr>
+      <tr>
+        <td>GPS dot (you)</td>
+        <td>Amber pulse ring expanding</td>
+        <td>2000ms loop · ease-in-out · ring opacity 0.8→0 · scale 1→2.5</td>
+      </tr>
+      <tr>
+        <td>Trail drawn behind you</td>
+        <td>Amber path animates in behind footsteps</td>
+        <td>Animates 200ms per GPS point · ease-out · PathMetrics Flutter</td>
+      </tr>
+      <tr>
+        <td>Undiscovered species dot</td>
+        <td>Slow breathing pulse, green</td>
+        <td>3000ms loop · opacity 0.3↔0.8 · no scale change (non-intrusive)</td>
+      </tr>
+      <tr>
+        <td>Level up — Sage tier</td>
+        <td>Full screen flash + title wipe</td>
+        <td>300ms flash → 800ms title slide up · Syne 800 font · Lottie burst</td>
+      </tr>
+      <tr>
+        <td>Streak fire (30+ days)</td>
+        <td>Flame Lottie beside streak counter</td>
+        <td>Ambient loop · 1.5s · scale with streak count</td>
+      </tr>
+      <tr>
+        <td>Card rarity reveal</td>
+        <td>Rim light color change on card flip</td>
+        <td>Common: leaf green · Rare: amber · Ancient: violet · Legendary: white flash</td>
+      </tr>
+      <tr>
+        <td>Camera scanning</td>
+        <td>Horizontal scan line + corner brackets</td>
+        <td>Scan line: 1200ms ease-in-out y-axis sweep · brackets: always visible</td>
+      </tr>
+      <tr>
+        <td>Forest mist (undiscovered zones)</td>
+        <td>Subtle dark overlay on unexplored map areas</td>
+        <td>Opacity 0.4 · lifts to 0 as GPS enters zone · 1500ms transition</td>
+      </tr>
+      <tr>
+        <td>Bottom sheet (species preview)</td>
+        <td>Slide up from map tap</td>
+        <td>350ms · spring physics · dampingRatio 0.75 · stiffness 200</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="rule"></div>
+
+<!-- ══════════════ AGENT PROMPTS ══════════════ -->
+<div class="wrap" id="prompts">
+  <div class="sec-eye">05 — Agent Prompts</div>
+  <h2 class="sec-title">Ordered execution prompts</h2>
+  <p class="sec-lead">These are production-grade prompts for Claude Code (Sonnet 4.6) and Codex (o3-high / o4-mini-high). Each builds on the previous. Paste the context block first in every new session, then paste the task prompt. Green = Claude Code. Orange = Codex. Purple = architecture reasoning tasks.</p>
+
+  <!-- ─── CONTEXT BLOCK ─── -->
+  <div class="prompt-section">
+    <div class="prompt-header">
+      <div class="prompt-order">⌘</div>
+      <div class="prompt-meta">
+        <div class="prompt-title">Master Context Block — Paste first in every session</div>
+        <div class="prompt-desc">Seeds the agent with full project context. Always paste this before any task prompt.</div>
+      </div>
+      <div class="prompt-target">ALL AGENTS</div>
+    </div>
+
+    <div class="prompt-box arch">
+      <div class="prompt-box-label arch">
+        <span class="pl-type">CONTEXT · MASTER SEED</span>
+        <button class="copy-btn" onclick="copyPrompt(this)">copy</button>
+      </div>
+      <div class="prompt-text">PROJECT: PlantSage — GPS-anchored botanical knowledge app
+PUBLISHED UNDER: Antharmaya Labs · Android Play Console (live)
+PILOT: Hariharakhona Hill, Srikalahasti, Tirupati District, AP · 13.7123°N 79.7137°E
+STACK: Flutter 3.x · Dart · Riverpod (state) · Isar (offline DB) · go_router (nav)
+       google_maps_flutter · camera · geolocator · lottie
+
+DESIGN SYSTEM (locked — never override):
+  Colors:
+    forest:      #1a3a1e  (primary, headers)
+    forestDeep:  #0d1f0f  (map bg, card backs)
+    cream:       #f0ebe0  (species cards, body text on dark)
+    amber:       #c8943a  (GPS dot, XP, rarity: rare)
+    leaf:        #4a7c4a  (rarity: common, live indicators)
+    ancient:     #9b7fe8  (rarity: legendary, classical text layer)
+    stone:       #8c7b6b  (muted text, secondary info)
+
+  Typography:
+    Display:     Syne 800 (species names, level-up screens)
+    Telugu:      Noto Serif Telugu 700 (all Telugu text)
+    Body:        Lora 400 / 400i (descriptions, quotes)
+    Mono/Labels: Fira Code 400 (metadata, codes, tags)
+
+  Spacing unit: 8px base grid
+  Border radius: 4px cards, 8px sheets, 24px FABs
+  Elevation: never use Material drop shadows — use border + background shift only
+
+RARITY TIERS:
+  Common    → leaf (#4a7c4a)    · plants seen 3+ times in region
+  Rare      → amber (#c8943a)   · endemic or infrequent
+  Ancient   → ancient (#9b7fe8) · mentioned in classical Indian texts
+  Legendary → white flash       · first ever documented in this GPS region
+
+SAGE LEVELS: Observer → Documenter → Scholar → Vaidya → Sage
+  Unlock gates: 30-day streak → Ayurveda tier / 100-day streak → Classical text citations
+
+CORE GAME LOOP:
+  Map (GPS + trail) → Camera (identify) → Card Reveal → Atlas → Profile
+
+BACKEND: FastAPI on Cloud Run · Gemini 2.5-flash (plant ID) · Claude Sonnet 4.6 (research)
+STORAGE: MinIO (local) / Cloudflare R2 (prod) — same S3 API, env var swap
+DB: PostgreSQL + PostGIS (species geo) · Isar (offline Flutter)
+
+PHILOSOPHY: The map must make you want to walk further. Every UI decision serves field use.
+CONSTRAINT: Build for mid-range Android (Galaxy A series). 60fps on low-end = non-negotiable.</div>
+    </div>
+  </div>
+
+  <!-- ─── PROMPT 1 ─── -->
+  <div class="prompt-section">
+    <div class="prompt-header">
+      <div class="prompt-order">01</div>
+      <div class="prompt-meta">
+        <div class="prompt-title">app_theme.dart — Design token foundation</div>
+        <div class="prompt-desc">Everything else imports this. Generate first, touch last.</div>
+      </div>
+      <div class="prompt-target">CLAUDE CODE</div>
+    </div>
+
+    <div class="prompt-box design">
+      <div class="prompt-box-label design">
+        <span class="pl-type">TASK · THEME FILE</span>
+        <button class="copy-btn" onclick="copyPrompt(this)">copy</button>
+      </div>
+      <div class="prompt-text">Generate `lib/core/app_theme.dart` for the PlantSage Flutter app.
+
+Requirements:
+- Export a single `AppTheme` class with a static `dark()` ThemeData
+- Define all colors as static const Color values with the exact hex values in the context block
+- Define TextTheme using Google Fonts: Syne (display), Lora (body), FiraCode (labelSmall/labelMedium)
+- Noto Serif Telugu is loaded separately per-widget — do NOT include in TextTheme
+- Set scaffold background to #07090a (slightly off-black, not pure black)
+- Disable all elevation shadows across the theme — use surfaceVariant for card distinction instead
+- AppBar: transparent, no elevation, status bar icons light
+- BottomNavigationBar: background #0d1f0f, selected item amber #c8943a, unselected stone #8c7b6b, NO labels — icons only
+- Card theme: background #0e1210, border radius 4px, no shadow
+- No Material 3 dynamic color — use fixed palette throughout
+- Export a separate `AppSpacing` abstract class with: xs=4, sm=8, md=16, lg=24, xl=40, xxl=64 as static const double
+- Export `AppDurations` with: fast=200ms, normal=350ms, slow=600ms, ambient=2000ms as Duration consts
+
+Return only the complete Dart file. No explanation.</div>
+    </div>
+  </div>
+
+  <!-- ─── PROMPT 2 ─── -->
+  <div class="prompt-section">
+    <div class="prompt-header">
+      <div class="prompt-order">02</div>
+      <div class="prompt-meta">
+        <div class="prompt-title">Map screen — The living game world</div>
+        <div class="prompt-desc">The home screen. GPS dot, trail painting, species hotspot dots, undiscovered fog.</div>
+      </div>
+      <div class="prompt-target">CLAUDE CODE</div>
+    </div>
+
+    <div class="prompt-box">
+      <div class="prompt-box-label">
+        <span class="pl-type">TASK · MAP SCREEN</span>
+        <button class="copy-btn" onclick="copyPrompt(this)">copy</button>
+      </div>
+      <div class="prompt-text">Generate `lib/features/field/map_screen.dart` for PlantSage Flutter app.
+Import app_theme.dart from context. Use google_maps_flutter and riverpod.
+
+This is the home screen — the map IS the UI. No app bar, no visible scaffold. Full bleed.
+
+Map style:
+- Use a custom dark Google Map style JSON that shifts the base palette toward deep forest green
+  (mute roads, water = dark, land = #0d1a10, labels minimal)
+- Map type: MapType.hybrid (satellite + labels) toggled via a small icon button top-right
+- Camera initial position: 13.7123°N 79.7137°E, zoom 15
+
+User GPS dot (CustomPainter):
+- Outer ring: amber #c8943a, animates as expanding pulse (AnimationController, 2000ms loop)
+- Inner solid dot: white, 8px radius
+- Accuracy circle: semi-transparent amber, radius from Geolocator accuracy
+
+Trail painting (CustomPainter over map):
+- As user walks, GPS points stored in Isar as List<LatLng>
+- Polyline rendered on map: color amber #c8943a, width 2.5, opacity 0.7
+- Most recent 50m of trail slightly brighter (opacity 1.0) — fades behind you
+
+Species hotspot dots (Markers):
+- Documented species: solid leaf green circle, 12px, tap → bottom sheet
+- Undiscovered (known from GBIF in this zone): pulsing green circle, opacity 0.3↔0.8, 3000ms
+- Ancient species: pulsing violet #9b7fe8
+
+Undiscovered zone fog:
+- Polygon overlay covering areas of the hill where user has NOT walked
+- Fill: rgba(0,0,0,0.38), no stroke
+- Fades out (opacity animates to 0) as GPS enters zone, 1500ms
+
+Bottom status bar (NOT a bottom nav — this is context info only):
+- Fixed above bottom edge, 52px tall
+- Background: rgba(13,26,15, 0.92) with blur
+- Left: amber dot + "HARIHARAKHONA · [N] undiscovered" in Fira Code 11px
+- Right: GPS accuracy indicator (green/amber/red dot based on accuracy meters)
+
+FAB (center-bottom, 24px radius):
+- Amber background, camera icon white
+- Tapping navigates to camera/identify screen
+- Scale animation on tap: 0.92 → 1.0 over 150ms
+
+Use Riverpod StreamProvider for live GPS. Store trail in Isar.
+Return the complete Dart file only.</div>
+    </div>
+  </div>
+
+  <!-- ─── PROMPT 3 ─── -->
+  <div class="prompt-section">
+    <div class="prompt-header">
+      <div class="prompt-order">03</div>
+      <div class="prompt-meta">
+        <div class="prompt-title">Camera + identification screen</div>
+        <div class="prompt-desc">The identification moment. Camera + scan animation + Gemini API call + loading state.</div>
+      </div>
+      <div class="prompt-target">CLAUDE CODE</div>
+    </div>
+
+    <div class="prompt-box">
+      <div class="prompt-box-label">
+        <span class="pl-type">TASK · CAMERA SCREEN</span>
+        <button class="copy-btn" onclick="copyPrompt(this)">copy</button>
+      </div>
+      <div class="prompt-text">Generate `lib/features/identify/camera_screen.dart` for PlantSage Flutter.
+
+Full-bleed camera preview using `camera` package. No visible scaffold chrome.
+
+Overlay elements (all positioned over CameraPreview):
+1. Corner brackets (4 corners, each is an L-shape, 20px arms, 2px width, amber #c8943a)
+   - Animate inward 4px on capture: Tween<double>, 150ms, then return 300ms
+2. Scanning line (horizontal, amber gradient, 1px height)
+   - Continuously sweeps top→bottom, 1200ms, ease-in-out, repeats
+   - Only visible during idle/aiming state — hides during processing
+3. Bottom instruction text: "AIM AT LEAF OR FLOWER" in Fira Code 10px stone color
+   - Fades out when shutter tapped
+4. Back button: top-left, 40px touch target, white arrow icon, no background
+
+Capture flow:
+- User taps anywhere on camera preview (full-screen tap target)
+- Haptic: HapticFeedback.lightImpact()
+- Corner brackets animate inward
+- Scanning line replaced with: circular amber progress indicator, center screen
+- State transitions: idle → capturing → processing → result
+- During processing: show "Identifying..." in Lora italic, amber color, fade in
+
+API call (GeminiService.identifyPlant):
+- Send image bytes to Gemini Vision
+- On success → navigate to CardRevealScreen with SpeciesIdentification result
+- On error (confidence < 0.4) → show bottom sheet: "Try again — aim closer at leaves or flowers"
+- On network error → show bottom sheet with offline message
+
+Processing animation while waiting:
+- Behind the progress indicator, show a very subtle animated gradient background
+  shifting between #0d1f0f and #1a3a1e, 3s loop, non-distracting
+
+Use Riverpod StateProvider for capture state enum.
+GPS coordinates from LocationService should be attached to the image metadata before sending.
+Return complete Dart file only.</div>
+    </div>
+  </div>
+
+  <!-- ─── PROMPT 4 ─── -->
+  <div class="prompt-section">
+    <div class="prompt-header">
+      <div class="prompt-order">04</div>
+      <div class="prompt-meta">
+        <div class="prompt-title">Card reveal — The dopamine moment</div>
+        <div class="prompt-desc">The most important animation in the app. Card flip + rarity reveal + knowledge unlock.</div>
+      </div>
+      <div class="prompt-target">CODEX O3-HIGH</div>
+    </div>
+
+    <div class="prompt-box design">
+      <div class="prompt-box-label design">
+        <span class="pl-type">TASK · CARD REVEAL · CODEX</span>
+        <button class="copy-btn" onclick="copyPrompt(this)">copy</button>
+      </div>
+      <div class="prompt-text">Generate `lib/features/card/card_reveal_screen.dart` for PlantSage Flutter.
+This is the most critical UX moment in the app. It must feel earned and premium.
+
+Accepts: SpeciesIdentification result (scientific_name, telugu_name, rarity, confidence, image_bytes)
+
+SEQUENCE (strictly in order):
+
+1. ENTRY (0-300ms)
+   - Screen enters with a full-bleed dark background (#0d1f0f)
+   - Card starts as a small rectangle, center screen, face-down (forest green back)
+   - Card back has the Wrightia 5-petal SVG illustration in white, subtle
+   - Entry animation: scale from 0.3 to 1.0, elasticOut curve, 400ms
+
+2. SUSPENSE (300-900ms)
+   - Card wobbles slightly: rotation -2deg → +2deg → 0, 600ms, ease-in-out
+   - Rim glow color starts appearing around card edge, color based on rarity:
+     Common=leaf, Rare=amber, Ancient=violet, Legendary=white
+   - Glow pulses once (opacity 0.3 → 0.9 → 0.3)
+
+3. FLIP (900-1500ms)
+   - 3D card flip: AnimatedBuilder + Transform.rotateY
+   - Uses AnimationController 600ms, Curves.easeInOut
+   - At 90° (halfway): switch from back widget to front widget
+   - Front: species image (network or from bytes) filling top 45% of card
+   - Below image: species name, telugu name, rarity badge, family
+
+4. REVEAL (1500ms+)
+   - Front card elements stagger in:
+     a. Rarity badge slides in from left: 200ms
+     b. Scientific name fades up: 300ms  
+     c. Telugu name fades up 100ms after: Noto Serif Telugu 700
+     d. Bottom section (family, first folk use) slides up: 400ms
+
+5. RARITY SPECIAL CASES:
+   - Legendary only: after flip, brief white flash fills screen (200ms, opacity 0→0.6→0)
+     then golden particle burst from card using CustomPainter (30 particles, physics-based)
+   - Ancient only: violet glow persists + "Mentioned in classical texts" label appears in violet
+
+6. CARD FRONT DESIGN:
+   - Rounded rect, cream #f0ebe0 background, forest border 1.5px
+   - Top: species photo, full width, rounded top corners matching card
+   - Rarity strip: 3px tall, full width, rarity color, just below photo
+   - Species name: Syne 700, 20px, forest color
+   - Telugu name: Noto Serif Telugu 700, 18px, forest-mid
+   - Mono metadata row: FAMILY · RARITY · #ID in Fira Code 10px stone
+   - Divider: hairline forest opacity 0.15
+   - First folk use snippet: Lora 400 italic, 13px, stone color, max 2 lines
+
+7. BOTTOM ACTIONS (slide up after reveal completes):
+   - "Add to Atlas" button: full-width, forest background, cream text, Syne 600
+   - "See full knowledge" text button: amber color, Lora italic
+
+Haptic: HapticFeedback.heavyImpact() at flip midpoint.
+Use Transform.rotateY via AnimatedBuilder, not flip_card package — custom implementation only.
+Return complete Dart file only.</div>
+    </div>
+  </div>
+
+  <!-- ─── PROMPT 5 ─── -->
+  <div class="prompt-section">
+    <div class="prompt-header">
+      <div class="prompt-order">05</div>
+      <div class="prompt-meta">
+        <div class="prompt-title">Atlas — The species Pokédex</div>
+        <div class="prompt-desc">Grid of all documented species for this forest. Rarity tiers, guardian badges, undiscovered slots.</div>
+      </div>
+      <div class="prompt-target">CLAUDE CODE</div>
+    </div>
+
+    <div class="prompt-box">
+      <div class="prompt-box-label">
+        <span class="pl-type">TASK · ATLAS SCREEN</span>
+        <button class="copy-btn" onclick="copyPrompt(this)">copy</button>
+      </div>
+      <div class="prompt-text">Generate `lib/features/atlas/atlas_screen.dart` for PlantSage Flutter.
+
+Layout: SliverAppBar collapsing into a grid. Background #07090a throughout.
+
+Collapsing header (expanded: 180px, collapsed: 56px):
+- Expanded: "ATLAS" in Syne 800 56px white, below it forest name "HARIHARAKHONA #001"
+  in Fira Code 12px amber. Bottom-left shows "12 / 200" documented count.
+- Collapsed: standard app bar height, same text at smaller scale
+
+Filter chips (sticky below header):
+- Chips: ALL · COMMON · RARE · ANCIENT · LEGENDARY · GUARDIAN
+- Fira Code 10px · selected chip: rarity color background · unselected: forest border only
+- Horizontal scroll, no wrap
+
+Grid:
+- SliverGrid, 3 columns, 4px gap
+- Each cell: square aspect ratio
+
+Documented species cell:
+- Background: species thumbnail image (cover fit)
+- Gradient overlay bottom: transparent → black 70%
+- Bottom-left: 3px × 16px rarity color strip
+- Bottom-right: if user is Guardian (most observations), small crown icon, amber
+- Tap → navigate to full species knowledge card
+
+Undiscovered species cell (GBIF-seeded, not yet photographed):
+- Background: #0d1f0f
+- Center: question mark icon, opacity 0.2, rarity color
+- Pulsing border: 1px rarity-color border, opacity animates 0.15↔0.5, 3s loop
+- No tap action — just tantalizing
+
+Guardian badge logic:
+- If current user has photographed this species more than anyone else in this forest region
+- Show small SVG crown (top-right of cell), gold #c8943a
+
+Stats row above grid (between chips and grid):
+- 4 mini stat blocks in a row: [docs] [rare found] [ancient found] [guardian count]
+- Each: number in Syne 700 20px amber, label in Fira Code 9px stone below
+
+Empty state (0 documented):
+- Center: "Your forest is waiting." in Lora italic, muted
+- Below: amber arrow pointing to FAB location
+
+Load from Isar (offline-first), refresh from API when online.
+Return complete Dart file only.</div>
+    </div>
+  </div>
+
+  <!-- ─── PROMPT 6 ─── -->
+  <div class="prompt-section">
+    <div class="prompt-header">
+      <div class="prompt-order">06</div>
+      <div class="prompt-meta">
+        <div class="prompt-title">Sage profile — Level, streak, progress</div>
+        <div class="prompt-desc">The progression system. Streak fire, XP bar, tier unlock visualization.</div>
+      </div>
+      <div class="prompt-target">CLAUDE CODE</div>
+    </div>
+
+    <div class="prompt-box">
+      <div class="prompt-box-label">
+        <span class="pl-type">TASK · PROFILE SCREEN</span>
+        <button class="copy-btn" onclick="copyPrompt(this)">copy</button>
+      </div>
+      <div class="prompt-text">Generate `lib/features/profile/sage_profile_screen.dart` for PlantSage Flutter.
+
+No app bar. Full custom layout. Background #07090a.
+
+TOP SECTION — identity:
+- Avatar: 64px circle, gradient background (forest → amber), initials in Syne 700
+- Username: Syne 700 20px white
+- Forest tag: "Guardian of Hariharakhona #001" in Fira Code 11px amber
+- Row of 3 stat chips: [species documented] [days active] [guardian count]
+  Each chip: forest border, forest bg, number Syne 700 amber, label Fira Code 9px stone
+
+SAGE LEVEL SECTION:
+- Current level label: e.g. "SCHOLAR" in Fira Code 12px letter-spacing 0.3em
+  Colors per level: Observer=stone, Documenter=leaf, Scholar=amber, Vaidya=violet, Sage=white
+- Level description: 1 line Lora italic, stone color, e.g. "50 species documented"
+- Progress bar to next level: full-width, 8px height, forest bg track,
+  gradient fill (leaf → amber), animated fill on screen enter (TweenAnimationBuilder)
+- Next level label: right-aligned, Fira Code 10px muted
+
+STREAK SECTION:
+- "MORNING SESSIONS" label Fira Code 11px stone
+- Large streak number: Syne 800 48px amber
+- "DAYS" label below in Fira Code 12px stone
+- If streak >= 7: Lottie flame animation loops beside the number (lottie_flutter package)
+- Unlock milestones shown as a horizontal timeline:
+  30d (Ayurveda tier) · 100d (Classical texts) · 200d (Sage) · 365d (Legendary Guardian)
+  Each milestone: dot (filled=unlocked amber, empty=stone) with label below Fira Code 9px
+  Current streak progress shown as amber line connecting dots
+
+KNOWLEDGE TIERS (unlocked by streak):
+- 3 rows: Ayurveda Layer · Classical Texts · Community Validation
+- Each row: left icon (SVG), label Lora 400, right status (LOCKED / UNLOCKING / ACTIVE)
+  Status colors: locked=stone, unlocking=amber pulsing, active=leaf
+- Active tiers have a subtle left border (3px, rarity color) on the row
+
+RECENT ACTIVITY:
+- Last 5 observations as a minimal list
+- Each: thumbnail 36px circle, species name Lora 400 14px, date Fira Code 10px stone
+- Tap → navigate to species knowledge card
+
+Return complete Dart file only.</div>
+    </div>
+  </div>
+
+  <!-- ─── PROMPT 7 ─── -->
+  <div class="prompt-section">
+    <div class="prompt-header">
+      <div class="prompt-order">07</div>
+      <div class="prompt-meta">
+        <div class="prompt-title">Register your forest — GPS onboarding</div>
+        <div class="prompt-desc">First-run experience. The moment you become a forest's first guardian.</div>
+      </div>
+      <div class="prompt-target">CODEX O3-HIGH</div>
+    </div>
+
+    <div class="prompt-box design">
+      <div class="prompt-box-label design">
+        <span class="pl-type">TASK · ONBOARDING · CODEX</span>
+        <button class="copy-btn" onclick="copyPrompt(this)">copy</button>
+      </div>
+      <div class="prompt-text">Generate `lib/features/forest/register_forest_screen.dart` for PlantSage Flutter.
+This runs once on first launch. It is the product's first impression.
+
+DESIGN DIRECTION: feels like a sacred registration, not a signup form.
+Tone: You are claiming a forest as a knowledge guardian. Minimalist, dark, intentional.
+
+SEQUENCE OF STEPS (PageView, full-screen pages):
+
+PAGE 1 — Welcome:
+  Background: #0d1f0f. Center-aligned content.
+  Top: Wrightia 5-petal SVG illustration (white, 80px)
+  Below: "The forest has been waiting." in Lora italic 22px cream
+  Below: "You are about to become its first Guardian." Fira Code 11px stone, letter-spacing 0.1em
+  Bottom: "Begin" button, full-width minus 48px padding, forest background, cream text Syne 600
+  Fade in all elements staggered: SVG first (300ms), text (500ms), button (800ms)
+
+PAGE 2 — GPS detect:
+  "Detecting your location..." in Fira Code 12px amber
+  Animated concentric circles expanding from center (3 circles, amber, opacity 0.6→0, staggered 600ms)
+  Auto-calls Geolocator.getCurrentPosition()
+  On success → auto-advance to page 3 after 800ms delay
+  On failure → "Location access needed" with settings button
+
+PAGE 3 — Name your forest:
+  Show detected coordinates in Fira Code 12px stone: "13.7123°N · 79.7137°E"
+  "What do you call this place?" in Lora italic 18px cream
+  Single TextField, minimalist: bottom border only (1px amber), no fill, no label
+  Placeholder: "e.g. Hariharakhona" in stone italic
+  Fira Code 13px input text, cream color
+  Terrain type selector: 4 chips — HILL · FOREST · RIVERBANK · PLAIN
+    Chips: border only unselected, amber background selected, Fira Code 10px
+  "You are #001" badge if this is a new unregistered GPS zone (shown in amber)
+
+PAGE 4 — Confirmation:
+  Background shifts to: full-bleed forest green #1a3a1e (the only green-bg screen)
+  Center: "Hariharakhona" (user's forest name) in Syne 800 40px white
+  Below: "#001 · GUARDIAN: [username]" in Fira Code 12px amber
+  Below: "Your forest has [N] known species. Start documenting." Lora italic stone
+  Map thumbnail: small Google Map centered on detected coordinates, 200×120, no interaction
+  "Enter the forest" button: cream background, forest text, Syne 600
+  This button navigates to MapScreen and saves Forest to Isar + POST to API
+
+Progress indicator: 4 dots bottom of screen, current page = amber, others = stone/dim
+No skip buttons. No back button on pages 2-4 (back gesture ok).
+Return complete Dart file only.</div>
+    </div>
+  </div>
+
+  <!-- ─── PROMPT 8 ─── -->
+  <div class="prompt-section">
+    <div class="prompt-header">
+      <div class="prompt-order">08</div>
+      <div class="prompt-meta">
+        <div class="prompt-title">Species knowledge card — Deep dive</div>
+        <div class="prompt-desc">Full botanical, Ayurvedic, folk medicine, and classical text knowledge for one species.</div>
+      </div>
+      <div class="prompt-target">CLAUDE CODE</div>
+    </div>
+
+    <div class="prompt-box">
+      <div class="prompt-box-label">
+        <span class="pl-type">TASK · KNOWLEDGE CARD FULL</span>
+        <button class="copy-btn" onclick="copyPrompt(this)">copy</button>
+      </div>
+      <div class="prompt-text">Generate `lib/features/card/species_knowledge_screen.dart` for PlantSage Flutter.
+This is the psychonaut-wiki equivalent for plants. Dense, beautiful, scrollable.
+
+HEADER (not collapsing — full bleed image with overlay):
+- Species image, full screen width, 280px height, cover fit
+- Gradient overlay: transparent top → #07090a bottom (starts at 40% height)
+- Over gradient: scientific name Syne 700 24px white
+- Telugu name: Noto Serif Telugu 700 20px white, below
+- Bottom-left: rarity badge (colored pill, Fira Code 9px)
+- Bottom-right: my observation count + guardian crown if applicable
+
+SECTION TABS (sticky below header):
+Horizontal tab row, Fira Code 11px, amber underline on selected:
+  FIELD · USES · AYURVEDA · ANCIENT · HOW TO
+
+Each tab section below:
+
+FIELD TAB:
+- Botanical description: Lora 14px, stone, line-height 1.75
+- "Where to find it on this mountain": specific microhabitat note, amber text, italic
+- Associated species chips: each chip tappable → navigates to that species
+- Season availability: horizontal timeline bar, months, amber range highlighted
+
+USES TAB:
+- List of folk uses, each as a card:
+  - Community (Yanadi / Yerukala / general): Fira Code 10px stone
+  - Ailment: Syne 600 14px white
+  - Part used: colored tag
+  - Preparation: Lora italic 13px cream
+  - "How to do it" expandable (ChevronDown icon): step-by-step, Lora 13px
+  - Safety caution (if exists): amber border left, amber ⚠ icon
+
+AYURVEDA TAB:
+- Rasa/Guna/Virya/Vipaka as a clean 2×2 grid of mini-cards
+  Each: label Fira Code 9px stone, value Syne 600 16px white
+- Karma (actions): tags in a Wrap
+- Classical indications: bulleted Lora list
+- Formulations: pill-shaped tags, forest border
+
+ANCIENT TAB (unlocked at 100-day streak — blurred/locked before):
+- Classical text citations with chapter/verse reference
+- Exact quote (Sanskrit/Tamil) in Lora italic, amber
+- Translation below in Lora 400 cream
+- Source attribution: Fira Code 10px stone
+- If locked: blurred overlay + "100-day streak unlocks this" in center
+
+HOW TO TAB:
+- Step-by-step preparation methods
+- Each step: numbered circle (amber), title Syne 600 14px, body Lora 13px
+- Safety warnings in red-tinted box at top if toxic parts exist
+
+FAB (bottom right): amber, camera icon — quick re-photograph for better image
+
+Return complete Dart file only.</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="rule"></div>
+
+<div class="wrap" style="padding-top:3rem;padding-bottom:4rem;text-align:center">
+  <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:0.5rem">PlantSage · Antharmaya Labs</div>
+  <div style="font-family:'Fira Code',monospace;font-size:10px;color:var(--muted);letter-spacing:0.18em">UX CONTEXT v1 · HARIHARAKHONA #001 · 5:30AM SESSIONS</div>
+</div>
+
+<script>
+function copyPrompt(btn) {
+  const box = btn.closest('.prompt-box');
+  const text = box.querySelector('.prompt-text').textContent.trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'copied ✓';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'copy';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+</script>
+</body>
+</html>

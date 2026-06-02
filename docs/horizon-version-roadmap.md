@@ -21,6 +21,28 @@ Exit gate:
 - `npm run build` passes.
 - First log entry is visible in the app.
 
+## v0.4.1 - Journey Trek Ledger
+
+Target: June 2-4, 2026.
+
+Purpose: Make the Journey log an Obsidian-grade trek ledger that records evidence with real
+elevation and branches into alleys/valleys (sub-paths) wherever the route forks, just like
+climbing a hill.
+
+Ships:
+
+- DB-backed `journey_entries` table seeded from the West Hill KML (GPS + altitude + accuracy).
+- Elevation, terrain difficulty, and trek-segment fields per entry.
+- Branching sub-paths (alleys/valleys) so one anchor entry can spawn child legs.
+- A reusable field-scout template usable for PlantSage and offgrid scouting.
+- Hariharakhona ridge asset linked from `public/field/`.
+
+Exit gate:
+
+- `npm run db:init` seeds journey entries.
+- `npm run build` passes.
+- The West Hill entry shows elevation and at least one branch leg in the app.
+
 ## v0.5 - Capital and Runway OS
 
 Target: June 2026.

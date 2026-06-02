@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlantSage — Production Stack Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Fira+Code:wght@400;500&family=Lora:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090a;--surface:#0c0f0d;--surface2:#101410;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.04);
+  --text:#dde8dd;--muted:#5a7a5a;
+  --green:#1a3a1e;--leaf:#4a7c4a;--amber:#c8943a;
+  --blue:#4a8fc8;--violet:#9b7fe8;--red:#c84a4a;
+  --gemini:#4285f4;--firebase:#ff9800;--cf:#f38020;
+  --supabase:#3ecf8e;--run:#5bb0f0;
+}
+body{background:var(--bg);color:var(--text);font-family:'Lora',serif;font-size:14px;line-height:1.75}
+
+nav{
+  background:rgba(7,9,10,0.96);border-bottom:1px solid var(--border);
+  padding:0.8rem 2rem;display:flex;gap:2rem;align-items:center;
+  position:sticky;top:0;z-index:100;backdrop-filter:blur(12px);overflow-x:auto;
+}
+.nav-brand{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--amber);letter-spacing:0.06em;margin-right:1rem;white-space:nowrap}
+nav a{font-family:'Fira Code',monospace;font-size:10px;letter-spacing:0.15em;color:var(--muted);text-decoration:none;text-transform:uppercase;white-space:nowrap;transition:color 0.2s}
+nav a:hover{color:var(--text)}
+
+.wrap{max-width:980px;margin:0 auto;padding:4rem 2rem}
+@media(max-width:700px){.wrap{padding:3rem 1.25rem}}
+
+.eyebrow{font-family:'Fira Code',monospace;font-size:10px;letter-spacing:0.25em;color:var(--amber);text-transform:uppercase;display:flex;align-items:center;gap:1rem;margin-bottom:0.75rem}
+.eyebrow::after{content:'';flex:1;height:1px;background:rgba(200,148,58,0.2)}
+h1{font-family:'Syne',sans-serif;font-size:clamp(1.8rem,5vw,3rem);font-weight:800;color:#fff;line-height:1.05;margin-bottom:1rem}
+h2{font-family:'Syne',sans-serif;font-size:clamp(1.4rem,3vw,2rem);font-weight:700;color:#fff;line-height:1.1;margin-bottom:0.9rem}
+.lead{color:var(--muted);font-size:0.95rem;max-width:640px;line-height:1.8;margin-bottom:3rem}
+.rule{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin:0}
+
+/* VERDICT BOX */
+.verdict{
+  background:rgba(26,58,30,0.15);border:1px solid rgba(74,124,74,0.3);
+  border-left:4px solid var(--leaf);padding:1.75rem 2rem;margin:2rem 0;
+}
+.verdict-label{font-family:'Fira Code',monospace;font-size:10px;letter-spacing:0.2em;color:var(--leaf);text-transform:uppercase;margin-bottom:0.6rem}
+.verdict-text{font-size:0.9rem;color:rgba(221,232,221,0.85);line-height:1.75}
+.verdict-text strong{color:#fff;font-family:'Syne',sans-serif;font-weight:600}
+
+/* DECISION TABLE */
+.dec-table{width:100%;border-collapse:collapse;margin:2rem 0}
+.dec-table th{font-family:'Fira Code',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);text-align:left;padding:0.6rem 1rem;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02)}
+.dec-table td{padding:0.85rem 1rem;border-bottom:1px solid var(--border2);font-size:13px;vertical-align:top}
+.dec-table td:first-child{font-family:'Fira Code',monospace;font-size:11px;color:var(--amber)}
+.dec-table td:nth-child(2){color:#fff;font-weight:400}
+.dec-table td:nth-child(3){color:var(--muted)}
+.pill{display:inline-block;font-family:'Fira Code',monospace;font-size:9px;padding:0.2rem 0.5rem;letter-spacing:0.1em;text-transform:uppercase;border-radius:2px;margin-right:0.3rem}
+.pill-yes{background:rgba(74,124,74,0.2);color:#7acc7a;border:1px solid rgba(74,124,74,0.3)}
+.pill-no{background:rgba(200,74,74,0.15);color:#e07a7a;border:1px solid rgba(200,74,74,0.25)}
+.pill-partial{background:rgba(200,148,58,0.15);color:var(--amber);border:1px solid rgba(200,148,58,0.25)}
+
+/* STACK CARDS */
+.stack-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1px;background:var(--border);margin:2rem 0}
+.stack-card{background:var(--surface);padding:2rem;position:relative;overflow:hidden}
+.stack-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.sc-firebase::before{background:var(--firebase)}
+.sc-run::before{background:var(--run)}
+.sc-r2::before{background:var(--cf)}
+.sc-supabase::before{background:var(--supabase)}
+.sc-tasks::before{background:var(--gemini)}
+.sc-isar::before{background:var(--violet)}
+.stack-badge{font-family:'Fira Code',monospace;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:0.75rem;padding:0.2rem 0.5rem;display:inline-block;border-radius:2px}
+.stack-name{font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:700;color:#fff;margin-bottom:0.35rem}
+.stack-role{font-family:'Fira Code',monospace;font-size:10px;color:var(--muted);letter-spacing:0.1em;margin-bottom:1rem}
+.stack-desc{font-size:13px;color:rgba(221,232,221,0.65);line-height:1.65;margin-bottom:1rem}
+.stack-items{display:flex;flex-direction:column;gap:0.3rem}
+.stack-item{font-family:'Fira Code',monospace;font-size:11px;color:rgba(221,232,221,0.5);padding-left:1rem;position:relative}
+.stack-item::before{content:'→';position:absolute;left:0;font-size:10px}
+.stack-free{font-family:'Fira Code',monospace;font-size:9px;padding:0.2rem 0.5rem;border-radius:2px;margin-top:0.9rem;display:inline-block}
+
+/* FLOW DIAGRAM */
+.flow{display:flex;flex-direction:column;gap:0;margin:2rem 0;border:1px solid var(--border)}
+.flow-step{display:grid;grid-template-columns:48px 1fr auto;gap:1.25rem;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border2);align-items:center}
+.flow-step:last-child{border-bottom:none}
+.flow-num{font-family:'Fira Code',monospace;font-size:20px;color:rgba(255,255,255,0.06);font-weight:700;text-align:right}
+.flow-content-title{font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:600;color:#fff;margin-bottom:0.25rem}
+.flow-content-body{font-size:12.5px;color:var(--muted);line-height:1.6}
+.flow-tag{font-family:'Fira Code',monospace;font-size:9px;padding:0.25rem 0.5rem;border-radius:2px;white-space:nowrap;text-transform:uppercase;letter-spacing:0.1em;align-self:flex-start}
+
+/* GEMINI MODELS */
+.model-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1px;background:var(--border);margin:2rem 0}
+.model-card{background:var(--surface);padding:1.75rem;border-left:3px solid var(--gemini)}
+.model-name{font-family:'Fira Code',monospace;font-size:12px;color:var(--gemini);margin-bottom:0.4rem}
+.model-use{font-family:'Syne',sans-serif;font-size:1rem;font-weight:600;color:#fff;margin-bottom:0.5rem}
+.model-why{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:0.75rem}
+.model-cost{font-family:'Fira Code',monospace;font-size:10px;padding:0.2rem 0.5rem;letter-spacing:0.08em}
+
+/* CODE */
+.code-wrap{margin:2rem 0}
+.code-label{font-family:'Fira Code',monospace;font-size:10px;color:var(--muted);letter-spacing:0.15em;padding:0.5rem 1rem;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-bottom:none;display:flex;justify-content:space-between;align-items:center}
+.code-label span{color:var(--amber)}
+pre{background:#060908;border:1px solid var(--border);padding:1.5rem;overflow-x:auto;font-family:'Fira Code',monospace;font-size:12px;line-height:1.8;color:#b8d4b8}
+.g{color:var(--leaf)}.a{color:var(--amber)}.b{color:var(--gemini)}.v{color:var(--violet)}.m{color:var(--muted)}.w{color:#fff}
+
+/* WARN */
+.warn{background:rgba(200,148,58,0.06);border:1px solid rgba(200,148,58,0.2);border-left:3px solid var(--amber);padding:1.25rem 1.5rem;margin:1.5rem 0;font-size:13px;color:rgba(221,232,221,0.75);line-height:1.7}
+.warn strong{color:var(--amber);font-family:'Syne',sans-serif;font-weight:600}
+
+/* COPY PROMPT */
+.prompt-box{background:#060908;border:1px solid rgba(74,124,74,0.2);border-left:3px solid var(--leaf);margin:1.5rem 0}
+.prompt-head{font-family:'Fira Code',monospace;font-size:10px;color:var(--leaf);letter-spacing:0.15em;padding:0.6rem 1.25rem;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;justify-content:space-between;align-items:center}
+.prompt-text{font-family:'Fira Code',monospace;font-size:11.5px;color:#c0d8c0;line-height:1.8;padding:1.25rem 1.5rem;white-space:pre-wrap;word-break:break-word}
+.copy-btn{font-family:'Fira Code',monospace;font-size:9px;background:transparent;border:1px solid rgba(255,255,255,0.08);color:var(--muted);padding:0.25rem 0.6rem;cursor:pointer;transition:all 0.2s;letter-spacing:0.1em}
+.copy-btn:hover{background:rgba(255,255,255,0.04);color:var(--text)}
+.copy-btn.copied{color:var(--leaf);border-color:rgba(74,124,74,0.4)}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">PlantSage · Stack ADR</div>
+  <a href="#verdict">Verdict</a>
+  <a href="#stack">Stack</a>
+  <a href="#flow">Notification Flow</a>
+  <a href="#gemini">Gemini Models</a>
+  <a href="#offline">Offline Sync</a>
+  <a href="#prod">Prod Config</a>
+</nav>
+
+<!-- HERO -->
+<div class="wrap">
+  <div class="eyebrow">Architecture Decision Record · v1</div>
+  <h1>Backend Stack Decision</h1>
+  <p class="lead">Firebase vs server vs serverless — the right answer for a 90-second AI research pipeline with offline-first mobile, push notifications, and Cloudflare R2 storage.</p>
+
+  <!-- VERDICT -->
+  <div class="verdict" id="verdict">
+    <div class="verdict-label">Final Decision</div>
+    <div class="verdict-text">
+      <strong>Hybrid, not a single platform.</strong> Firebase handles auth + FCM push + realtime community sync.
+      Cloud Run handles the AI pipeline (already built, stateless, no timeout limits).
+      Cloud Tasks queues the 45–90s research job so the app gets an immediate response, then a push notification when done.
+      Cloudflare R2 stores all images and reports (already decided, zero egress).
+      Supabase provides PostGIS geo queries for the species map.
+      Isar in Flutter is the offline-first local database — everything works without signal.
+    </div>
+  </div>
+
+  <!-- WHY NOT TABLE -->
+  <h2 style="margin-top:3rem">Why not just Firebase</h2>
+  <table class="dec-table">
+    <thead><tr><th>Need</th><th>Firebase can do it?</th><th>Reality</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Auth (Google sign-in)</td>
+        <td><span class="pill pill-yes">Yes</span></td>
+        <td>Firebase Auth is perfect here — keep it</td>
+      </tr>
+      <tr>
+        <td>Push notifications (research ready)</td>
+        <td><span class="pill pill-yes">Yes</span></td>
+        <td>FCM is best-in-class, free, already works with Flutter</td>
+      </tr>
+      <tr>
+        <td>Realtime community species updates</td>
+        <td><span class="pill pill-yes">Yes</span></td>
+        <td>Firestore real-time listeners — keep it for community layer</td>
+      </tr>
+      <tr>
+        <td>Run 90s Gemini research agent</td>
+        <td><span class="pill pill-no">No</span></td>
+        <td>Cloud Functions = 60s max. Research pipeline times out. Dead end.</td>
+      </tr>
+      <tr>
+        <td>PostGIS geo queries (species within 2km)</td>
+        <td><span class="pill pill-no">No</span></td>
+        <td>Firestore has no native geo radius query. Workaround is painful.</td>
+      </tr>
+      <tr>
+        <td>Store images in Cloudflare R2</td>
+        <td><span class="pill pill-no">No</span></td>
+        <td>Firebase Storage is a different product — can't point to R2</td>
+      </tr>
+      <tr>
+        <td>Async job queue (photo → identify → research)</td>
+        <td><span class="pill pill-partial">Partial</span></td>
+        <td>Pub/Sub can trigger it but still hits timeout. Cloud Tasks is correct.</td>
+      </tr>
+      <tr>
+        <td>Offline-first with Flutter sync</td>
+        <td><span class="pill pill-partial">Partial</span></td>
+        <td>Firestore offline works but Isar is faster and works fully without auth</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="rule"></div>
+
+<!-- STACK BREAKDOWN -->
+<div class="wrap" id="stack">
+  <div class="eyebrow">02 — The six pieces</div>
+  <h2>What each service does, one job only</h2>
+
+  <div class="stack-grid">
+
+    <div class="stack-card sc-firebase">
+      <div class="stack-badge" style="background:rgba(255,152,0,0.15);color:var(--firebase);border:1px solid rgba(255,152,0,0.25)">Firebase</div>
+      <div class="stack-name">Auth + FCM + Firestore</div>
+      <div class="stack-role">Identity · Push · Community sync</div>
+      <p class="stack-desc">Three things only. Never use Firebase Storage or Functions. Google Sign-In for auth. FCM for "your plant report is ready" notifications. Firestore for community observations that need realtime sync across users.</p>
+      <div class="stack-items">
+        <div class="stack-item">Firebase Auth → Google Sign-In, zero friction</div>
+        <div class="stack-item">FCM → research-complete push notification</div>
+        <div class="stack-item">Firestore → community species sightings feed</div>
+        <div class="stack-item">Firebase Analytics → funnel tracking</div>
+      </div>
+      <div class="stack-free" style="background:rgba(255,152,0,0.1);color:var(--firebase);border:1px solid rgba(255,152,0,0.2)">Free tier: generous — 10k auth/month, 50k FCM/day, 1GB Firestore</div>
+    </div>
+
+    <div class="stack-card sc-run">
+      <div class="stack-badge" style="background:rgba(91,176,240,0.12);color:var(--run);border:1px solid rgba(91,176,240,0.2)">Cloud Run</div>
+      <div class="stack-name">FastAPI AI Pipeline</div>
+      <div class="stack-role">Plant ID · Research agent · Report generation</div>
+      <p class="stack-desc">Already built. Stateless containers. No timeout — Cloud Run lets jobs run as long as needed (up to 3600s). Scales to zero between sessions. The research agent lives here exclusively.</p>
+      <div class="stack-items">
+        <div class="stack-item">POST /identify → Gemini Vision plant ID</div>
+        <div class="stack-item">POST /research → Claude/Gemini research agent</div>
+        <div class="stack-item">POST /notify → fires FCM via Firebase Admin</div>
+        <div class="stack-item">GET /report/{id} → fetch completed report JSON</div>
+      </div>
+      <div class="stack-free" style="background:rgba(91,176,240,0.1);color:var(--run);border:1px solid rgba(91,176,240,0.2)">Free tier: 2M requests/month, 360k vCPU-seconds — plenty for pilot</div>
+    </div>
+
+    <div class="stack-card sc-r2">
+      <div class="stack-badge" style="background:rgba(243,128,32,0.12);color:var(--cf);border:1px solid rgba(243,128,32,0.2)">Cloudflare R2</div>
+      <div class="stack-name">Object Storage + CDN</div>
+      <div class="stack-role">Images · Reports · Classical texts</div>
+      <p class="stack-desc">Already decided. Zero egress fees means serving 100,000 plant images costs the same as serving 1. Workers for image resize on the edge — thumbnail variants auto-generated. Global CDN with cache-control headers.</p>
+      <div class="stack-items">
+        <div class="stack-item">plants/ → original field photos + compressed versions</div>
+        <div class="stack-item">reports/ → generated PDF + JSON per species</div>
+        <div class="stack-item">texts/ → classical text PDFs (Charaka, Agastiyar)</div>
+        <div class="stack-item">R2 Worker → auto-resize on first request, cache forever</div>
+      </div>
+      <div class="stack-free" style="background:rgba(243,128,32,0.1);color:var(--cf);border:1px solid rgba(243,128,32,0.2)">Free tier: 10GB storage, 1M Class-A ops, zero egress — indefinitely</div>
+    </div>
+
+    <div class="stack-card sc-supabase">
+      <div class="stack-badge" style="background:rgba(62,207,142,0.12);color:var(--supabase);border:1px solid rgba(62,207,142,0.2)">Supabase</div>
+      <div class="stack-name">PostgreSQL + PostGIS</div>
+      <div class="stack-role">Species geo database · Trail data</div>
+      <p class="stack-desc">Serverless Postgres with PostGIS extension. The geo layer that Firestore can't do — "show me all documented species within 2km of my GPS." Also stores trail history, observation metadata, guardian rankings.</p>
+      <div class="stack-items">
+        <div class="stack-item">species table → scientific name, rarity, geo point</div>
+        <div class="stack-item">observations → user + species + GPS + timestamp</div>
+        <div class="stack-item">trails → GPS polyline per session</div>
+        <div class="stack-item">guardians → most-observations-per-species ranking</div>
+      </div>
+      <div class="stack-free" style="background:rgba(62,207,142,0.1);color:var(--supabase);border:1px solid rgba(62,207,142,0.2)">Free tier: 500MB DB, 2GB bandwidth, 50MB file storage — sufficient for pilot</div>
+    </div>
+
+    <div class="stack-card sc-tasks">
+      <div class="stack-badge" style="background:rgba(66,133,244,0.12);color:var(--gemini);border:1px solid rgba(66,133,244,0.2)">Cloud Tasks</div>
+      <div class="stack-name">Async Job Queue</div>
+      <div class="stack-role">The 45–90s research window</div>
+      <p class="stack-desc">The missing piece that makes Zomato-level notifications possible. App submits photo → gets job_id immediately (< 1s) → Cloud Tasks runs the research in background → when done, fires FCM. User can close app and get notified when ready.</p>
+      <div class="stack-items">
+        <div class="stack-item">Task created: {job_id, image_url, gps, user_fcm_token}</div>
+        <div class="stack-item">Cloud Tasks calls Cloud Run /research endpoint</div>
+        <div class="stack-item">On completion → POST to /notify with job_id + result</div>
+        <div class="stack-item">Retry logic built-in (3 attempts, exponential backoff)</div>
+      </div>
+      <div class="stack-free" style="background:rgba(66,133,244,0.1);color:var(--gemini);border:1px solid rgba(66,133,244,0.2)">Free tier: 1M tasks/month — more than enough</div>
+    </div>
+
+    <div class="stack-card sc-isar">
+      <div class="stack-badge" style="background:rgba(155,127,232,0.12);color:var(--violet);border:1px solid rgba(155,127,232,0.2)">Isar (Flutter)</div>
+      <div class="stack-name">Offline-First Local DB</div>
+      <div class="stack-role">Everything works without signal</div>
+      <p class="stack-desc">The mountain has no signal in half its zones. Isar stores the full species atlas locally. Photos queue locally. Trail data writes locally first, syncs when signal returns. App is 100% functional offline — sync is a background bonus.</p>
+      <div class="stack-items">
+        <div class="stack-item">LocalSpecies → full species card cached after first view</div>
+        <div class="stack-item">PendingCapture → photo queue, uploads when online</div>
+        <div class="stack-item">TrailSession → GPS points written at 5s intervals</div>
+        <div class="stack-item">SyncQueue → any write that needs to reach Supabase</div>
+      </div>
+      <div class="stack-free" style="background:rgba(155,127,232,0.1);color:var(--violet);border:1px solid rgba(155,127,232,0.2)">Cost: zero. Runs entirely on device. No egress ever.</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="rule"></div>
+
+<!-- NOTIFICATION FLOW -->
+<div class="wrap" id="flow">
+  <div class="eyebrow">03 — End-to-end flow</div>
+  <h2>Blinkit-level notification, botanist context</h2>
+  <p class="lead">Every step below takes < 1s except the research job. The user never waits — they get an immediate confirmation, then a push when it's done.</p>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-num">01</div>
+      <div>
+        <div class="flow-content-title">Photo captured on mountain (offline zone)</div>
+        <div class="flow-content-body">Isar writes PendingCapture locally. GPS attached from Geolocator. Trail section auto-detected from GPS zone polygon. App shows "Queued — will identify when signal returns."</div>
+      </div>
+      <div class="flow-tag" style="background:rgba(155,127,232,0.12);color:var(--violet);border:1px solid rgba(155,127,232,0.2)">Isar local</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">02</div>
+      <div>
+        <div class="flow-content-title">Signal returns → photo uploads to R2</div>
+        <div class="flow-content-body">Background sync service detects connectivity. Uploads original photo to R2 plants/YYYY/MM/DD/species-hash.jpg. Returns a public CDN URL. Isar record updated with image_url.</div>
+      </div>
+      <div class="flow-tag" style="background:rgba(243,128,32,0.12);color:var(--cf);border:1px solid rgba(243,128,32,0.2)">R2 upload</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">03</div>
+      <div>
+        <div class="flow-content-title">POST /identify/async → job_id returned in &lt; 1s</div>
+        <div class="flow-content-body">Cloud Run receives {image_url, gps, fcm_token, user_id}. Creates a Cloud Tasks task. Returns {job_id, status: "queued"} immediately. App updates UI: "Identifying Wrightia tinctoria... you'll be notified."</div>
+      </div>
+      <div class="flow-tag" style="background:rgba(91,176,240,0.12);color:var(--run);border:1px solid rgba(91,176,240,0.2)">Cloud Run</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">04</div>
+      <div>
+        <div class="flow-content-title">Cloud Tasks → Gemini Vision plant ID (3–5s)</div>
+        <div class="flow-content-body">gemini-2.5-flash with vision. Returns {scientific_name, telugu_name, confidence, rarity_tier}. If confidence &lt; 0.5 → retry with gemini-2.5-pro (higher accuracy, slower). If still low → queue for community validation.</div>
+      </div>
+      <div class="flow-tag" style="background:rgba(66,133,244,0.12);color:var(--gemini);border:1px solid rgba(66,133,244,0.2)">Gemini Flash</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">05</div>
+      <div>
+        <div class="flow-content-title">Gemini 2.5 Pro research agent runs (45–90s)</div>
+        <div class="flow-content-body">8-domain research: botany + ethnomedicine AP + Ayurveda + phytochemistry + how-to-use + ecology + culture + geology. Google Search grounding active — real-time web search built in. Classical text vector search from Supabase pgvector. Returns full SpeciesCard JSON.</div>
+      </div>
+      <div class="flow-tag" style="background:rgba(66,133,244,0.12);color:var(--gemini);border:1px solid rgba(66,133,244,0.2)">Gemini Pro + Search</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">06</div>
+      <div>
+        <div class="flow-content-title">Report saved to R2 + Supabase</div>
+        <div class="flow-content-body">species_card.json → R2 reports/. Observation row → Supabase PostGIS (geo-indexed). Guardian ranking updated. Rarity assigned. Isar local cache updated with full card data — works offline from this point.</div>
+      </div>
+      <div class="flow-tag" style="background:rgba(62,207,142,0.12);color:var(--supabase);border:1px solid rgba(62,207,142,0.2)">Supabase + R2</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">07</div>
+      <div>
+        <div class="flow-content-title">FCM push notification fires</div>
+        <div class="flow-content-body">Firebase Admin SDK sends to user's FCM token. Notification: "🌿 Wrightia tinctoria · COMMON · Your knowledge card is ready. 8 folk uses documented." Tap → deep link to card reveal animation. Works even if app is closed.</div>
+      </div>
+      <div class="flow-tag" style="background:rgba(255,152,0,0.12);color:var(--firebase);border:1px solid rgba(255,152,0,0.2)">FCM</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">08</div>
+      <div>
+        <div class="flow-content-title">Card reveal animation plays on tap</div>
+        <div class="flow-content-body">Deep link opens CardRevealScreen with pre-fetched SpeciesCard from Isar local cache. 3D flip animation. Rarity rim glow. All data already on device — zero loading state. Legendary species: white flash + particle burst.</div>
+      </div>
+      <div class="flow-tag" style="background:rgba(155,127,232,0.12);color:var(--violet);border:1px solid rgba(155,127,232,0.2)">Flutter Isar</div>
+    </div>
+  </div>
+</div>
+
+<div class="rule"></div>
+
+<!-- GEMINI MODELS -->
+<div class="wrap" id="gemini">
+  <div class="eyebrow">04 — All Gemini capabilities</div>
+  <h2>Use every model, every feature</h2>
+  <p class="lead">The Google AI Studio free tier gives you access to the full Gemini stack. Google Search grounding is the biggest differentiator — it's what makes PlantSage research better than anything Claude alone can do for current, web-verified plant data.</p>
+
+  <div class="model-grid">
+
+    <div class="model-card">
+      <div class="model-name">gemini-2.5-flash</div>
+      <div class="model-use">Plant visual identification</div>
+      <p class="model-why">Fast, cheap, handles images well. First-pass ID. If confidence > 0.7 → accept. If 0.4–0.7 → escalate to Pro. Sub-5s response time. Accepts JPEG directly from camera.</p>
+      <div class="model-cost" style="background:rgba(74,124,74,0.1);color:var(--leaf);border:1px solid rgba(74,124,74,0.2)">Free: 1500 req/day · 15 RPM · Vision included</div>
+    </div>
+
+    <div class="model-card">
+      <div class="model-name">gemini-2.5-pro</div>
+      <div class="model-use">Deep research agent + hard IDs</div>
+      <p class="model-why">The research brain. Better reasoning across 8 domains. Use for the research pipeline and for low-confidence re-identification. Slower but significantly more accurate on ambiguous species. Long context handles full classical texts.</p>
+      <div class="model-cost" style="background:rgba(66,133,244,0.1);color:var(--gemini);border:1px solid rgba(66,133,244,0.2)">Free: 50 req/day · 2 RPM (sufficient for pilot)</div>
+    </div>
+
+    <div class="model-card">
+      <div class="model-name">gemini-2.5-pro + Google Search grounding</div>
+      <div class="model-use">Real-time web research (the secret weapon)</div>
+      <p class="model-why">This is the Perplexity-level research. Google Search grounding lets Gemini search the web during the research call — PubMed, eFlora India, ethnobotany papers, Ayurvedic databases — all current, all cited. No need to manage search APIs separately.</p>
+      <div class="model-cost" style="background:rgba(200,148,58,0.1);color:var(--amber);border:1px solid rgba(200,148,58,0.2)">Grounding: included in Gemini API · 1500 searches/day free</div>
+    </div>
+
+    <div class="model-card">
+      <div class="model-name">text-embedding-004</div>
+      <div class="model-use">Classical text semantic search</div>
+      <p class="model-why">Embed Charaka Samhita, Agastiyar texts, Bhavaprakasha into Supabase pgvector. When a species is identified, auto-search all classical texts for that plant's Sanskrit/Telugu/Tamil names. Returns exact verse + chapter reference. The ancient knowledge layer.</p>
+      <div class="model-cost" style="background:rgba(74,124,74,0.1);color:var(--leaf);border:1px solid rgba(74,124,74,0.2)">Free: 1500 req/day · 2048 dimensions</div>
+    </div>
+
+    <div class="model-card">
+      <div class="model-name">gemini-2.5-flash + audio</div>
+      <div class="model-use">Voice field notes transcription</div>
+      <p class="model-why">On mountain, hands dirty, can't type. Speak your field notes into the app — Gemini transcribes and structures them as observation data. Elder interviews: record, transcribe, extract plant names + preparation methods automatically into the database.</p>
+      <div class="model-cost" style="background:rgba(74,124,74,0.1);color:var(--leaf);border:1px solid rgba(74,124,74,0.2)">Free: audio input included in 1500 req/day</div>
+    </div>
+
+    <div class="model-card">
+      <div class="model-name">Gemini Live API</div>
+      <div class="model-use">Real-time plant conversation (future)</div>
+      <p class="model-why">Point camera at plant → speak "what is this and can I eat it?" → real-time streaming answer. Not for v1 — but the architecture supports it. The "Star Trek computer for the forest" mode. Stage 3 of the UX plan.</p>
+      <div class="model-cost" style="background:rgba(155,127,232,0.1);color:var(--violet);border:1px solid rgba(155,127,232,0.2)">Preview: free in AI Studio · billing when GA</div>
+    </div>
+
+  </div>
+
+  <div class="warn">
+    <strong>The Google Search grounding advantage:</strong> When Gemini searches for "Wrightia tinctoria Andhra Pradesh ethnobotany Yanadi tribe" with grounding enabled, it gets actual current papers, eFlora India entries, and PubMed results — not training data from 18 months ago. This is why the research quality is closer to Perplexity than to a static LLM. And it's free on the AI Studio tier.
+  </div>
+</div>
+
+<div class="rule"></div>
+
+<!-- OFFLINE SYNC -->
+<div class="wrap" id="offline">
+  <div class="eyebrow">05 — Offline-first architecture</div>
+  <h2>The mountain has no signal. Design for that.</h2>
+
+  <div class="code-wrap">
+    <div class="code-label"><span>OFFLINE SYNC FLOW</span> lib/core/sync_service.dart</div>
+    <pre><span class="m">// PlantSage Sync Service — offline-first, sync-when-able
+// Every write goes to Isar first. Background sync handles the rest.</span>
+
+<span class="g">class</span> <span class="w">SyncService</span> {
+  
+  <span class="m">// Called every time connectivity changes</span>
+  <span class="g">Future</span>&lt;<span class="w">void</span>&gt; onConnectivityRestored() <span class="g">async</span> {
+    
+    <span class="m">// 1. Upload queued photos to R2</span>
+    <span class="g">final</span> pending = <span class="g">await</span> _isar.pendingCaptures
+      .filter().uploadedEqualTo(<span class="b">false</span>).findAll();
+    
+    <span class="g">for</span> (<span class="g">final</span> capture <span class="g">in</span> pending) {
+      <span class="g">final</span> url = <span class="g">await</span> _r2.upload(capture.imageBytes, capture.metadata);
+      
+      <span class="m">// 2. Submit async identify job → get job_id back in &lt;1s</span>
+      <span class="g">final</span> job = <span class="g">await</span> _api.submitIdentifyJob(
+        imageUrl: url,
+        gps: capture.gps,
+        fcmToken: <span class="g">await</span> _fcm.getToken(),
+      );
+      
+      <span class="m">// 3. Store job_id locally — poll or wait for push</span>
+      capture.jobId = job.id;
+      capture.status = <span class="a">CaptureStatus.processing</span>;
+      <span class="g">await</span> _isar.writeTxn(() =&gt; _isar.pendingCaptures.put(capture));
+    }
+  }
+
+  <span class="m">// Called when FCM push arrives with completed report</span>
+  <span class="g">Future</span>&lt;<span class="w">void</span>&gt; onReportReady(<span class="w">String</span> jobId) <span class="g">async</span> {
+    <span class="g">final</span> card = <span class="g">await</span> _api.fetchReport(jobId);
+    
+    <span class="m">// Cache full species card locally — works offline forever after</span>
+    <span class="g">await</span> _isar.writeTxn(() =&gt; _isar.localSpecies.put(
+      LocalSpecies.fromCard(card)
+    ));
+    
+    <span class="m">// Navigate to card reveal if app is in foreground</span>
+    <span class="g">if</span> (_appState.isForegrounded) {
+      _router.push(<span class="a">'/card/reveal'</span>, extra: card);
+    }
+  }
+}</pre>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-label"><span>ISAR SCHEMA</span> lib/models/local_species.dart (key collections)</div>
+    <pre><span class="m">// Everything the app needs, offline, forever once downloaded</span>
+
+<span class="a">@collection</span>
+<span class="g">class</span> <span class="w">LocalSpecies</span> {
+  <span class="w">Id</span> id = <span class="w">Isar</span>.autoIncrement;
+  <span class="g">late String</span> scientificName;   <span class="m">// "Wrightia tinctoria"</span>
+  <span class="g">late String</span> teluguName;        <span class="m">// "అడవిపాల"</span>
+  <span class="g">late String</span> rarityTier;        <span class="m">// "common" | "rare" | "ancient" | "legendary"</span>
+  <span class="g">late String</span> imageUrl;          <span class="m">// R2 CDN URL</span>
+  <span class="g">late String</span> reportJsonUrl;     <span class="m">// Full SpeciesCard JSON from R2</span>
+  <span class="g">late double</span> lat, lng;          <span class="m">// First documented location</span>
+  <span class="g">late DateTime</span> cachedAt;        <span class="m">// For cache invalidation</span>
+  <span class="g">bool</span> isGuardian = <span class="b">false</span>;       <span class="m">// User has most observations of this species</span>
+}
+
+<span class="a">@collection</span>
+<span class="g">class</span> <span class="w">PendingCapture</span> {
+  <span class="w">Id</span> id = <span class="w">Isar</span>.autoIncrement;
+  <span class="g">late List</span>&lt;<span class="g">int</span>&gt; imageBytes;      <span class="m">// Raw photo bytes until upload</span>
+  <span class="g">late double</span> lat, lng;
+  <span class="g">late String</span> trailSection;       <span class="m">// "wrightia_corridor" | "granite_ridge" etc</span>
+  <span class="g">late DateTime</span> capturedAt;
+  <span class="g">bool</span> uploaded = <span class="b">false</span>;
+  <span class="w">String</span>? jobId;                  <span class="m">// Set after Cloud Tasks submission</span>
+  <span class="w">CaptureStatus</span> status = <span class="a">CaptureStatus.pending</span>;
+}
+
+<span class="a">@collection</span>
+<span class="g">class</span> <span class="w">TrailSession</span> {
+  <span class="w">Id</span> id = <span class="w">Isar</span>.autoIncrement;
+  <span class="g">late DateTime</span> startedAt;
+  <span class="g">late List</span>&lt;<span class="w">GpsPoint</span>&gt; points;    <span class="m">// Written every 5s</span>
+  <span class="g">late double</span> distanceMeters;
+  <span class="g">bool</span> synced = <span class="b">false</span>;
+}</pre>
+  </div>
+</div>
+
+<div class="rule"></div>
+
+<!-- PROD CONFIG -->
+<div class="wrap" id="prod">
+  <div class="eyebrow">06 — Production configuration</div>
+  <h2>Env vars, nothing else changes between local and prod</h2>
+
+  <div class="code-wrap">
+    <div class="code-label"><span>.env.local</span> Docker dev environment</div>
+    <pre><span class="m"># AI</span>
+<span class="g">GEMINI_API_KEY</span>=<span class="a">AIza...</span>                    <span class="m"># from aistudio.google.com</span>
+
+<span class="m"># Storage (MinIO local)</span>
+<span class="g">STORAGE_ENDPOINT</span>=<span class="a">http://localhost:9000</span>
+<span class="g">STORAGE_KEY</span>=<span class="a">plantsage</span>
+<span class="g">STORAGE_SECRET</span>=<span class="a">plantsage_dev</span>
+<span class="g">STORAGE_PATH_STYLE</span>=<span class="a">true</span>
+
+<span class="m"># Database (local Postgres + PostGIS via Docker)</span>
+<span class="g">DATABASE_URL</span>=<span class="a">postgresql://plantsage:plantsage@localhost:5432/plantsage</span>
+
+<span class="m"># Firebase (same project for local dev — use emulators)</span>
+<span class="g">FIREBASE_PROJECT_ID</span>=<span class="a">plantsage-pilot</span>
+<span class="g">GOOGLE_APPLICATION_CREDENTIALS</span>=<span class="a">./firebase-service-account.json</span>
+
+<span class="m"># Async (skip Cloud Tasks locally — call research endpoint directly)</span>
+<span class="g">USE_CLOUD_TASKS</span>=<span class="a">false</span>
+<span class="g">RESEARCH_ENDPOINT</span>=<span class="a">http://localhost:8080/research</span></pre>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-label"><span>.env.production</span> Cloud Run environment</div>
+    <pre><span class="m"># AI (same key, same API)</span>
+<span class="g">GEMINI_API_KEY</span>=<span class="a">AIza...</span>
+
+<span class="m"># Storage (Cloudflare R2)</span>
+<span class="g">STORAGE_ENDPOINT</span>=<span class="a">https://ACCOUNT_ID.r2.cloudflarestorage.com</span>
+<span class="g">STORAGE_KEY</span>=<span class="a">r2_access_key</span>
+<span class="g">STORAGE_SECRET</span>=<span class="a">r2_secret</span>
+<span class="g">STORAGE_PATH_STYLE</span>=<span class="a">false</span>
+
+<span class="m"># Database (Supabase)</span>
+<span class="g">DATABASE_URL</span>=<span class="a">postgresql://postgres:pass@db.xxx.supabase.co:5432/postgres</span>
+
+<span class="m"># Firebase (Cloud Run service account has Firebase Admin access)</span>
+<span class="g">FIREBASE_PROJECT_ID</span>=<span class="a">plantsage-pilot</span>
+<span class="m"># No credentials file needed — Cloud Run uses workload identity</span>
+
+<span class="m"># Async (Cloud Tasks enabled in prod)</span>
+<span class="g">USE_CLOUD_TASKS</span>=<span class="a">true</span>
+<span class="g">CLOUD_TASKS_QUEUE</span>=<span class="a">plantsage-research</span>
+<span class="g">CLOUD_TASKS_LOCATION</span>=<span class="a">asia-south1</span>
+<span class="g">RESEARCH_ENDPOINT</span>=<span class="a">https://plantsage-api.run.app/research</span></pre>
+  </div>
+
+  <!-- Agent prompt for backend -->
+  <h2 style="margin-top:3rem">Agent prompt — async identify endpoint</h2>
+  <div class="prompt-box">
+    <div class="prompt-head">
+      <span>BACKEND TASK · Cloud Run + Cloud Tasks + FCM</span>
+      <button class="copy-btn" onclick="copyPrompt(this)">copy</button>
+    </div>
+    <div class="prompt-text">Add async plant identification endpoint to the existing PlantSage FastAPI app.
+
+Context: The app already has POST /identify (sync, returns full report). Add POST /identify/async
+that returns a job_id immediately and runs the pipeline in background via Cloud Tasks.
+
+New endpoint POST /identify/async:
+  Body: {image_url: str, lat: float, lng: float, fcm_token: str, user_id: str}
+  Response (immediate, < 1s): {job_id: str, status: "queued", estimated_seconds: 60}
+
+  Internally:
+  1. Generate job_id = uuid4()
+  2. Store job record in Supabase: {job_id, user_id, image_url, status: "queued", created_at}
+  3. If USE_CLOUD_TASKS=true: create Cloud Tasks task pointing to POST /research/{job_id}
+     If USE_CLOUD_TASKS=false (local dev): run asyncio.create_task() directly
+  4. Return job_id immediately
+
+New internal endpoint POST /research/{job_id} (called by Cloud Tasks, not by app directly):
+  1. Fetch job record from Supabase
+  2. Run existing GeminiService.identify(image_url)
+  3. Run existing research_agent(plant_id)  
+  4. Save SpeciesCard JSON to R2: reports/{job_id}.json
+  5. Insert species + observation into Supabase PostGIS
+  6. Update job status to "complete" in Supabase
+  7. Send FCM push via Firebase Admin SDK:
+     - title: f"🌿 {species_card.telugu_name} · {species_card.rarity.upper()}"
+     - body: f"Your knowledge card is ready. {len(folk_uses)} folk uses documented."
+     - data: {job_id, scientific_name, rarity, report_url, deep_link: "plantsage://card/{job_id}"}
+
+New GET /report/{job_id}:
+  - Returns full SpeciesCard JSON from R2 or Supabase cache
+  - Used by app after receiving FCM notification
+
+Environment variables used (already in .env):
+  USE_CLOUD_TASKS, CLOUD_TASKS_QUEUE, CLOUD_TASKS_LOCATION, FIREBASE_PROJECT_ID,
+  GOOGLE_APPLICATION_CREDENTIALS, STORAGE_ENDPOINT, DATABASE_URL
+
+Dependencies to add: google-cloud-tasks, firebase-admin, asyncio
+Use existing patterns from the codebase. Return all new/modified files.</div>
+  </div>
+</div>
+
+<div class="rule"></div>
+
+<div class="wrap" style="padding-top:2.5rem;padding-bottom:3.5rem;text-align:center">
+  <div style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:#fff;margin-bottom:0.4rem">PlantSage · Antharmaya Labs · Stack ADR v1</div>
+  <div style="font-family:'Fira Code',monospace;font-size:10px;color:var(--muted);letter-spacing:0.15em">Firebase auth+FCM · Cloud Run pipeline · Cloud Tasks queue · R2 storage · Supabase PostGIS · Isar offline</div>
+</div>
+
+<script>
+function copyPrompt(btn){
+  const box=btn.closest('.prompt-box');
+  const text=box.querySelector('.prompt-text').textContent.trim();
+  navigator.clipboard.writeText(text).then(()=>{
+    btn.textContent='copied ✓';btn.classList.add('copied');
+    setTimeout(()=>{btn.textContent='copy';btn.classList.remove('copied')},2000);
+  });
+}
+</script>
+</body>
+</html>

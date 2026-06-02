@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+  <Document>
+    <name>West Hill / Hariharakhona ridge scout</name>
+    <Placemark id="west-hill-scout-001">
+      <name>West Hill scout 001</name>
+      <LookAt>
+        <longitude>79.71165910000001</longitude>
+        <latitude>13.7119013</latitude>
+        <altitude>211.074747430843</altitude>
+        <heading>67.70132312955735</heading>
+        <tilt>59.99999999999999</tilt>
+        <range>499.9999999999999</range>
+        <altitudeMode>absolute</altitudeMode>
+      </LookAt>
+      <Point>
+        <extrude>1</extrude>
+        <coordinates>79.7116267,13.7118453,211.5518208297252</coordinates>
+      </Point>
+    </Placemark>
+  </Document>
+</kml>

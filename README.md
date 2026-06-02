@@ -41,6 +41,9 @@ npm run build
 
 ## Canonical Docs
 
+- `docs/horizon-build-plan.md` (master vertical-slice execution contract)
+- `docs/source-inputs/income_plan.md`
+- `docs/source-inputs/twelve_month_plan.md`
 - `docs/horizon-operating-plan.md`
 - `docs/portfolio-command-map.md`
 - `docs/hskg-launch-brief.md`

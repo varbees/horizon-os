@@ -6,8 +6,9 @@ Build a two-year Antharmaya foundry path from full-time execution to a stable sa
 
 ## Source Inputs
 
-- `twelve_month_plan.md.md`
-- `income_plan.md.md`
+- `docs/source-inputs/twelve_month_plan.md` (four anchors: Body, Attention, Capital, Spec; Forge/Test/Transition arc)
+- `docs/source-inputs/income_plan.md` (4-phase floor -> engine -> wedge -> move pathway)
+- `docs/horizon-build-plan.md` (master vertical-slice execution contract)
 - Antharmaya public foundry positioning
 - PhotoSelect public product proof
 - Current local portfolio scan across `~/Desktop/bolting/*`
