@@ -6,6 +6,8 @@ import {
   actionQueueSeed,
   actionTasks,
   capitalTargets,
+  signalSeed,
+  signalSourceSeed,
   cashLedgerSeed,
   hackathonEvents,
   journeyEntries,
@@ -424,6 +426,39 @@ function seed(db) {
     );
   }
 
+  const insertSource = db.prepare(`
+    INSERT INTO signal_sources (id, name, url, category, kind, active, sort_order)
+    VALUES (?, ?, ?, ?, ?, 1, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      name = excluded.name,
+      url = excluded.url,
+      category = excluded.category,
+      kind = excluded.kind,
+      sort_order = excluded.sort_order
+  `);
+  for (const s of signalSourceSeed) {
+    insertSource.run(s.id, s.name, s.url, s.category ?? "AI News Hubs", s.kind ?? "rss", Number(s.sortOrder ?? 0));
+  }
+
+  const insertSignal = db.prepare(`
+    INSERT OR IGNORE INTO signals (id, source_id, source_name, category, kind, title, url, summary, thumbnail, published_at, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')
+  `);
+  for (const item of signalSeed) {
+    insertSignal.run(
+      item.id,
+      item.sourceId ?? null,
+      item.sourceName ?? "",
+      item.category ?? "",
+      item.kind ?? "rss",
+      item.title,
+      item.url ?? "",
+      item.summary ?? "",
+      item.thumbnail ?? "",
+      item.publishedAt ?? null,
+    );
+  }
+
   const insertResource = db.prepare(`
     INSERT INTO resources (id, title, source, kind, project_id, status, note, next_action, tags_json, sort_order)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -544,6 +579,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const resourceCount = db.prepare("SELECT count(*) AS count FROM resources").get().count;
   const skillCount = db.prepare("SELECT count(*) AS count FROM social_skills").get().count;
   const actionCount = db.prepare("SELECT count(*) AS count FROM action_queue").get().count;
-  console.log(JSON.stringify({ ok: true, dbPath, nodeCount, eventCount, taskCount, journeyCount, capitalCount, pipelineCount, resourceCount, skillCount, actionCount }, null, 2));
+  const sourceCount = db.prepare("SELECT count(*) AS count FROM signal_sources").get().count;
+  console.log(JSON.stringify({ ok: true, dbPath, nodeCount, eventCount, taskCount, journeyCount, capitalCount, pipelineCount, resourceCount, skillCount, actionCount, sourceCount }, null, 2));
   db.close();
 }

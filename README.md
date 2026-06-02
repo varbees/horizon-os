@@ -38,6 +38,7 @@ npm run build
 - `/journey` - Obsidian-grade trek ledger with GPS, elevation, and branching alleys/valleys
 - `/capital` - Capital & Runway OS: targets, cash ledger, offer pipeline, and weekly income math
 - `/inbox` - Resource & Content Inbox: link capture, content backlog, and the social skills catalog
+- `/signals` - News & Signals: local RSS feed with category counts, filters, and prunable sources
 - `/map` - node-editor command graph backed by local SQLite API
 - `/documents` - docs and connector artifacts
 - `/hskg` - closure note for the parked `hskg.vercel.app` proof

@@ -225,6 +225,31 @@ CREATE TABLE IF NOT EXISTS action_queue (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS signal_sources (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  url TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'AI News Hubs',
+  kind TEXT NOT NULL DEFAULT 'rss',
+  active INTEGER NOT NULL DEFAULT 1,
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS signals (
+  id TEXT PRIMARY KEY,
+  source_id TEXT,
+  source_name TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT '',
+  kind TEXT NOT NULL DEFAULT 'rss',
+  title TEXT NOT NULL,
+  url TEXT NOT NULL DEFAULT '',
+  summary TEXT NOT NULL DEFAULT '',
+  thumbnail TEXT NOT NULL DEFAULT '',
+  published_at TEXT,
+  status TEXT NOT NULL DEFAULT 'new',
+  fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS vectors (
   id TEXT PRIMARY KEY,
   context_id TEXT REFERENCES contexts(id) ON DELETE CASCADE,
@@ -257,3 +282,6 @@ CREATE INDEX IF NOT EXISTS idx_social_posts_status ON social_posts(status);
 CREATE INDEX IF NOT EXISTS idx_social_skills_category ON social_skills(category);
 CREATE INDEX IF NOT EXISTS idx_action_queue_status ON action_queue(status);
 CREATE INDEX IF NOT EXISTS idx_action_queue_project ON action_queue(project_id);
+CREATE INDEX IF NOT EXISTS idx_signals_status ON signals(status);
+CREATE INDEX IF NOT EXISTS idx_signals_category ON signals(category);
+CREATE INDEX IF NOT EXISTS idx_signals_published ON signals(published_at);

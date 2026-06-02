@@ -4,6 +4,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openHorizonDb } from "./horizon-db.mjs";
+import { fetchFeed } from "./rss.mjs";
 
 const port = Number(process.env.HORIZON_API_PORT ?? 8787);
 const db = openHorizonDb();
@@ -400,6 +401,85 @@ const server = createServer(async (req, res) => {
     if (req.method === "DELETE" && url.pathname.startsWith("/api/capital/pipeline/")) {
       const id = decodeURIComponent(url.pathname.replace("/api/capital/pipeline/", ""));
       db.prepare("DELETE FROM offer_pipeline WHERE id = ?").run(id);
+      return json(res, 200, { ok: true, id });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/signals") {
+      return json(res, 200, {
+        sources: all("SELECT * FROM signal_sources ORDER BY sort_order, name"),
+        signals: all("SELECT * FROM signals WHERE status != 'dismissed' ORDER BY coalesce(published_at, fetched_at) DESC LIMIT 300"),
+      });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/signals/refresh") {
+      const sources = all("SELECT * FROM signal_sources WHERE active = 1 ORDER BY sort_order");
+      const insert = db.prepare(`
+        INSERT INTO signals (id, source_id, source_name, category, kind, title, url, summary, thumbnail, published_at, status, fetched_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', datetime('now'))
+        ON CONFLICT(id) DO UPDATE SET fetched_at = datetime('now')
+      `);
+      let inserted = 0;
+      const errors = [];
+      await Promise.all(
+        sources.map(async (source) => {
+          try {
+            const items = await fetchFeed(source);
+            for (const item of items.slice(0, 40)) {
+              const before = db.prepare("SELECT 1 FROM signals WHERE id = ?").get(item.id);
+              insert.run(
+                item.id,
+                source.id,
+                source.name,
+                source.category,
+                source.kind,
+                item.title,
+                item.url,
+                item.summary,
+                item.thumbnail,
+                item.published_at,
+              );
+              if (!before) inserted += 1;
+            }
+          } catch (error) {
+            errors.push({ source: source.id, error: String(error.message ?? error) });
+          }
+        }),
+      );
+      // remove the placeholder seed once real signals exist
+      db.prepare("DELETE FROM signals WHERE id = 'seed-1' AND (SELECT count(*) FROM signals WHERE id != 'seed-1') > 0").run();
+      return json(res, 200, { ok: true, sources: sources.length, inserted, errors });
+    }
+
+    if (req.method === "PATCH" && url.pathname.startsWith("/api/signals/")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/signals/", ""));
+      const existing = db.prepare("SELECT * FROM signals WHERE id = ?").get(id);
+      if (!existing) return json(res, 404, { ok: false, error: "signal_not_found" });
+      const body = await readJson(req);
+      db.prepare("UPDATE signals SET status = ? WHERE id = ?").run(body.status ?? existing.status, id);
+      return json(res, 200, { ok: true, id });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/signal-sources") {
+      const body = await readJson(req);
+      const id = body.id ?? randomUUID();
+      db.prepare(`
+        INSERT INTO signal_sources (id, name, url, category, kind, active, sort_order)
+        VALUES (?, ?, ?, ?, ?, 1, ?)
+      `).run(
+        id,
+        String(body.name ?? "").trim() || "Untitled source",
+        String(body.url ?? "").trim(),
+        body.category ?? "AI News Hubs",
+        body.kind ?? "rss",
+        Number(body.sort_order ?? body.sortOrder ?? 99),
+      );
+      return json(res, 201, { ok: true, id });
+    }
+
+    if (req.method === "DELETE" && url.pathname.startsWith("/api/signal-sources/")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/signal-sources/", ""));
+      db.prepare("DELETE FROM signal_sources WHERE id = ?").run(id);
+      db.prepare("DELETE FROM signals WHERE source_id = ?").run(id);
       return json(res, 200, { ok: true, id });
     }
 

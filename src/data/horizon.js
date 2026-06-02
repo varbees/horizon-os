@@ -636,10 +636,17 @@ export const versionRoadmap = [
   },
   {
     version: "v0.9",
-    title: "News & Signals + Intelligence",
+    title: "News & Signals (RSS)",
+    window: "June 2026",
+    status: "Shipping now",
+    output: "Local RSS fetch, category counts, Grid/List/Saved + time filters, prunable sources.",
+  },
+  {
+    version: "v1.0",
+    title: "Intelligence + Claude Usage",
     window: "July 2026",
     status: "Planned",
-    output: "RSS signals feed, then agent-fed Gmail/Calendar/meeting intelligence and a Claude usage panel.",
+    output: "Agent-fed Gmail/Calendar/meeting intelligence and a Claude usage panel from ~/.claude.",
   },
   {
     version: "v0.7-cal",
@@ -907,6 +914,39 @@ export const actionQueueSeed = [
     prompt:
       "Implement and verify one Stage 2 proof: a hash-addressed media payload uploaded to MinIO (local) and R2 (prod parity) that resolves into the Flutter app's SpeciesCard image fields through the existing /identify contract. Output the verified ingest path and a sample record.",
     sortOrder: 4,
+  },
+];
+
+// v0.9 News & Signals. Default RSS/Atom feeds, grouped by category. Prune freely.
+export const signalSourceSeed = [
+  { id: "hn-front", name: "Hacker News", url: "https://hnrss.org/frontpage", category: "AI News Hubs", kind: "rss", sortOrder: 0 },
+  { id: "techcrunch-ai", name: "TechCrunch AI", url: "https://techcrunch.com/category/artificial-intelligence/feed/", category: "AI News Hubs", kind: "rss", sortOrder: 1 },
+  { id: "verge", name: "The Verge", url: "https://www.theverge.com/rss/index.xml", category: "AI News Hubs", kind: "rss", sortOrder: 2 },
+  { id: "import-ai", name: "Import AI (Jack Clark)", url: "https://importai.substack.com/feed", category: "AI Frontier", kind: "rss", sortOrder: 3 },
+  { id: "latent-space", name: "Latent Space", url: "https://www.latent.space/feed", category: "AI Frontier", kind: "rss", sortOrder: 4 },
+  { id: "simonw", name: "Simon Willison", url: "https://simonwillison.net/atom/everything/", category: "Agentic Engineering", kind: "rss", sortOrder: 5 },
+  { id: "hf-blog", name: "Hugging Face Blog", url: "https://huggingface.co/blog/feed.xml", category: "AI Tool Releases", kind: "rss", sortOrder: 6 },
+  { id: "r-localllama", name: "r/LocalLLaMA", url: "https://www.reddit.com/r/LocalLLaMA/.rss", category: "Agentic Engineering", kind: "reddit", sortOrder: 7 },
+  { id: "r-claudeai", name: "r/ClaudeAI", url: "https://www.reddit.com/r/ClaudeAI/.rss", category: "Agentic Engineering", kind: "reddit", sortOrder: 8 },
+  { id: "r-machinelearning", name: "r/MachineLearning", url: "https://www.reddit.com/r/MachineLearning/.rss", category: "AI Frontier", kind: "reddit", sortOrder: 9 },
+  { id: "yt-twominutepapers", name: "Two Minute Papers", url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCbfYPyITQ-7l4upoX8nvctg", category: "Videos", kind: "youtube", sortOrder: 10 },
+  { id: "yt-aiexplained", name: "AI Explained", url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCNJ1Ymd5yFuUPtn21xtRbbw", category: "Videos", kind: "youtube", sortOrder: 11 },
+];
+
+export const signalCategories = ["AI News Hubs", "AI Frontier", "Agentic Engineering", "AI Tool Releases", "Videos", "AI Business"];
+
+// Example signals so the feed renders before the first live refresh. Replaced on refresh.
+export const signalSeed = [
+  {
+    id: "seed-1",
+    sourceName: "Horizon",
+    category: "AI News Hubs",
+    kind: "rss",
+    title: "Press Refresh to pull live signals from your sources",
+    url: "",
+    summary: "These are placeholder items. With the local API running, hit Refresh to fetch the seeded feeds. Prune or add sources to fit your interests.",
+    thumbnail: "",
+    publishedAt: "2026-06-03T00:00:00Z",
   },
 ];
 
