@@ -34,6 +34,7 @@ npm run build
 - `/` - control tower and daily anchors
 - `/calendar` - recurring Foundry Week calendar matrix
 - `/projects` - portfolio hub for `~/Desktop/bolting/*`
+- `/journey` - two-year logbook, version ladder, capital goals, and playbook patterns
 - `/map` - node-editor command graph backed by local SQLite API
 - `/documents` - docs and connector artifacts
 - `/hskg` - launch brief for `hskg.vercel.app`
@@ -49,6 +50,10 @@ npm run build
 - `docs/local-command-base.md`
 - `docs/vertical-ai-course.md`
 - `docs/plantsage-progress-ledger.md`
+- `docs/founder-playbook-research.md`
+- `docs/horizon-version-roadmap.md`
+- `docs/journey-log-system.md`
+- `docs/capital-goals-2027.md`
 
 ## Calendar
 

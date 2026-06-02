@@ -2,6 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   CalendarDays,
+  BookOpen,
   FileText,
   Gauge,
   GitBranch,
@@ -13,6 +14,7 @@ const navItems = [
   { to: "/", label: "Command", icon: LayoutDashboard },
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
   { to: "/projects", label: "Hub", icon: Gauge },
+  { to: "/journey", label: "Journey", icon: BookOpen },
   { to: "/map", label: "System Map", icon: GitBranch },
   { to: "/documents", label: "Docs", icon: FileText },
   { to: "/hskg", label: "HSKG", icon: Rocket },
@@ -74,7 +76,7 @@ export default function Shell({ children }) {
         className="fixed bottom-0 left-0 right-0 z-50 border-t border-outlineVariant bg-surface/94 px-2 pb-2 pt-2 backdrop-blur-xl lg:hidden"
         aria-label="Mobile primary"
       >
-        <div className="mx-auto grid max-w-xl grid-cols-6 gap-1">
+        <div className="mx-auto grid max-w-2xl grid-cols-7 gap-1">
           {navItems.map((item) => (
             <MobileNavItem key={item.to} item={item} />
           ))}
