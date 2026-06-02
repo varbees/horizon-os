@@ -1,13 +1,13 @@
 # PlantSage Progress Ledger
 
-Last updated: 2026-05-29
+Last updated: 2026-06-02
 
 ## Command-Center Role
 
-PlantSage is a strategic field-product asset inside Horizon OS, not the current
-revenue lane. It should be worked in explicit blocks after the DialysisSaathi
-sprint pressure clears and without stealing the Income Engine or PhotoSelect
-blocks.
+PlantSage is current field-product work inside Horizon OS alongside PhotoSelect.
+It should stay bounded to Stage 2 consistency: app/backend media payloads,
+MinIO/R2 ingest proof, unified capture, safe ledger cards, and the first
+Hariharakhona Place Pack. It should not expand into a new unrelated lane.
 
 The core product is now clear:
 

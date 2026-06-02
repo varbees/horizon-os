@@ -37,7 +37,10 @@ export function computeCapitalMath({ targets = [], ledger = [], pipeline = [], r
 
   const netBurn = burn - mrr;
   const runwayMonths = burn > 0 ? cash / burn : null;
-  const runwayMonthsNet = netBurn > 0 ? cash / netBurn : netBurn <= 0 && (cash > 0 || mrr >= burn) ? Infinity : null;
+  let runwayMonthsNet;
+  if (burn <= 0) runwayMonthsNet = null; // burn unknown — cannot compute runway
+  else if (netBurn <= 0) runwayMonthsNet = Infinity; // income/MRR covers burn
+  else runwayMonthsNet = cash / netBurn;
 
   const monthsRemaining = Math.max(monthsBetween(now, milestoneDate), 0);
   const requiredMonthly = monthsRemaining > 0 ? gap / monthsRemaining : gap;
@@ -85,6 +88,7 @@ export function computeCapitalMath({ targets = [], ledger = [], pipeline = [], r
     weekNet: weekIn - weekOut,
     totalIn,
     totalOut,
+    needsBurn: burn === 0,
     needsRealNumbers: cash === 0 && burn === 0,
   };
 }

@@ -11,7 +11,8 @@ The `/capital` screen turns the February 2027 target into weekly math. It is bui
   monthly and weekly savings to close it before the milestone date.
 - **Offer pipeline**: the service-income funnel (prospect -> conversation -> proposal -> won/lost),
   seeded from the income_plan productized offers (PhotoSelect pilot, AI Integration Sprint, RevOps
-  retainer, HSKG client page) with open and stage-weighted value.
+  retainer, and a reusable local-business page pattern from the closed HSKG proof) with open and
+  stage-weighted value.
 - **Cash ledger**: money in / out with this-week totals and a quick-add form.
 - **Income-engine cadence**: 25 outbound, 3 conversations, 1 paid offer, 3 build-in-public posts
   per week — the non-negotiable funnel inputs from the distribution playbook.

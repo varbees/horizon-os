@@ -5,11 +5,11 @@ This document turns `~/Desktop/bolting/*` into one managed portfolio instead of 
 ## Command Doctrine
 
 1. PhotoSelect is the primary revenue proof.
-2. HSKG is the fast public delivery proof.
-3. Horizon OS / Component Forge is the sales-engine wrapper.
-4. Wedding Studio AI Ops is the first adjacent vertical AI upsell after PhotoSelect revenue proof.
-5. Agent Linux Control and RateGuard are strategic assets, not daily distractions.
-6. PlantSage is a strategic field-product proof: real data, real app/backend contracts, and reusable ingestion/storage lessons, but not the daily revenue lane.
+2. PlantSage is the current field-product proof: real data, real app/backend contracts, and reusable ingestion/storage lessons.
+3. HSKG is now closed as completed public delivery proof at `hskg.vercel.app`.
+4. Horizon OS / Component Forge is the control layer and sales-engine wrapper, not a third active product unless a slice is explicitly chosen.
+5. Wedding Studio AI Ops is the first adjacent vertical AI upsell after PhotoSelect revenue proof.
+6. Agent Linux Control and RateGuard are strategic assets, not daily distractions.
 7. Old projects can donate patterns, components, docs, and proof, but they do not become active unless they pass buyer validation.
 8. `agent-calendar-os` is the short public OSS goal: extract reusable calendar/agent blocks without exposing the private command center.
 
@@ -17,8 +17,8 @@ This document turns `~/Desktop/bolting/*` into one managed portfolio instead of 
 
 | Lane | Rule | Projects |
 | --- | --- | --- |
-| Focus Now | Revenue, proof, or public trust within 30 days | PhotoSelect, HSKG, Antharmaya Labs, Component Forge |
-| Strategic Asset | High leverage, one weekly block only | PlantSage, Agent Linux Control, SecureClaw, agent-calendar-os |
+| Focus Now | Current active work only | PhotoSelect, PlantSage |
+| Strategic Asset | High leverage, no daily build lane unless explicitly activated | Antharmaya Labs, Component Forge, Agent Linux Control, SecureClaw, agent-calendar-os |
 | Resurrect | Valid idea, must be constrained before code | RateGuard, Layers Green AI Studio, WidgetForge, InvoAI, Wedding Studio AI Ops |
 | Park | Good engineering, wrong timing | Desktop PhotoSelect, Kriate, Vault-Wealth, Anthar Vault |
 | Archive | Reference only | HomeBase, EcoLogistix, Gravita8, SHOP, deskold, misc folders |
@@ -27,19 +27,16 @@ This document turns `~/Desktop/bolting/*` into one managed portfolio instead of 
 
 ### Week 1
 
-- Ship `hskg.vercel.app` to a reviewable page.
+- Keep HSKG closed at `hskg.vercel.app`; no work unless a purchased domain or requested adjustment appears.
 - Finish PhotoSelect live-payment proof path or document the exact blocker.
-- Extract 3 Horizon OS components as Component Forge samples.
-- Draft the public `agent-calendar-os` README and screenshot plan.
-- Capture PlantSage progress in Horizon OS and keep Stage 2 gated to media/storage/capture consistency.
+- Finish one PlantSage Stage 2 proof path: media payload, ingest dry-run, live capture, or safe ledger card.
+- Capture current PhotoSelect and PlantSage progress in Horizon OS; do not expand a new active lane.
 
 ### Week 2
 
 - Run PhotoSelect pilot outreach to 10 studios.
-- Add active proofs to `antharmaya.com`.
-- Package one Agent Linux Control demo as a public engineering artifact.
-- Extract the first shadcn-style calendar block from Horizon OS.
 - Finish one PlantSage Stage 2 proof: MinIO/R2 media payload from backend into Flutter model fields.
+- Add only proven active work to `antharmaya.com`, if it helps sales or credibility.
 
 ### Week 3
 

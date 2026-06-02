@@ -31,7 +31,7 @@
   --sx-rounding-extra-small: var(--hz-radius-xs);
   --sx-rounding-small: var(--hz-radius-sm);
   --sx-rounding-extra-large: var(--hz-radius-lg);
-  min-height: 780px;
+  min-height: 640px;
   background:
     linear-gradient(180deg, rgba(220, 228, 255, 0.36), rgba(255, 255, 255, 0)),
     var(--md-sys-color-surface);
@@ -40,7 +40,7 @@
 .horizon-schedule .sx-react-calendar-wrapper {
   width: 100%;
   height: min(82vh, 900px);
-  min-height: 780px;
+  min-height: 640px;
 }
 
 .horizon-schedule .sx__calendar-wrapper {
@@ -103,5 +103,19 @@
   .horizon-schedule .sx-react-calendar-wrapper {
     height: 76vh;
     min-height: 680px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .horizon-schedule .sx-react-calendar-wrapper {
+    height: calc(100dvh - 16.5rem);
+    min-height: 680px;
+  }
+}
+
+@media (min-width: 1360px) {
+  .horizon-schedule .sx-react-calendar-wrapper {
+    height: calc(100dvh - 14.5rem);
+    min-height: 700px;
   }
 }

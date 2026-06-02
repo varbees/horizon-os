@@ -1,41 +1,22 @@
-# HSKG Landing Page Launch Brief
+# HSKG Closure Note
 
 ## Objective
 
-Ship a fast, trustworthy one-page site at `hskg.vercel.app` for review and deployment.
+Keep HSKG closed as a completed public proof at `hskg.vercel.app`.
 
-## Required Inputs
+The project should not remain in the active Horizon build lane. It reopens only when a domain is purchased for transfer/DNS work or when explicit content/service adjustments are requested.
 
-- Exact business name
-- Service category
-- Phone or WhatsApp number
-- Service area
-- Operating hours
-- Three to five services
-- Photos if available
-- Reviews or proof points if available
+## Current Status
 
-## Page Sections
+- Public URL: `https://hskg.vercel.app`
+- State: done / parked
+- Active work: none
+- Future trigger: purchased domain, DNS transfer, or requested adjustments
 
-1. Hero
-   - Business name
-   - One-line offer
-   - Service area
-   - Primary CTA
+## Future Reopen Checklist
 
-2. Services
-   - Three to five plain-language service cards
-
-3. Trust
-   - Reviews, photos, years in service, or direct proof
-
-4. Contact
-   - Phone, WhatsApp, map link, operating hours
-
-## Deployment Gate
-
-- Mobile screenshot checked
-- CTA works
-- Metadata is correct
-- Local business schema is present
-- Domain opens cleanly
+- Purchased domain name
+- Registrar or Cloudflare ownership confirmation
+- DNS target decision
+- Whether `hskg.vercel.app` remains canonical or redirects
+- Any requested copy/contact/service-area changes

@@ -146,13 +146,13 @@ export default function Capital() {
         copy="The first operating number is not a SaaS dream. It is signed service income. This screen tracks the gap, the runway, the offer pipeline, and the exact amount that must be earned this week and this month."
       />
 
-      {math.needsRealNumbers ? (
+      {math.needsBurn ? (
         <div className="mb-4 flex items-start gap-3 rounded-[var(--hz-radius-md)] border border-brass/40 bg-brass/10 p-4">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-brass" aria-hidden="true" />
           <p className="text-sm leading-6 text-paper/76">
-            <span className="font-black text-paper">Inspection gate:</span> current cash and monthly burn are still placeholders.
-            Enter your real opening balance and burn in the runway knobs below so the runway and required-savings math become true.
-            {source === "seed" ? " Run npm run dev:full to persist edits to the local database." : ""}
+            <span className="font-black text-paper">Set monthly burn</span> to see runway months. Cash ({compactInr(math.cash)})
+            and MRR ({compactInr(math.mrr)}) are recorded; the required weekly/monthly income already works from the gap.
+            {source === "seed" ? " Run npm run dev:full to persist edits." : ""}
           </p>
         </div>
       ) : null}

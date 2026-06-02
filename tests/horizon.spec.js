@@ -5,13 +5,14 @@ test.describe("Horizon OS command center", () => {
     await page.goto("/journey");
     await page.waitForLoadState("networkidle");
 
-    await expect(page.getByRole("heading", { name: "Make the two-year climb visible." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Climb the two-year route, leg by leg." })).toBeVisible();
     await expect(page.getByRole("heading", { name: "February 2027 gap" })).toBeVisible();
     await expect(page.getByText("₹11,50,000")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "West Hill scout log" })).toBeVisible();
-    await expect(page.getByText("13.7118453")).toBeVisible();
-    await expect(page.getByText("79.7116267")).toBeVisible();
-    await expect(page.getByText("211.55m")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Routes and branch legs" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "West Hill ridge scout" })).toBeVisible();
+    await expect(page.getByText("13.711845")).toBeVisible();
+    await expect(page.getByText("79.711627")).toBeVisible();
+    await expect(page.getByText("211.6m")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Research to action" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Free tool as lead magnet" })).toBeVisible();
   });
@@ -24,7 +25,7 @@ test.describe("Horizon OS command center", () => {
     await expect(page).toHaveURL(/\/journey$/);
     await expect(page.getByRole("heading", { name: "Vertical slices only" })).toBeVisible();
 
-    await page.getByRole("link", { name: /^Docs$/ }).click();
+    await page.getByRole("link", { name: /Docs/ }).click();
     await expect(page).toHaveURL(/\/documents$/);
     await expect(page.getByRole("heading", { name: "Documents, presentations, and connectors." })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Journey Log System" })).toBeVisible();

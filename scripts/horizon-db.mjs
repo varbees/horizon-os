@@ -242,7 +242,7 @@ function seed(db) {
       task.phaseId ?? "",
       task.lane ?? "General",
       task.title,
-      "open",
+      task.status ?? "open",
       task.priority ?? "normal",
       Number(task.revenueImpact ?? 0),
       task.dueAt ?? null,

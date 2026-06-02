@@ -97,7 +97,7 @@ export const timeBlocks = [
     title: "Flex / Systems / Learning",
     lane: "Systems",
     color: "#77a0d8",
-    activity: "Docs, infrastructure, HSKG, connectors, CS reading, or client overflow.",
+    activity: "Docs, infrastructure, PlantSage, connectors, CS reading, or client overflow.",
     output: "This is where systems compound without stealing the main build blocks.",
     calendar: "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
   },
@@ -386,9 +386,9 @@ export const capitalTargets = [
 // real current cash, monthly burn, and MRR must come from the operator.
 export const runwayStateSeed = {
   id: "current",
-  currentCashInr: 0,
-  monthlyBurnInr: 0,
-  mrrInr: 0,
+  currentCashInr: 500, // opening balance per operator; survival-level, no savings buffer
+  monthlyBurnInr: 0, // unset — monthly income roughly covers survival + subscriptions
+  mrrInr: 0, // no recurring revenue yet
   weeklyOutboundTarget: 25, // income_plan: 25 personalized outreaches / week
   weeklyConversationTarget: 3, // income_plan: 3 buyer conversations / week
   weeklyOfferTarget: 1, // income_plan: 1 paid offer pushed / week
@@ -434,7 +434,7 @@ export const offerPipelineSeed = [
     stage: "proposal",
     valueInr: 35000,
     recurring: 0,
-    next: "Ship hskg.vercel.app to a reviewable page, then convert it into a paid template offer.",
+    next: "HSKG is closed at hskg.vercel.app. Reuse this only as a template reference for a future paid local-business page.",
     sortOrder: 3,
   },
 ];
@@ -744,6 +744,42 @@ export const resourceSeeds = [
     tags: ["field", "proof"],
     sortOrder: 4,
   },
+  {
+    id: "domain-antharmaya",
+    title: "antharmaya.com (owned)",
+    source: "Cloudflare / beesharsha@gmail.com",
+    kind: "domain",
+    projectId: "antharmaya-labs",
+    status: "actioned",
+    note: "Live foundry site (antharmaya-labs, Next.js on Cloudflare Workers).",
+    next: "Add active project proofs to the site.",
+    tags: ["domain", "cloudflare", "live"],
+    sortOrder: 5,
+  },
+  {
+    id: "domain-photoselect",
+    title: "photoselect.space (owned)",
+    source: "Cloudflare / beesharsha@gmail.com",
+    kind: "domain",
+    projectId: "photoselect",
+    status: "assigned",
+    note: "Flagship product domain. Cloud Run API + R2 media path.",
+    next: "Point the production PhotoSelect deployment at photoselect.space.",
+    tags: ["domain", "cloudflare", "flagship"],
+    sortOrder: 6,
+  },
+  {
+    id: "domain-plantsage",
+    title: "plantsage.earth (to acquire)",
+    source: "Cloudflare / beesharsha@gmail.com",
+    kind: "domain",
+    projectId: "plantsage",
+    status: "inbox",
+    note: "Canonical PlantSage domain; acquisition planned soon.",
+    next: "Register plantsage.earth under the Cloudflare account and reserve www/app subdomains.",
+    tags: ["domain", "cloudflare", "planned"],
+    sortOrder: 7,
+  },
 ];
 
 export const socialPostSeeds = [
@@ -786,10 +822,10 @@ export const projects = [
   {
     id: "dialysis-saathi",
     name: "DialysisSaathi Hackathon MVP",
-    now: true,
-    horizon: "May 24-30",
-    revenue: "Hackathon proof, healthcare domain-agent credibility, possible family-care pilot.",
-    fit: "Hard deadline, lived problem, WhatsApp-first India context, real domain constraints, and strong Codex-demo story.",
+    now: false,
+    horizon: "Completed sprint / reference",
+    revenue: "Hackathon proof, healthcare domain-agent credibility, and reusable WhatsApp-first pipeline lessons.",
+    fit: "The dated sprint is over; keep the runbook and technical patterns as reference unless this lane is explicitly reactivated.",
     brief:
       "A WhatsApp-first renal care copilot for Indian hemodialysis families: lab report photo/PDF ingest, red/amber/green renal trend card, Indian food renal diet stoplight, shared family context, and a nephrologist one-pager.",
     examples: [
@@ -797,15 +833,15 @@ export const projects = [
       "Banana 150g or palak 80g -> renal diet stoplight with potassium/phosphorus math.",
       "Weekly PDF summary for nephrologist visit.",
     ],
-    deliverables: ["Live WhatsApp path", "Public demo URL", "GitHub repo with AGENTS.md", "Eval fixtures", "90-sec Loom", "Submission write-up"],
+    deliverables: ["Runbook", "WhatsApp/OCR lessons", "Eval fixture pattern", "Healthcare ops reference"],
   },
   {
     id: "forge",
     name: "Interactive Component Forge",
-    now: true,
-    horizon: "Day 1-21",
-    revenue: "$5k-$10k first engagement, then retainers.",
-    fit: "Best immediate build because it converts your UI speed into sales proof.",
+    now: false,
+    horizon: "Support / sales asset",
+    revenue: "$5k-$10k first engagement, then retainers, only after the current lanes produce proof.",
+    fit: "Useful as outbound material and Horizon OS extraction work, but not a separate active project while PhotoSelect and PlantSage are running.",
     brief:
       "A library of polished SaaS dashboard widgets, SVG explainers, and motion demos. Each outbound lead receives a tiny custom component showing how their app could feel.",
     examples: [
@@ -813,25 +849,25 @@ export const projects = [
       "RevOps automation canvas for a sales-led startup.",
       "AI assistant audit panel that shows latency, cost, and risk.",
     ],
-    deliverables: ["10 demo components", "1 landing page", "25 personalized outbound clips", "pricing one-pager"],
+    deliverables: ["Reusable components", "Sales snippets", "One-page offer", "Public OSS extraction when useful"],
   },
   {
     id: "hskg",
-    name: "hskg.vercel.app Launch",
-    now: true,
-    horizon: "Day 1-7",
-    revenue: "Trust artifact, portfolio proof, local SEO asset.",
-    fit: "A free, clean, deployable landing page for Babai that doubles as a public build proof.",
+    name: "hskg.vercel.app Closure",
+    now: false,
+    horizon: "Closed / parked",
+    revenue: "Completed trust artifact and portfolio proof.",
+    fit: "The page stays at hskg.vercel.app until a domain is purchased or explicit post-launch adjustments are requested.",
     brief:
-      "One fast page with clear offer, WhatsApp/contact route, service area, review section, schema markup, and deployment review checklist.",
-    examples: ["Hero with real business name", "Services grid", "Before/after or trust section", "Contact CTA"],
-    deliverables: ["Copy deck", "One-page build", "SEO metadata", "Deployment checklist"],
+      "No active build lane. Keep the Vercel URL as the canonical proof link; reopen only for domain transfer, DNS setup, or requested copy/service changes.",
+    examples: ["hskg.vercel.app remains live", "Domain transfer after purchase", "Small copy/contact edits only on request"],
+    deliverables: ["Live Vercel page", "Closed status note", "Future domain-transfer gate"],
   },
   {
     id: "photoselect",
     name: "PhotoSelect Proof Loop",
-    now: false,
-    horizon: "Day 8-45",
+    now: true,
+    horizon: "Current work / revenue proof",
     revenue: "Product proof for Indian studios and outbound credibility.",
     fit: "Your strongest existing proof: operational software for Indian studios.",
     brief:
@@ -842,10 +878,10 @@ export const projects = [
   {
     id: "plantsage",
     name: "PlantSage Field Product",
-    now: false,
-    horizon: "Strategic block",
+    now: true,
+    horizon: "Current work / Stage 2",
     revenue: "Field-data proof, app/backend depth, ecological education wedge, and Antharmaya credibility asset.",
-    fit: "Real fieldwork, real media, real backend/app contracts, and a place-aware product loop. Strong proof, but it must stay batched so it does not compete with the revenue floor.",
+    fit: "Real fieldwork, real media, real backend/app contracts, and a place-aware product loop. Current work alongside PhotoSelect, kept bounded to Stage 2 consistency so it stays shippable.",
     brief:
       "A Flutter + FastAPI ecological memory system: capture plant evidence in the field, attach GPS/trail context, run quick ID, generate an 8-domain species card, and grow Hariharakhona Region #001 into a reusable Place Pack model.",
     examples: [
@@ -980,12 +1016,12 @@ export const documents = [
   },
   {
     id: "hskg-brief",
-    title: "HSKG Landing Page Launch Brief",
-    type: "Deployment doc",
+    title: "HSKG Closure Note",
+    type: "Closed project",
     owner: "Codex + You",
-    cadence: "Daily until deployed",
-    purpose: "Make hskg.vercel.app reviewable, deployable, and useful.",
-    next: "Collect business name, service list, phone/WhatsApp, area, and photos.",
+    cadence: "Reopen only after domain purchase or explicit adjustment request",
+    purpose: "Keep HSKG closed as a completed public proof at hskg.vercel.app.",
+    next: "No active work. Future work is limited to domain transfer, DNS, or small requested content changes.",
   },
   {
     id: "component-forge",
@@ -1327,12 +1363,13 @@ export const actionTasks = [
     projectId: "hskg",
     phaseId: "weeks-1-4",
     lane: "Public proof",
-    title: "Collect HSKG launch inputs and one CTA",
+    title: "HSKG launch inputs and one CTA closed",
+    status: "done",
     priority: "high",
     revenueImpact: 0,
     dueAt: "2026-05-23",
     sortOrder: 40,
-    evidence: "Business name, service list, area, phone or WhatsApp, email, address, photos, and one main action.",
+    evidence: "Project is closed at hskg.vercel.app. Reopen only for purchased-domain transfer, DNS, or explicit content adjustments.",
   },
   {
     id: "action-hskg-review-deploy",
@@ -1341,12 +1378,13 @@ export const actionTasks = [
     projectId: "hskg",
     phaseId: "weeks-1-4",
     lane: "Public proof",
-    title: "Ship HSKG review build to hskg.vercel.app",
+    title: "HSKG stays parked at hskg.vercel.app",
+    status: "done",
     priority: "normal",
     revenueImpact: 0,
     dueAt: "2026-05-28",
     sortOrder: 50,
-    evidence: "Mobile screenshot, desktop screenshot, Lighthouse sanity, deployment URL, and one feedback note.",
+    evidence: "Closed as a completed public proof. Future work is domain purchase/transfer or requested adjustments only.",
   },
   {
     id: "action-component-forge-extract",
@@ -1660,14 +1698,14 @@ export const systemNodes = [
   {
     id: "dialysis-saathi",
     label: "DialysisSaathi",
-    kind: "Hackathon Sprint",
-    status: "Approved",
+    kind: "Sprint Reference",
+    status: "Archived / reusable",
     x: 930,
     y: 444,
     color: "#ba4d35",
-    note: "WhatsApp-first renal-care copilot for Indian hemodialysis families. Hard deadline sprint from May 24-30.",
-    next: "Prepare credentials, AGENTS.md, WhatsApp webhook, OCR evals, diet stoplight, and final demo package.",
-    outputs: ["WhatsApp MVP", "Eval proof", "Loom", "Submission"],
+    note: "WhatsApp-first renal-care copilot for Indian hemodialysis families. Keep the sprint as a reusable WhatsApp/OCR/healthcare pipeline reference.",
+    next: "No active work unless a healthcare buyer, hackathon follow-up, or concrete deployment request appears.",
+    outputs: ["Runbook", "WhatsApp/OCR lessons", "Eval fixture pattern", "Healthcare ops reference"],
   },
   {
     id: "studio-ai-ops",
@@ -1697,23 +1735,23 @@ export const systemNodes = [
     id: "hskg",
     label: "HSKG",
     kind: "Proof",
-    status: "Small win",
+    status: "Done / parked",
     x: 112,
     y: 314,
     color: "#087861",
-    note: "Fast public delivery proof and goodwill page.",
-    next: "Ship reviewable page, mobile polish, and contact CTA.",
-    outputs: ["Landing page", "SEO proof", "Portfolio trust"],
+    note: "Completed public proof. The page remains at hskg.vercel.app until a domain is purchased or explicit adjustments are requested.",
+    next: "No active work; reopen only for domain transfer, DNS, or small requested changes.",
+    outputs: ["Live Vercel page", "Closed proof", "Future domain gate"],
   },
   {
     id: "plantsage",
     label: "PlantSage",
     kind: "Field Product",
-    status: "Stage 2 gate",
+    status: "Current work / Stage 2",
     x: 724,
     y: 592,
     color: "#3f7f5f",
-    note: "Flutter field app plus FastAPI research backend for GPS-anchored ecological memory. Hariharakhona Region #001 now has real ridge-session data, media, atlas records, and backend/app contracts.",
+    note: "Current field-product work: Flutter field app plus FastAPI research backend for GPS-anchored ecological memory. Hariharakhona Region #001 has real ridge-session data, media, atlas records, and backend/app contracts.",
     next: "Finish Stage 2 consistency: shared media payload, MinIO/R2 ingest proof, unified capture, safe ledger card, and Place Pack skeleton.",
     outputs: ["Field atlas", "Media ingest", "Research cards", "Place Pack"],
   },
@@ -1753,9 +1791,9 @@ export const systemEdges = [
   { from: "calendar", to: "income-engine", label: "protects" },
   { from: "calendar", to: "journey-log", label: "prompts" },
   { from: "calendar", to: "photoselect", label: "protects" },
-  { from: "calendar", to: "dialysis-saathi", label: "sprints" },
-  { from: "calendar", to: "hskg", label: "ships" },
-  { from: "calendar", to: "plantsage", label: "batches" },
+  { from: "calendar", to: "dialysis-saathi", label: "archives" },
+  { from: "calendar", to: "hskg", label: "parks" },
+  { from: "calendar", to: "plantsage", label: "protects" },
   { from: "income-engine", to: "capital-targets", label: "funds" },
   { from: "income-engine", to: "photoselect", label: "sells" },
   { from: "playbook-engine", to: "income-engine", label: "sharpens" },
@@ -1831,7 +1869,7 @@ SUMMARY:Flex / Systems / Learning
 DTSTART;TZID=Asia/Kolkata:20260525T150000
 DTEND;TZID=Asia/Kolkata:20260525T163000
 RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;UNTIL=20280522T182959Z
-DESCRIPTION:Docs, infrastructure, HSKG, connectors, CS reading, or client overflow.
+DESCRIPTION:Docs, infrastructure, PlantSage, connectors, CS reading, or client overflow.
 END:VEVENT
 BEGIN:VEVENT
 UID:horizon-spec-20260530@antharmaya.local

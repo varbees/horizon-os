@@ -2,7 +2,7 @@
 
 ## Mission
 
-Build a two-year Antharmaya foundry path from full-time execution to a stable safe haven by treating service income, PhotoSelect, body, attention, and land/spec as one operating system.
+Build a two-year Antharmaya foundry path from full-time execution to a stable safe haven by treating service income, PhotoSelect, PlantSage, body, attention, and land/spec as one operating system.
 
 ## Source Inputs
 
@@ -19,31 +19,32 @@ Build a two-year Antharmaya foundry path from full-time execution to a stable sa
 1. Service engine first: cash floor before private product sprawl.
 2. PhotoSelect is the flagship product and main proof loop.
 3. The daily spiritual/body scaffold is the backbone, not an optional habit.
-4. HSKG is the clean public delivery win.
+4. HSKG is closed as the clean public delivery win and stays parked at `hskg.vercel.app`.
 5. Old projects become inputs unless they pass buyer validation.
-6. PlantSage is a strategic field-data proof, worked in bounded Stage 2 blocks, not a replacement for the revenue floor.
+6. Current active work is PhotoSelect plus PlantSage. Horizon OS supports those lanes; it does not become a third daily project.
+7. PlantSage is active but bounded to Stage 2 consistency until app/backend/media contracts are proven.
 
 ## Immediate Build Order
 
-1. Horizon OS / Component Forge
-   - Goal: turn UI engineering speed into sales proof and make this app the command center.
-   - Output: hub, 10 polished components, one offer page, first 25 targeted messages.
-
-2. `hskg.vercel.app`
-   - Goal: one useful free landing page plus a public proof of delivery.
-   - Output: one-page site, mobile review, schema, deployment checklist.
-
-3. PhotoSelect Proof Loop
+1. PhotoSelect Proof Loop
    - Goal: convert the existing product into repeatable credibility.
    - Output: case study, demo script, studio outreach list.
+
+2. PlantSage Stage 2 Consistency
+   - Goal: preserve the real fieldwork and app/backend progress while making the product contract reliable.
+   - Output: shared media payload, MinIO/R2 ingest proof, unified capture contract, safe ledger card, Hariharakhona Place Pack.
+
+3. Horizon OS Support Slice
+   - Goal: make current work actionable and measurable from the command center.
+   - Output: only the dashboard, docs, calendar, or graph work needed to steer PhotoSelect and PlantSage this week.
 
 4. Offgrid Spec Engine
    - Goal: force safe-haven decisions into numbers.
    - Output: region shortlist, resource sheet, monthly decision memo.
 
-5. PlantSage Stage 2 Consistency
-   - Goal: preserve the real fieldwork and app/backend progress without letting it fragment the revenue week.
-   - Output: shared media payload, MinIO/R2 ingest proof, unified capture contract, safe ledger card, Hariharakhona Place Pack.
+5. `hskg.vercel.app`
+   - Goal: closed public proof link.
+   - Output: no active work; reopen only for purchased-domain transfer, DNS, or explicit adjustments.
 
 ## Daily Floor
 

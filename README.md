@@ -1,6 +1,6 @@
 # Horizon OS Command Center
 
-Local command center for the Antharmaya foundry plan: service engine, PhotoSelect, HSKG, Component Forge, and the body/attention/spec backbone.
+Local command center for the Antharmaya foundry plan: service engine, current PhotoSelect + PlantSage work, HSKG as a closed proof, and the body/attention/spec backbone.
 
 ## Run
 
@@ -39,7 +39,7 @@ npm run build
 - `/inbox` - Resource & Content Inbox: link capture, content backlog, and the social skills catalog
 - `/map` - node-editor command graph backed by local SQLite API
 - `/documents` - docs and connector artifacts
-- `/hskg` - launch brief for `hskg.vercel.app`
+- `/hskg` - closure note for the parked `hskg.vercel.app` proof
 
 ## Canonical Docs
 
@@ -48,6 +48,7 @@ npm run build
 - `docs/source-inputs/twelve_month_plan.md`
 - `docs/capital-runway-os.md`
 - `docs/resource-content-inbox.md`
+- `docs/infrastructure.md`
 - `docs/horizon-operating-plan.md`
 - `docs/portfolio-command-map.md`
 - `docs/hskg-launch-brief.md`

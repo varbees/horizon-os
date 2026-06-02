@@ -35,7 +35,6 @@ import {
 } from "lucide-react";
 import Panel from "../components/Panel.jsx";
 import PrimaryButton from "../components/PrimaryButton.jsx";
-import SectionHeader from "../components/SectionHeader.jsx";
 import {
   agentCalendarPrompts,
   calendarConnectors,
@@ -340,38 +339,48 @@ export default function CalendarMatrix() {
   );
 
   return (
-    <div>
-      <SectionHeader
-        eyebrow="Calendar command surface"
-        title="A real calendar surface for the foundry."
-        copy="Schedule-X now handles the heavy calendar UI: week, day, month, agenda, recurrence, current time, modal details, controls, and local persistence."
-        action={
-          <div className="flex flex-wrap gap-2">
-            <PrimaryButton onClick={() => setPanelMode("create")}>
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              New block
-            </PrimaryButton>
-            <button
-              type="button"
-              onClick={downloadCalendar}
-              className="inline-flex items-center gap-2 rounded-md border border-outlineVariant bg-surface px-4 py-2.5 text-sm font-bold text-paper/76 transition hover:border-outline hover:text-paper"
-            >
-              <Download className="h-4 w-4" aria-hidden="true" />
-              Export ICS
-            </button>
-            <a
-              href="/horizon-calendar.ics"
-              className="inline-flex items-center gap-2 rounded-md border border-outlineVariant bg-surface px-4 py-2.5 text-sm font-bold text-paper/76 transition hover:border-outline hover:text-paper"
-            >
-              Static file
-              <ExternalLink className="h-4 w-4" aria-hidden="true" />
-            </a>
+    <div className="calendar-command-page">
+      <div className="mb-4 flex flex-col gap-3 rounded-[var(--hz-radius-lg)] border border-outlineVariant/80 bg-surface/86 px-4 py-3 shadow-rule backdrop-blur-xl lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-brass">Calendar command surface</p>
+          <div className="mt-1 flex flex-wrap items-end gap-x-3 gap-y-1">
+            <h1 className="font-display text-2xl font-bold tracking-tight text-paper lg:text-3xl">
+              Foundry calendar surface
+            </h1>
+            <span className="rounded-full border border-outlineVariant bg-surfaceContainer px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-paper/50">
+              Schedule-X / SQLite / agent bridge
+            </span>
           </div>
-        }
-      />
+          <p className="mt-2 max-w-4xl text-sm leading-6 text-paper/60">
+            Week, day, month, agenda, recurrence, current time, modal details, controls, and local persistence without compressing the workspace.
+          </p>
+        </div>
 
-      <section className="grid gap-4 xl:grid-cols-[17rem_minmax(0,1fr)] 2xl:grid-cols-[17rem_minmax(52rem,1fr)_23rem]">
-        <aside className="space-y-4 xl:col-start-1 xl:row-start-1">
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <PrimaryButton onClick={() => setPanelMode("create")}>
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            New block
+          </PrimaryButton>
+          <button
+            type="button"
+            onClick={downloadCalendar}
+            className="inline-flex items-center gap-2 rounded-md border border-outlineVariant bg-surface px-4 py-2.5 text-sm font-bold text-paper/76 transition hover:border-outline hover:text-paper"
+          >
+            <Download className="h-4 w-4" aria-hidden="true" />
+            Export ICS
+          </button>
+          <a
+            href="/horizon-calendar.ics"
+            className="inline-flex items-center gap-2 rounded-md border border-outlineVariant bg-surface px-4 py-2.5 text-sm font-bold text-paper/76 transition hover:border-outline hover:text-paper"
+          >
+            Static file
+            <ExternalLink className="h-4 w-4" aria-hidden="true" />
+          </a>
+        </div>
+      </div>
+
+      <section className="calendar-matrix-grid">
+        <aside className="calendar-rail space-y-4">
           <Panel className="p-4">
             <div className="flex items-center gap-3">
               <div className="grid h-10 w-10 place-items-center rounded-md bg-primaryContainer text-onPrimaryContainer">
@@ -462,7 +471,7 @@ export default function CalendarMatrix() {
           </Panel>
         </aside>
 
-        <Panel className="overflow-hidden xl:col-start-2 xl:row-start-1">
+        <Panel className="calendar-main-panel overflow-hidden">
           <div className="flex flex-col gap-3 border-b border-outlineVariant p-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">Live calendar</p>
@@ -481,7 +490,7 @@ export default function CalendarMatrix() {
           </div>
         </Panel>
 
-        <aside className="space-y-4 xl:col-start-2 xl:row-start-2 2xl:col-start-3 2xl:row-start-1">
+        <aside className="calendar-inspector space-y-4">
           {panelMode === "create" || panelMode === "edit" ? (
             <CalendarEditor
               mode={panelMode}
