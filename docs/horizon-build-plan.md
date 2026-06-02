@@ -54,9 +54,9 @@ Every version ships all five or it is not done:
 | Version | Slice | Status |
 | --- | --- | --- |
 | v0.4 | Journey Ledger (route, capital targets, playbook) | Done |
-| v0.4.1 | Obsidian-grade Journey trek ledger (GPS + elevation + branching alleys/valleys, DB-backed, reusable scout template) | This cycle |
-| v0.5 | Capital & Runway OS (`/capital`: targets, cash ledger, offer pipeline, weekly math vs Feb-2027 gap) | This cycle |
-| v0.6 | Resource & Content Inbox (`/inbox`: resource capture, social backlog, 14-skill catalog) | This cycle |
+| v0.4.1 | Obsidian-grade Journey trek ledger (GPS + elevation + branching alleys/valleys, DB-backed, reusable scout template) | Done |
+| v0.5 | Capital & Runway OS (`/capital`: targets, cash ledger, offer pipeline, weekly math vs Feb-2027 gap) | Done |
+| v0.6 | Resource & Content Inbox (`/inbox`: resource capture, social backlog, 14-skill catalog) | Done |
 | v0.7 | Calendar Write Loop (local event create/edit, Google payload dry-run) | Next |
 | v1.0 | Weekly Command OS (Sunday review workspace) | Planned |
 
