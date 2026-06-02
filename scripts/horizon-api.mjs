@@ -71,6 +71,31 @@ function taskPayload(body) {
   };
 }
 
+function journeyPayload(body) {
+  return {
+    parent_id: body.parent_id ?? body.parentId ?? null,
+    date: body.date ?? new Date().toISOString().slice(0, 10),
+    tz: body.tz ?? "Asia/Kolkata",
+    type: body.type ?? "Field Scout",
+    anchor: body.anchor ?? "Spec",
+    segment: body.segment ?? "ridge",
+    title: String(body.title ?? "").trim() || "Untitled leg",
+    location: body.location ?? "",
+    latitude: body.latitude ?? null,
+    longitude: body.longitude ?? null,
+    altitude_m: body.altitude_m ?? body.altitudeMeters ?? null,
+    accuracy_m: body.accuracy_m ?? body.accuracyMeters ?? null,
+    elevation_gain_m: body.elevation_gain_m ?? body.elevationGainMeters ?? null,
+    terrain: body.terrain ?? "",
+    difficulty: body.difficulty ?? "",
+    evidence: body.evidence ?? "",
+    lesson: body.lesson ?? "",
+    next_action: body.next_action ?? body.next ?? "",
+    tags_json: Array.isArray(body.tags) ? JSON.stringify(body.tags) : body.tags_json ?? "[]",
+    sort_order: Number(body.sort_order ?? body.sortOrder ?? 0),
+  };
+}
+
 function getCommandBase() {
   return {
     nodes: all("SELECT * FROM graph_nodes ORDER BY kind, label"),
@@ -189,6 +214,61 @@ const server = createServer(async (req, res) => {
     if (req.method === "DELETE" && url.pathname.startsWith("/api/calendar/events/")) {
       const id = decodeURIComponent(url.pathname.replace("/api/calendar/events/", ""));
       db.prepare("DELETE FROM calendar_events WHERE id = ?").run(id);
+      return json(res, 200, { ok: true, id });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/journey") {
+      return json(res, 200, {
+        entries: all("SELECT * FROM journey_entries ORDER BY date DESC, sort_order, created_at"),
+      });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/journey") {
+      const body = await readJson(req);
+      const id = body.id ?? randomUUID();
+      const entry = journeyPayload(body);
+      db.prepare(`
+        INSERT INTO journey_entries (
+          id, parent_id, date, tz, type, anchor, segment, title, location,
+          latitude, longitude, altitude_m, accuracy_m, elevation_gain_m,
+          terrain, difficulty, evidence, lesson, next_action, tags_json, sort_order
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        id, entry.parent_id, entry.date, entry.tz, entry.type, entry.anchor,
+        entry.segment, entry.title, entry.location, entry.latitude, entry.longitude,
+        entry.altitude_m, entry.accuracy_m, entry.elevation_gain_m, entry.terrain,
+        entry.difficulty, entry.evidence, entry.lesson, entry.next_action,
+        entry.tags_json, entry.sort_order,
+      );
+      return json(res, 201, { ok: true, id });
+    }
+
+    if (req.method === "PATCH" && url.pathname.startsWith("/api/journey/")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/journey/", ""));
+      const existing = db.prepare("SELECT * FROM journey_entries WHERE id = ?").get(id);
+      if (!existing) return json(res, 404, { ok: false, error: "journey_entry_not_found" });
+      const entry = journeyPayload({ ...existing, ...(await readJson(req)) });
+      db.prepare(`
+        UPDATE journey_entries
+        SET parent_id = ?, date = ?, tz = ?, type = ?, anchor = ?, segment = ?, title = ?,
+            location = ?, latitude = ?, longitude = ?, altitude_m = ?, accuracy_m = ?,
+            elevation_gain_m = ?, terrain = ?, difficulty = ?, evidence = ?, lesson = ?,
+            next_action = ?, tags_json = ?, sort_order = ?, updated_at = datetime('now')
+        WHERE id = ?
+      `).run(
+        entry.parent_id, entry.date, entry.tz, entry.type, entry.anchor, entry.segment,
+        entry.title, entry.location, entry.latitude, entry.longitude, entry.altitude_m,
+        entry.accuracy_m, entry.elevation_gain_m, entry.terrain, entry.difficulty,
+        entry.evidence, entry.lesson, entry.next_action, entry.tags_json, entry.sort_order,
+        id,
+      );
+      return json(res, 200, { ok: true, id });
+    }
+
+    if (req.method === "DELETE" && url.pathname.startsWith("/api/journey/")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/journey/", ""));
+      db.prepare("DELETE FROM journey_entries WHERE id = ?").run(id);
       return json(res, 200, { ok: true, id });
     }
 

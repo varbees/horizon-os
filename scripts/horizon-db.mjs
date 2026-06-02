@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
-import { actionTasks, hackathonEvents, systemEdges, systemNodes, timeBlocks } from "../src/data/horizon.js";
+import { actionTasks, hackathonEvents, journeyEntries, systemEdges, systemNodes, timeBlocks } from "../src/data/horizon.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dbPath = process.env.HORIZON_DB_PATH ?? resolve(root, ".horizon", "horizon.sqlite");
@@ -237,6 +237,63 @@ function seed(db) {
     );
   }
 
+  const insertJourney = db.prepare(`
+    INSERT INTO journey_entries (
+      id, parent_id, date, tz, type, anchor, segment, title, location,
+      latitude, longitude, altitude_m, accuracy_m, elevation_gain_m,
+      terrain, difficulty, evidence, lesson, next_action, tags_json, sort_order
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      parent_id = excluded.parent_id,
+      date = excluded.date,
+      tz = excluded.tz,
+      type = excluded.type,
+      anchor = excluded.anchor,
+      segment = excluded.segment,
+      title = excluded.title,
+      location = excluded.location,
+      latitude = excluded.latitude,
+      longitude = excluded.longitude,
+      altitude_m = excluded.altitude_m,
+      accuracy_m = excluded.accuracy_m,
+      elevation_gain_m = excluded.elevation_gain_m,
+      terrain = excluded.terrain,
+      difficulty = excluded.difficulty,
+      evidence = excluded.evidence,
+      lesson = excluded.lesson,
+      next_action = excluded.next_action,
+      tags_json = excluded.tags_json,
+      sort_order = excluded.sort_order,
+      updated_at = datetime('now')
+  `);
+
+  for (const entry of journeyEntries) {
+    insertJourney.run(
+      entry.id,
+      entry.parentId ?? null,
+      entry.date,
+      entry.tz ?? "Asia/Kolkata",
+      entry.type ?? "Field Scout",
+      entry.anchor ?? "Spec",
+      entry.segment ?? "ridge",
+      entry.title,
+      entry.location ?? "",
+      entry.latitude ?? null,
+      entry.longitude ?? null,
+      entry.altitudeMeters ?? null,
+      entry.accuracyMeters ?? null,
+      entry.elevationGainMeters ?? null,
+      entry.terrain ?? "",
+      entry.difficulty ?? "",
+      entry.evidence ?? "",
+      entry.lesson ?? "",
+      entry.next ?? "",
+      JSON.stringify(entry.tags ?? []),
+      Number(entry.sortOrder ?? 0),
+    );
+  }
+
   const insertContext = db.prepare(`
     INSERT OR IGNORE INTO contexts (id, kind, title, body, source)
     VALUES (?, ?, ?, ?, ?)
@@ -272,6 +329,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const nodeCount = db.prepare("SELECT count(*) AS count FROM graph_nodes").get().count;
   const eventCount = db.prepare("SELECT count(*) AS count FROM calendar_events").get().count;
   const taskCount = db.prepare("SELECT count(*) AS count FROM tasks").get().count;
-  console.log(JSON.stringify({ ok: true, dbPath, nodeCount, eventCount, taskCount }, null, 2));
+  const journeyCount = db.prepare("SELECT count(*) AS count FROM journey_entries").get().count;
+  console.log(JSON.stringify({ ok: true, dbPath, nodeCount, eventCount, taskCount, journeyCount }, null, 2));
   db.close();
 }

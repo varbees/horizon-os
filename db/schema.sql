@@ -95,6 +95,32 @@ CREATE TABLE IF NOT EXISTS decisions (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS journey_entries (
+  id TEXT PRIMARY KEY,
+  parent_id TEXT REFERENCES journey_entries(id) ON DELETE CASCADE,
+  date TEXT NOT NULL,
+  tz TEXT NOT NULL DEFAULT 'Asia/Kolkata',
+  type TEXT NOT NULL DEFAULT 'Field Scout',
+  anchor TEXT NOT NULL DEFAULT 'Spec',
+  segment TEXT NOT NULL DEFAULT 'ridge',
+  title TEXT NOT NULL,
+  location TEXT NOT NULL DEFAULT '',
+  latitude REAL,
+  longitude REAL,
+  altitude_m REAL,
+  accuracy_m REAL,
+  elevation_gain_m REAL,
+  terrain TEXT NOT NULL DEFAULT '',
+  difficulty TEXT NOT NULL DEFAULT '',
+  evidence TEXT NOT NULL DEFAULT '',
+  lesson TEXT NOT NULL DEFAULT '',
+  next_action TEXT NOT NULL DEFAULT '',
+  tags_json TEXT NOT NULL DEFAULT '[]',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS vectors (
   id TEXT PRIMARY KEY,
   context_id TEXT REFERENCES contexts(id) ON DELETE CASCADE,
@@ -118,3 +144,5 @@ CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_node ON tasks(node_id);
 CREATE INDEX IF NOT EXISTS idx_contexts_kind ON contexts(kind);
 CREATE INDEX IF NOT EXISTS idx_vectors_context ON vectors(context_id);
+CREATE INDEX IF NOT EXISTS idx_journey_parent ON journey_entries(parent_id);
+CREATE INDEX IF NOT EXISTS idx_journey_anchor ON journey_entries(anchor);
