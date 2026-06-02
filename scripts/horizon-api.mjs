@@ -398,6 +398,116 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true, id });
     }
 
+    if (req.method === "GET" && url.pathname === "/api/inbox") {
+      return json(res, 200, {
+        resources: all("SELECT * FROM resources ORDER BY sort_order, created_at DESC"),
+        posts: all("SELECT * FROM social_posts ORDER BY sort_order, created_at DESC"),
+        skills: all("SELECT * FROM social_skills ORDER BY sort_order"),
+      });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/resources") {
+      const body = await readJson(req);
+      const id = body.id ?? randomUUID();
+      db.prepare(`
+        INSERT INTO resources (id, title, source, kind, project_id, status, note, next_action, tags_json, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        id,
+        String(body.title ?? "").trim() || "Untitled resource",
+        body.source ?? "",
+        body.kind ?? "link",
+        body.project_id ?? body.projectId ?? "",
+        body.status ?? "inbox",
+        body.note ?? "",
+        body.next_action ?? body.next ?? "",
+        Array.isArray(body.tags) ? JSON.stringify(body.tags) : body.tags_json ?? "[]",
+        Number(body.sort_order ?? body.sortOrder ?? 0),
+      );
+      return json(res, 201, { ok: true, id });
+    }
+
+    if (req.method === "PATCH" && url.pathname.startsWith("/api/resources/")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/resources/", ""));
+      const existing = db.prepare("SELECT * FROM resources WHERE id = ?").get(id);
+      if (!existing) return json(res, 404, { ok: false, error: "resource_not_found" });
+      const body = await readJson(req);
+      db.prepare(`
+        UPDATE resources SET title = ?, source = ?, kind = ?, project_id = ?, status = ?,
+          note = ?, next_action = ?, tags_json = ?, sort_order = ?, updated_at = datetime('now')
+        WHERE id = ?
+      `).run(
+        body.title ?? existing.title,
+        body.source ?? existing.source,
+        body.kind ?? existing.kind,
+        body.project_id ?? body.projectId ?? existing.project_id,
+        body.status ?? existing.status,
+        body.note ?? existing.note,
+        body.next_action ?? body.next ?? existing.next_action,
+        Array.isArray(body.tags) ? JSON.stringify(body.tags) : body.tags_json ?? existing.tags_json,
+        Number(body.sort_order ?? existing.sort_order),
+        id,
+      );
+      return json(res, 200, { ok: true, id });
+    }
+
+    if (req.method === "DELETE" && url.pathname.startsWith("/api/resources/")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/resources/", ""));
+      db.prepare("DELETE FROM resources WHERE id = ?").run(id);
+      return json(res, 200, { ok: true, id });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/social-posts") {
+      const body = await readJson(req);
+      const id = body.id ?? randomUUID();
+      db.prepare(`
+        INSERT INTO social_posts (id, platform, format, hook, body, status, skill_id, project_id, scheduled_for, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        id,
+        body.platform ?? "linkedin",
+        body.format ?? "post",
+        body.hook ?? "",
+        body.body ?? "",
+        body.status ?? "idea",
+        body.skill_id ?? body.skillId ?? "",
+        body.project_id ?? body.projectId ?? "",
+        body.scheduled_for ?? null,
+        Number(body.sort_order ?? body.sortOrder ?? 0),
+      );
+      return json(res, 201, { ok: true, id });
+    }
+
+    if (req.method === "PATCH" && url.pathname.startsWith("/api/social-posts/")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/social-posts/", ""));
+      const existing = db.prepare("SELECT * FROM social_posts WHERE id = ?").get(id);
+      if (!existing) return json(res, 404, { ok: false, error: "post_not_found" });
+      const body = await readJson(req);
+      db.prepare(`
+        UPDATE social_posts SET platform = ?, format = ?, hook = ?, body = ?, status = ?,
+          skill_id = ?, project_id = ?, scheduled_for = ?, sort_order = ?, updated_at = datetime('now')
+        WHERE id = ?
+      `).run(
+        body.platform ?? existing.platform,
+        body.format ?? existing.format,
+        body.hook ?? existing.hook,
+        body.body ?? existing.body,
+        body.status ?? existing.status,
+        body.skill_id ?? body.skillId ?? existing.skill_id,
+        body.project_id ?? body.projectId ?? existing.project_id,
+        body.scheduled_for ?? existing.scheduled_for,
+        Number(body.sort_order ?? existing.sort_order),
+        id,
+      );
+      return json(res, 200, { ok: true, id });
+    }
+
+    if (req.method === "DELETE" && url.pathname.startsWith("/api/social-posts/")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/social-posts/", ""));
+      db.prepare("DELETE FROM social_posts WHERE id = ?").run(id);
+      return json(res, 200, { ok: true, id });
+    }
+
     if (req.method === "GET" && url.pathname === "/api/tasks") {
       return json(res, 200, {
         tasks: all("SELECT * FROM tasks ORDER BY status, sort_order, due_at, created_at DESC"),

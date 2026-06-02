@@ -168,6 +168,46 @@ CREATE TABLE IF NOT EXISTS runway_state (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS resources (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  source TEXT NOT NULL DEFAULT '',
+  kind TEXT NOT NULL DEFAULT 'link',
+  project_id TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'inbox',
+  note TEXT NOT NULL DEFAULT '',
+  next_action TEXT NOT NULL DEFAULT '',
+  tags_json TEXT NOT NULL DEFAULT '[]',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS social_posts (
+  id TEXT PRIMARY KEY,
+  platform TEXT NOT NULL DEFAULT 'linkedin',
+  format TEXT NOT NULL DEFAULT 'post',
+  hook TEXT NOT NULL DEFAULT '',
+  body TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'idea',
+  skill_id TEXT NOT NULL DEFAULT '',
+  project_id TEXT NOT NULL DEFAULT '',
+  scheduled_for TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS social_skills (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  version TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT '',
+  trigger TEXT NOT NULL DEFAULT '',
+  path TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS vectors (
   id TEXT PRIMARY KEY,
   context_id TEXT REFERENCES contexts(id) ON DELETE CASCADE,
@@ -195,3 +235,6 @@ CREATE INDEX IF NOT EXISTS idx_journey_parent ON journey_entries(parent_id);
 CREATE INDEX IF NOT EXISTS idx_journey_anchor ON journey_entries(anchor);
 CREATE INDEX IF NOT EXISTS idx_cash_ledger_date ON cash_ledger(date);
 CREATE INDEX IF NOT EXISTS idx_offer_pipeline_stage ON offer_pipeline(stage);
+CREATE INDEX IF NOT EXISTS idx_resources_status ON resources(status);
+CREATE INDEX IF NOT EXISTS idx_social_posts_status ON social_posts(status);
+CREATE INDEX IF NOT EXISTS idx_social_skills_category ON social_skills(category);

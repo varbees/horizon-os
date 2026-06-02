@@ -9,7 +9,10 @@ import {
   hackathonEvents,
   journeyEntries,
   offerPipelineSeed,
+  resourceSeeds,
   runwayStateSeed,
+  socialPostSeeds,
+  socialSkillCatalog,
   systemEdges,
   systemNodes,
   timeBlocks,
@@ -389,6 +392,85 @@ function seed(db) {
     runwayStateSeed.milestoneDate ?? "2027-02-15",
   );
 
+  const insertResource = db.prepare(`
+    INSERT INTO resources (id, title, source, kind, project_id, status, note, next_action, tags_json, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      title = excluded.title,
+      source = excluded.source,
+      kind = excluded.kind,
+      project_id = excluded.project_id,
+      note = excluded.note,
+      next_action = excluded.next_action,
+      tags_json = excluded.tags_json,
+      sort_order = excluded.sort_order,
+      updated_at = datetime('now')
+  `);
+  for (const resource of resourceSeeds) {
+    insertResource.run(
+      resource.id,
+      resource.title,
+      resource.source ?? "",
+      resource.kind ?? "link",
+      resource.projectId ?? "",
+      resource.status ?? "inbox",
+      resource.note ?? "",
+      resource.next ?? "",
+      JSON.stringify(resource.tags ?? []),
+      Number(resource.sortOrder ?? 0),
+    );
+  }
+
+  const insertPost = db.prepare(`
+    INSERT INTO social_posts (id, platform, format, hook, body, status, skill_id, project_id, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      platform = excluded.platform,
+      format = excluded.format,
+      hook = excluded.hook,
+      body = excluded.body,
+      skill_id = excluded.skill_id,
+      project_id = excluded.project_id,
+      sort_order = excluded.sort_order,
+      updated_at = datetime('now')
+  `);
+  for (const post of socialPostSeeds) {
+    insertPost.run(
+      post.id,
+      post.platform ?? "linkedin",
+      post.format ?? "post",
+      post.hook ?? "",
+      post.body ?? "",
+      post.status ?? "idea",
+      post.skillId ?? "",
+      post.projectId ?? "",
+      Number(post.sortOrder ?? 0),
+    );
+  }
+
+  const insertSkill = db.prepare(`
+    INSERT INTO social_skills (id, name, version, category, trigger, path, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      name = excluded.name,
+      version = excluded.version,
+      category = excluded.category,
+      trigger = excluded.trigger,
+      path = excluded.path,
+      sort_order = excluded.sort_order
+  `);
+  socialSkillCatalog.forEach((skill, index) => {
+    insertSkill.run(
+      skill.id,
+      skill.name,
+      skill.version ?? "",
+      skill.category ?? "",
+      skill.trigger ?? "",
+      `skills/social-media/extracted/${skill.id}/SKILL.md`,
+      index,
+    );
+  });
+
   const insertContext = db.prepare(`
     INSERT OR IGNORE INTO contexts (id, kind, title, body, source)
     VALUES (?, ?, ?, ?, ?)
@@ -427,6 +509,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const journeyCount = db.prepare("SELECT count(*) AS count FROM journey_entries").get().count;
   const capitalCount = db.prepare("SELECT count(*) AS count FROM capital_targets").get().count;
   const pipelineCount = db.prepare("SELECT count(*) AS count FROM offer_pipeline").get().count;
-  console.log(JSON.stringify({ ok: true, dbPath, nodeCount, eventCount, taskCount, journeyCount, capitalCount, pipelineCount }, null, 2));
+  const resourceCount = db.prepare("SELECT count(*) AS count FROM resources").get().count;
+  const skillCount = db.prepare("SELECT count(*) AS count FROM social_skills").get().count;
+  console.log(JSON.stringify({ ok: true, dbPath, nodeCount, eventCount, taskCount, journeyCount, capitalCount, pipelineCount, resourceCount, skillCount }, null, 2));
   db.close();
 }

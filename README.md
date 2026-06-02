@@ -36,6 +36,7 @@ npm run build
 - `/projects` - portfolio hub for `~/Desktop/bolting/*`
 - `/journey` - Obsidian-grade trek ledger with GPS, elevation, and branching alleys/valleys
 - `/capital` - Capital & Runway OS: targets, cash ledger, offer pipeline, and weekly income math
+- `/inbox` - Resource & Content Inbox: link capture, content backlog, and the social skills catalog
 - `/map` - node-editor command graph backed by local SQLite API
 - `/documents` - docs and connector artifacts
 - `/hskg` - launch brief for `hskg.vercel.app`
@@ -46,6 +47,7 @@ npm run build
 - `docs/source-inputs/income_plan.md`
 - `docs/source-inputs/twelve_month_plan.md`
 - `docs/capital-runway-os.md`
+- `docs/resource-content-inbox.md`
 - `docs/horizon-operating-plan.md`
 - `docs/portfolio-command-map.md`
 - `docs/hskg-launch-brief.md`
