@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import {
+  actionQueueSeed,
   actionTasks,
   capitalTargets,
   cashLedgerSeed,
@@ -392,6 +393,37 @@ function seed(db) {
     runwayStateSeed.milestoneDate ?? "2027-02-15",
   );
 
+  const insertAction = db.prepare(`
+    INSERT INTO action_queue (id, title, summary, source, project_id, project_path, agent, prompt, status, impact, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      title = excluded.title,
+      summary = excluded.summary,
+      source = excluded.source,
+      project_id = excluded.project_id,
+      project_path = excluded.project_path,
+      agent = excluded.agent,
+      prompt = excluded.prompt,
+      impact = excluded.impact,
+      sort_order = excluded.sort_order,
+      updated_at = datetime('now')
+  `);
+  for (const action of actionQueueSeed) {
+    insertAction.run(
+      action.id,
+      action.title,
+      action.summary ?? "",
+      action.source ?? "horizon",
+      action.projectId ?? "",
+      action.projectPath ?? "",
+      action.agent ?? "claude",
+      action.prompt ?? "",
+      action.status ?? "suggested",
+      action.impact ?? "normal",
+      Number(action.sortOrder ?? 0),
+    );
+  }
+
   const insertResource = db.prepare(`
     INSERT INTO resources (id, title, source, kind, project_id, status, note, next_action, tags_json, sort_order)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -511,6 +543,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const pipelineCount = db.prepare("SELECT count(*) AS count FROM offer_pipeline").get().count;
   const resourceCount = db.prepare("SELECT count(*) AS count FROM resources").get().count;
   const skillCount = db.prepare("SELECT count(*) AS count FROM social_skills").get().count;
-  console.log(JSON.stringify({ ok: true, dbPath, nodeCount, eventCount, taskCount, journeyCount, capitalCount, pipelineCount, resourceCount, skillCount }, null, 2));
+  const actionCount = db.prepare("SELECT count(*) AS count FROM action_queue").get().count;
+  console.log(JSON.stringify({ ok: true, dbPath, nodeCount, eventCount, taskCount, journeyCount, capitalCount, pipelineCount, resourceCount, skillCount, actionCount }, null, 2));
   db.close();
 }

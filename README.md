@@ -32,6 +32,7 @@ npm run build
 ## Main Screens
 
 - `/` - control tower and daily anchors
+- `/command` - command center: operator hero, live status, and the deployable Action Queue
 - `/calendar` - recurring Foundry Week calendar matrix
 - `/projects` - portfolio hub for `~/Desktop/bolting/*`
 - `/journey` - Obsidian-grade trek ledger with GPS, elevation, and branching alleys/valleys
@@ -44,6 +45,8 @@ npm run build
 ## Canonical Docs
 
 - `docs/horizon-build-plan.md` (master vertical-slice execution contract)
+- `docs/command-center-plan.md` (10x command center: reel teardown + slice plan)
+- `PRODUCT.md` / `DESIGN.md` (impeccable design context)
 - `docs/source-inputs/income_plan.md`
 - `docs/source-inputs/twelve_month_plan.md`
 - `docs/capital-runway-os.md`

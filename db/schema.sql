@@ -208,6 +208,23 @@ CREATE TABLE IF NOT EXISTS social_skills (
   sort_order INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS action_queue (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  summary TEXT NOT NULL DEFAULT '',
+  source TEXT NOT NULL DEFAULT 'horizon',
+  project_id TEXT NOT NULL DEFAULT '',
+  project_path TEXT NOT NULL DEFAULT '',
+  agent TEXT NOT NULL DEFAULT 'claude',
+  prompt TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'suggested',
+  impact TEXT NOT NULL DEFAULT 'normal',
+  deployed_path TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS vectors (
   id TEXT PRIMARY KEY,
   context_id TEXT REFERENCES contexts(id) ON DELETE CASCADE,
@@ -238,3 +255,5 @@ CREATE INDEX IF NOT EXISTS idx_offer_pipeline_stage ON offer_pipeline(stage);
 CREATE INDEX IF NOT EXISTS idx_resources_status ON resources(status);
 CREATE INDEX IF NOT EXISTS idx_social_posts_status ON social_posts(status);
 CREATE INDEX IF NOT EXISTS idx_social_skills_category ON social_skills(category);
+CREATE INDEX IF NOT EXISTS idx_action_queue_status ON action_queue(status);
+CREATE INDEX IF NOT EXISTS idx_action_queue_project ON action_queue(project_id);

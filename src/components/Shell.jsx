@@ -12,6 +12,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Rocket,
+  Terminal,
   Wallet,
 } from "lucide-react";
 
@@ -20,6 +21,7 @@ const navGroups = [
     label: "Command base",
     items: [
       { to: "/", label: "Command", icon: LayoutDashboard, detail: "Daily anchors" },
+      { to: "/command", label: "Center", icon: Terminal, detail: "Action queue" },
       { to: "/calendar", label: "Calendar", icon: CalendarDays, detail: "Foundry week" },
       { to: "/projects", label: "Hub", icon: Gauge, detail: "Repo lanes" },
       { to: "/journey", label: "Journey", icon: BookOpen, detail: "Trek ledger" },
@@ -41,6 +43,7 @@ const navItems = navGroups.flatMap((group) => group.items);
 
 const mobileNavItems = [
   { to: "/", label: "Command", icon: LayoutDashboard },
+  { to: "/command", label: "Center", icon: Terminal },
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
   { to: "/projects", label: "Hub", icon: Gauge },
   { to: "/journey", label: "Journey", icon: BookOpen },
@@ -163,7 +166,7 @@ export default function Shell({ children }) {
         className="fixed bottom-0 left-0 right-0 z-50 border-t border-outlineVariant bg-surface/94 px-2 pb-2 pt-2 backdrop-blur-xl lg:hidden"
         aria-label="Mobile primary"
       >
-        <div className="mx-auto grid max-w-2xl grid-cols-9 gap-1">
+        <div className="mx-auto grid max-w-2xl grid-cols-10 gap-1">
           {mobileNavItems.map((item) => (
             <MobileNavItem key={item.to} item={item} />
           ))}

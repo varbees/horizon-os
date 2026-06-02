@@ -1,9 +1,14 @@
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { openHorizonDb } from "./horizon-db.mjs";
 
 const port = Number(process.env.HORIZON_API_PORT ?? 8787);
 const db = openHorizonDb();
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const queueDir = resolve(repoRoot, ".horizon", "queue");
 
 function json(res, status, body) {
   res.writeHead(status, {
@@ -395,6 +400,106 @@ const server = createServer(async (req, res) => {
     if (req.method === "DELETE" && url.pathname.startsWith("/api/capital/pipeline/")) {
       const id = decodeURIComponent(url.pathname.replace("/api/capital/pipeline/", ""));
       db.prepare("DELETE FROM offer_pipeline WHERE id = ?").run(id);
+      return json(res, 200, { ok: true, id });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/action-queue") {
+      return json(res, 200, {
+        actions: all("SELECT * FROM action_queue ORDER BY status, sort_order, created_at"),
+      });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/action-queue") {
+      const body = await readJson(req);
+      const id = body.id ?? randomUUID();
+      db.prepare(`
+        INSERT INTO action_queue (id, title, summary, source, project_id, project_path, agent, prompt, status, impact, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        id,
+        String(body.title ?? "").trim() || "Untitled action",
+        body.summary ?? "",
+        body.source ?? "manual",
+        body.project_id ?? body.projectId ?? "",
+        body.project_path ?? body.projectPath ?? "",
+        body.agent ?? "claude",
+        body.prompt ?? "",
+        body.status ?? "suggested",
+        body.impact ?? "normal",
+        Number(body.sort_order ?? body.sortOrder ?? 0),
+      );
+      return json(res, 201, { ok: true, id });
+    }
+
+    if (req.method === "PATCH" && url.pathname.startsWith("/api/action-queue/") && url.pathname.endsWith("/deploy")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/action-queue/", "").replace("/deploy", ""));
+      const action = db.prepare("SELECT * FROM action_queue WHERE id = ?").get(id);
+      if (!action) return json(res, 404, { ok: false, error: "action_not_found" });
+      mkdirSync(queueDir, { recursive: true });
+      const stamp = new Date().toISOString();
+      const filename = `${id}.md`;
+      const filePath = resolve(queueDir, filename);
+      const contents = [
+        `# Horizon deploy: ${action.title}`,
+        "",
+        `- id: ${id}`,
+        `- agent: ${action.agent}`,
+        `- project: ${action.project_id}`,
+        `- project_path: ${action.project_path}`,
+        `- source: ${action.source}`,
+        `- deployed_at: ${stamp}`,
+        "",
+        "## Summary",
+        action.summary || "(none)",
+        "",
+        "## Prompt",
+        "",
+        "```",
+        action.prompt || "(empty)",
+        "```",
+        "",
+        `Run this in ${action.project_path || "the target project"} with \`${action.agent}\`.`,
+        "",
+      ].join("\n");
+      writeFileSync(filePath, contents, "utf8");
+      db.prepare("UPDATE action_queue SET status = 'deployed', deployed_path = ?, updated_at = datetime('now') WHERE id = ?").run(filePath, id);
+      db.prepare("INSERT INTO command_log (id, actor, action, target, payload_json) VALUES (?, ?, ?, ?, ?)").run(
+        randomUUID(),
+        "horizon",
+        "action_deploy",
+        action.project_id || action.id,
+        JSON.stringify({ id, agent: action.agent, path: filePath }),
+      );
+      return json(res, 200, { ok: true, id, path: filePath });
+    }
+
+    if (req.method === "PATCH" && url.pathname.startsWith("/api/action-queue/")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/action-queue/", ""));
+      const existing = db.prepare("SELECT * FROM action_queue WHERE id = ?").get(id);
+      if (!existing) return json(res, 404, { ok: false, error: "action_not_found" });
+      const body = await readJson(req);
+      db.prepare(`
+        UPDATE action_queue SET title = ?, summary = ?, project_id = ?, project_path = ?, agent = ?,
+          prompt = ?, status = ?, impact = ?, sort_order = ?, updated_at = datetime('now')
+        WHERE id = ?
+      `).run(
+        body.title ?? existing.title,
+        body.summary ?? existing.summary,
+        body.project_id ?? body.projectId ?? existing.project_id,
+        body.project_path ?? body.projectPath ?? existing.project_path,
+        body.agent ?? existing.agent,
+        body.prompt ?? existing.prompt,
+        body.status ?? existing.status,
+        body.impact ?? existing.impact,
+        Number(body.sort_order ?? existing.sort_order),
+        id,
+      );
+      return json(res, 200, { ok: true, id });
+    }
+
+    if (req.method === "DELETE" && url.pathname.startsWith("/api/action-queue/")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/action-queue/", ""));
+      db.prepare("DELETE FROM action_queue WHERE id = ?").run(id);
       return json(res, 200, { ok: true, id });
     }
 

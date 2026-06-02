@@ -617,11 +617,32 @@ export const versionRoadmap = [
     version: "v0.6",
     title: "Resource and Content Inbox",
     window: "June 2026",
-    status: "Shipping now",
+    status: "Done",
     output: "Link capture, Instagram resource queue, social skills extraction, and build-public artifact backlog.",
   },
   {
     version: "v0.7",
+    title: "Full-width Command Shell",
+    window: "June 2026",
+    status: "Shipping now",
+    output: "OpenClaw-inspired full-width shell, operator hero, live status line, and collapsible rail.",
+  },
+  {
+    version: "v0.8",
+    title: "Action Queue + Deploy",
+    window: "June 2026",
+    status: "Shipping now",
+    output: "Command center with deployable Claude/Codex suggestions that write a prompt into any project.",
+  },
+  {
+    version: "v0.9",
+    title: "News & Signals + Intelligence",
+    window: "July 2026",
+    status: "Planned",
+    output: "RSS signals feed, then agent-fed Gmail/Calendar/meeting intelligence and a Claude usage panel.",
+  },
+  {
+    version: "v0.7-cal",
     title: "Calendar Write Loop",
     window: "July 2026",
     status: "Design",
@@ -815,6 +836,77 @@ export const socialPostSeeds = [
     skillId: "hook-writer-sms",
     projectId: "photoselect",
     sortOrder: 2,
+  },
+];
+
+// v0.8 Action Queue. Suggestions the operator can deploy into a bolting/* project
+// as a ready-to-run Claude/Codex prompt. Status: suggested -> queued -> deployed -> done | dismissed.
+const BOLT = "/home/driftr/Desktop/bolting";
+export const actionQueueSeed = [
+  {
+    id: "photoselect-domain",
+    title: "Point PhotoSelect production at photoselect.space",
+    summary: "Flagship domain is owned but production is not yet served from it.",
+    source: "infrastructure",
+    projectId: "photoselect",
+    projectPath: `${BOLT}/photoselect`,
+    agent: "claude",
+    impact: "high",
+    prompt:
+      "Wire the production PhotoSelect deployment to photoselect.space: configure the Cloud Run domain mapping (or Cloudflare route), verify TLS, update env BASE_URL/CORS, and confirm a tokenized gallery link resolves on the live domain. Report the exact DNS records added under the Cloudflare account.",
+    sortOrder: 0,
+  },
+  {
+    id: "plantsage-domain",
+    title: "Register plantsage.earth and reserve subdomains",
+    summary: "Canonical PlantSage domain is planned but not yet acquired.",
+    source: "infrastructure",
+    projectId: "plantsage",
+    projectPath: `${BOLT}/plantsage_app`,
+    agent: "claude",
+    impact: "normal",
+    prompt:
+      "Plan the plantsage.earth acquisition under the Cloudflare account (beesharsha@gmail.com): list registration steps, reserve www and app subdomains, and draft the DNS plan for the Flutter app landing plus the FastAPI backend (ff_planter). Do not purchase; output the exact checklist.",
+    sortOrder: 1,
+  },
+  {
+    id: "capital-burn",
+    title: "Enter real monthly burn in Capital OS",
+    summary: "Runway months cannot compute until burn is set (cash 500, no MRR).",
+    source: "capital",
+    projectId: "horizon-os",
+    projectPath: "/home/driftr/Downloads/horizon-dashboard-preview",
+    agent: "claude",
+    impact: "high",
+    prompt:
+      "Compute a realistic monthly burn from the operator's recurring costs (Claude and other subscriptions, domain renewals, living survival floor) and PATCH /api/capital/runway with monthly_burn_inr so the runway and required-weekly math become true.",
+    sortOrder: 2,
+  },
+  {
+    id: "photoselect-proof",
+    title: "Draft PhotoSelect studio outreach + proof case study",
+    summary: "Convert the flagship into repeatable credibility: case study + 10-studio outreach.",
+    source: "income_plan",
+    projectId: "photoselect",
+    projectPath: `${BOLT}/photoselect`,
+    agent: "codex",
+    impact: "high",
+    prompt:
+      "Produce a one-page PhotoSelect case study (swipe selection, payment-gated delivery, WhatsApp link, delivery proof ledger) and a 10-studio outreach list with one specific, personalized opener per studio. Ground claims in agent_docs/launch_readiness.md and verification.md only.",
+    sortOrder: 3,
+  },
+  {
+    id: "plantsage-stage2",
+    title: "Prove one PlantSage Stage 2 media contract",
+    summary: "MinIO/R2 media payload from backend into Flutter SpeciesCard fields.",
+    source: "operating_plan",
+    projectId: "plantsage",
+    projectPath: `${BOLT}/ff_planter`,
+    agent: "claude",
+    impact: "normal",
+    prompt:
+      "Implement and verify one Stage 2 proof: a hash-addressed media payload uploaded to MinIO (local) and R2 (prod parity) that resolves into the Flutter app's SpeciesCard image fields through the existing /identify contract. Output the verified ingest path and a sample record.",
+    sortOrder: 4,
   },
 ];
 

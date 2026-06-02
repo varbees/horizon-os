@@ -10,6 +10,7 @@ import HskgLaunch from "./routes/HskgLaunch.jsx";
 import JourneyLog from "./routes/JourneyLog.jsx";
 import Capital from "./routes/Capital.jsx";
 import Inbox from "./routes/Inbox.jsx";
+import CommandCenter from "./routes/CommandCenter.jsx";
 
 const CalendarMatrix = lazy(() => import("./routes/CalendarMatrix.jsx"));
 
@@ -19,6 +20,7 @@ export default function App() {
       <AnimatePresence mode="wait">
         <Routes>
           <Route path="/" element={<Overview />} />
+          <Route path="/command" element={<CommandCenter />} />
           <Route
             path="/calendar"
             element={
