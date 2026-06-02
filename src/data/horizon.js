@@ -357,6 +357,7 @@ export const capitalTargets = [
     deadline: "2026-09-30",
     purpose: "A reliable MacBook Pro/Air-class build machine for hill-station and remote workloads.",
     next: "Price three realistic configurations and define the minimum acceptable RAM/storage.",
+    sortOrder: 0,
   },
   {
     id: "abroad-support-fund",
@@ -366,6 +367,7 @@ export const capitalTargets = [
     deadline: "2027-02-15",
     purpose: "A hard family-support commitment that must not destabilize the founder floor.",
     next: "Split the target into monthly transfer-sized milestones through February 2027.",
+    sortOrder: 1,
   },
   {
     id: "expenses-buffer",
@@ -375,7 +377,86 @@ export const capitalTargets = [
     deadline: "2027-02-15",
     purpose: "Living and operating runway while service income and PhotoSelect stabilize.",
     next: "Enter current cash and burn so the gap stops being abstract.",
+    sortOrder: 2,
   },
+];
+
+// v0.5 Capital & Runway OS seeds. Numbers grounded in docs/source-inputs.
+// runwayStateSeed values are editable placeholders — the INSPECTION GATE is here:
+// real current cash, monthly burn, and MRR must come from the operator.
+export const runwayStateSeed = {
+  id: "current",
+  currentCashInr: 0,
+  monthlyBurnInr: 0,
+  mrrInr: 0,
+  weeklyOutboundTarget: 25, // income_plan: 25 personalized outreaches / week
+  weeklyConversationTarget: 3, // income_plan: 3 buyer conversations / week
+  weeklyOfferTarget: 1, // income_plan: 1 paid offer pushed / week
+  milestoneDate: "2027-02-15",
+};
+
+// Offer pipeline seeded from income_plan productized offers (USD->INR approx).
+export const offerPipelineSeed = [
+  {
+    id: "photoselect-studio-pilot",
+    buyer: "Wedding/event studio (PhotoSelect pilot)",
+    offer: "PhotoSelect delivery + payment-gated gallery pilot",
+    stage: "conversation",
+    valueInr: 40000,
+    recurring: 0,
+    next: "Run pilot outreach to 10 studios; document one live-payment proof or the exact blocker.",
+    sortOrder: 0,
+  },
+  {
+    id: "ai-integration-sprint",
+    buyer: "B2B SaaS founder",
+    offer: "AI Integration Sprint - 4 weeks, ship a working AI feature",
+    stage: "prospect",
+    valueInr: 1245000,
+    recurring: 0,
+    next: "Send 25 personalized outbound messages naming one specific pain per buyer.",
+    sortOrder: 1,
+  },
+  {
+    id: "revops-retainer",
+    buyer: "Sales-led startup",
+    offer: "RevOps Automation Retainer - automate repetitive workflows",
+    stage: "prospect",
+    valueInr: 664000,
+    recurring: 1,
+    next: "Identify 3 startups with visible repetitive ops pain from their job posts.",
+    sortOrder: 2,
+  },
+  {
+    id: "hskg-client-page",
+    buyer: "Local business (HSKG-style)",
+    offer: "One-page site + LocalBusiness schema delivery",
+    stage: "proposal",
+    valueInr: 35000,
+    recurring: 0,
+    next: "Ship hskg.vercel.app to a reviewable page, then convert it into a paid template offer.",
+    sortOrder: 3,
+  },
+];
+
+export const cashLedgerSeed = [
+  {
+    id: "opening-baseline",
+    date: "2026-06-02",
+    direction: "in",
+    amountInr: 0,
+    category: "baseline",
+    note: "Opening balance placeholder - replace with the real bank/cash figure.",
+    source: "seed",
+  },
+];
+
+// Income-engine weekly cadence, straight from income_plan distribution playbook.
+export const weeklyEngineTargets = [
+  { id: "outbound", label: "Personalized outbound", target: 25, unit: "messages", note: "Non-negotiable through month 4." },
+  { id: "conversations", label: "Buyer conversations", target: 3, unit: "calls", note: "Questions, not pitches." },
+  { id: "offers", label: "Paid offers pushed", target: 1, unit: "offer", note: "One implementation offer every week until a floor exists." },
+  { id: "content", label: "Build-in-public posts", target: 3, unit: "posts", note: "Document shipped work; inbound compounds by month 5-6." },
 ];
 
 // Trek ledger (v0.4.1): flat, branchable entries. parentId !== null marks an
@@ -529,7 +610,7 @@ export const versionRoadmap = [
     version: "v0.5",
     title: "Capital and Runway OS",
     window: "June 2026",
-    status: "Next",
+    status: "Shipping now",
     output: "INR targets, burn, pipeline value, weekly close target, and service-offer math.",
   },
   {

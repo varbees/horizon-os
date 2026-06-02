@@ -8,6 +8,7 @@ import SystemMap from "./routes/SystemMap.jsx";
 import Documents from "./routes/Documents.jsx";
 import HskgLaunch from "./routes/HskgLaunch.jsx";
 import JourneyLog from "./routes/JourneyLog.jsx";
+import Capital from "./routes/Capital.jsx";
 
 const CalendarMatrix = lazy(() => import("./routes/CalendarMatrix.jsx"));
 
@@ -27,6 +28,7 @@ export default function App() {
           />
           <Route path="/projects" element={<Projects />} />
           <Route path="/journey" element={<JourneyLog />} />
+          <Route path="/capital" element={<Capital />} />
           <Route path="/map" element={<SystemMap />} />
           <Route path="/documents" element={<Documents />} />
           <Route path="/hskg" element={<HskgLaunch />} />

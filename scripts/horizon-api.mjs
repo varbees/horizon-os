@@ -272,6 +272,132 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true, id });
     }
 
+    if (req.method === "GET" && url.pathname === "/api/capital") {
+      return json(res, 200, {
+        targets: all("SELECT * FROM capital_targets ORDER BY sort_order, label"),
+        ledger: all("SELECT * FROM cash_ledger ORDER BY date DESC, created_at DESC LIMIT 200"),
+        pipeline: all("SELECT * FROM offer_pipeline ORDER BY sort_order, updated_at DESC"),
+        runway: db.prepare("SELECT * FROM runway_state WHERE id = 'current'").get() ?? null,
+      });
+    }
+
+    if (req.method === "PATCH" && url.pathname === "/api/capital/runway") {
+      const body = await readJson(req);
+      const existing = db.prepare("SELECT * FROM runway_state WHERE id = 'current'").get() ?? {};
+      const next = {
+        current_cash_inr: Number(body.current_cash_inr ?? body.currentCashInr ?? existing.current_cash_inr ?? 0),
+        monthly_burn_inr: Number(body.monthly_burn_inr ?? body.monthlyBurnInr ?? existing.monthly_burn_inr ?? 0),
+        mrr_inr: Number(body.mrr_inr ?? body.mrrInr ?? existing.mrr_inr ?? 0),
+        weekly_outbound_target: Number(body.weekly_outbound_target ?? existing.weekly_outbound_target ?? 25),
+        weekly_conversation_target: Number(body.weekly_conversation_target ?? existing.weekly_conversation_target ?? 3),
+        weekly_offer_target: Number(body.weekly_offer_target ?? existing.weekly_offer_target ?? 1),
+        milestone_date: body.milestone_date ?? existing.milestone_date ?? "2027-02-15",
+      };
+      db.prepare(`
+        INSERT INTO runway_state (id, current_cash_inr, monthly_burn_inr, mrr_inr,
+          weekly_outbound_target, weekly_conversation_target, weekly_offer_target, milestone_date, updated_at)
+        VALUES ('current', ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        ON CONFLICT(id) DO UPDATE SET
+          current_cash_inr = excluded.current_cash_inr,
+          monthly_burn_inr = excluded.monthly_burn_inr,
+          mrr_inr = excluded.mrr_inr,
+          weekly_outbound_target = excluded.weekly_outbound_target,
+          weekly_conversation_target = excluded.weekly_conversation_target,
+          weekly_offer_target = excluded.weekly_offer_target,
+          milestone_date = excluded.milestone_date,
+          updated_at = datetime('now')
+      `).run(
+        next.current_cash_inr, next.monthly_burn_inr, next.mrr_inr,
+        next.weekly_outbound_target, next.weekly_conversation_target,
+        next.weekly_offer_target, next.milestone_date,
+      );
+      return json(res, 200, { ok: true });
+    }
+
+    if (req.method === "PATCH" && url.pathname.startsWith("/api/capital/targets/")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/capital/targets/", ""));
+      const existing = db.prepare("SELECT * FROM capital_targets WHERE id = ?").get(id);
+      if (!existing) return json(res, 404, { ok: false, error: "target_not_found" });
+      const body = await readJson(req);
+      db.prepare("UPDATE capital_targets SET saved_inr = ?, next_action = ?, updated_at = datetime('now') WHERE id = ?").run(
+        Number(body.saved_inr ?? body.savedInr ?? existing.saved_inr),
+        body.next_action ?? body.next ?? existing.next_action,
+        id,
+      );
+      return json(res, 200, { ok: true, id });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/capital/ledger") {
+      const body = await readJson(req);
+      const id = body.id ?? randomUUID();
+      db.prepare(`
+        INSERT INTO cash_ledger (id, date, direction, amount_inr, category, note, source)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        id,
+        body.date ?? new Date().toISOString().slice(0, 10),
+        body.direction === "out" ? "out" : "in",
+        Number(body.amount_inr ?? body.amountInr ?? 0),
+        body.category ?? "general",
+        body.note ?? "",
+        body.source ?? "manual",
+      );
+      return json(res, 201, { ok: true, id });
+    }
+
+    if (req.method === "DELETE" && url.pathname.startsWith("/api/capital/ledger/")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/capital/ledger/", ""));
+      db.prepare("DELETE FROM cash_ledger WHERE id = ?").run(id);
+      return json(res, 200, { ok: true, id });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/capital/pipeline") {
+      const body = await readJson(req);
+      const id = body.id ?? randomUUID();
+      db.prepare(`
+        INSERT INTO offer_pipeline (id, buyer, offer, stage, value_inr, recurring, next_action, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        id,
+        body.buyer ?? "",
+        body.offer ?? "",
+        body.stage ?? "prospect",
+        Number(body.value_inr ?? body.valueInr ?? 0),
+        Number(body.recurring ?? 0),
+        body.next_action ?? body.next ?? "",
+        Number(body.sort_order ?? body.sortOrder ?? 0),
+      );
+      return json(res, 201, { ok: true, id });
+    }
+
+    if (req.method === "PATCH" && url.pathname.startsWith("/api/capital/pipeline/")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/capital/pipeline/", ""));
+      const existing = db.prepare("SELECT * FROM offer_pipeline WHERE id = ?").get(id);
+      if (!existing) return json(res, 404, { ok: false, error: "offer_not_found" });
+      const body = await readJson(req);
+      db.prepare(`
+        UPDATE offer_pipeline SET buyer = ?, offer = ?, stage = ?, value_inr = ?, recurring = ?,
+          next_action = ?, sort_order = ?, updated_at = datetime('now')
+        WHERE id = ?
+      `).run(
+        body.buyer ?? existing.buyer,
+        body.offer ?? existing.offer,
+        body.stage ?? existing.stage,
+        Number(body.value_inr ?? body.valueInr ?? existing.value_inr),
+        Number(body.recurring ?? existing.recurring),
+        body.next_action ?? body.next ?? existing.next_action,
+        Number(body.sort_order ?? existing.sort_order),
+        id,
+      );
+      return json(res, 200, { ok: true, id });
+    }
+
+    if (req.method === "DELETE" && url.pathname.startsWith("/api/capital/pipeline/")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/capital/pipeline/", ""));
+      db.prepare("DELETE FROM offer_pipeline WHERE id = ?").run(id);
+      return json(res, 200, { ok: true, id });
+    }
+
     if (req.method === "GET" && url.pathname === "/api/tasks") {
       return json(res, 200, {
         tasks: all("SELECT * FROM tasks ORDER BY status, sort_order, due_at, created_at DESC"),

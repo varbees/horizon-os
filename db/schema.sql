@@ -121,6 +121,53 @@ CREATE TABLE IF NOT EXISTS journey_entries (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS capital_targets (
+  id TEXT PRIMARY KEY,
+  label TEXT NOT NULL,
+  target_inr INTEGER NOT NULL DEFAULT 0,
+  saved_inr INTEGER NOT NULL DEFAULT 0,
+  deadline TEXT NOT NULL DEFAULT '',
+  purpose TEXT NOT NULL DEFAULT '',
+  next_action TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS cash_ledger (
+  id TEXT PRIMARY KEY,
+  date TEXT NOT NULL,
+  direction TEXT NOT NULL DEFAULT 'in',
+  amount_inr INTEGER NOT NULL DEFAULT 0,
+  category TEXT NOT NULL DEFAULT 'general',
+  note TEXT NOT NULL DEFAULT '',
+  source TEXT NOT NULL DEFAULT 'manual',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS offer_pipeline (
+  id TEXT PRIMARY KEY,
+  buyer TEXT NOT NULL DEFAULT '',
+  offer TEXT NOT NULL DEFAULT '',
+  stage TEXT NOT NULL DEFAULT 'prospect',
+  value_inr INTEGER NOT NULL DEFAULT 0,
+  recurring INTEGER NOT NULL DEFAULT 0,
+  next_action TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS runway_state (
+  id TEXT PRIMARY KEY DEFAULT 'current',
+  current_cash_inr INTEGER NOT NULL DEFAULT 0,
+  monthly_burn_inr INTEGER NOT NULL DEFAULT 0,
+  mrr_inr INTEGER NOT NULL DEFAULT 0,
+  weekly_outbound_target INTEGER NOT NULL DEFAULT 25,
+  weekly_conversation_target INTEGER NOT NULL DEFAULT 3,
+  weekly_offer_target INTEGER NOT NULL DEFAULT 1,
+  milestone_date TEXT NOT NULL DEFAULT '2027-02-15',
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS vectors (
   id TEXT PRIMARY KEY,
   context_id TEXT REFERENCES contexts(id) ON DELETE CASCADE,
@@ -146,3 +193,5 @@ CREATE INDEX IF NOT EXISTS idx_contexts_kind ON contexts(kind);
 CREATE INDEX IF NOT EXISTS idx_vectors_context ON vectors(context_id);
 CREATE INDEX IF NOT EXISTS idx_journey_parent ON journey_entries(parent_id);
 CREATE INDEX IF NOT EXISTS idx_journey_anchor ON journey_entries(anchor);
+CREATE INDEX IF NOT EXISTS idx_cash_ledger_date ON cash_ledger(date);
+CREATE INDEX IF NOT EXISTS idx_offer_pipeline_stage ON offer_pipeline(stage);

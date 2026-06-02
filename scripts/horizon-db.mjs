@@ -2,7 +2,18 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
-import { actionTasks, hackathonEvents, journeyEntries, systemEdges, systemNodes, timeBlocks } from "../src/data/horizon.js";
+import {
+  actionTasks,
+  capitalTargets,
+  cashLedgerSeed,
+  hackathonEvents,
+  journeyEntries,
+  offerPipelineSeed,
+  runwayStateSeed,
+  systemEdges,
+  systemNodes,
+  timeBlocks,
+} from "../src/data/horizon.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dbPath = process.env.HORIZON_DB_PATH ?? resolve(root, ".horizon", "horizon.sqlite");
@@ -294,6 +305,90 @@ function seed(db) {
     );
   }
 
+  const insertTarget = db.prepare(`
+    INSERT INTO capital_targets (id, label, target_inr, saved_inr, deadline, purpose, next_action, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      label = excluded.label,
+      target_inr = excluded.target_inr,
+      deadline = excluded.deadline,
+      purpose = excluded.purpose,
+      next_action = excluded.next_action,
+      sort_order = excluded.sort_order,
+      updated_at = datetime('now')
+  `);
+  for (const target of capitalTargets) {
+    insertTarget.run(
+      target.id,
+      target.label,
+      Number(target.targetInr ?? 0),
+      Number(target.savedInr ?? 0),
+      target.deadline ?? "",
+      target.purpose ?? "",
+      target.next ?? "",
+      Number(target.sortOrder ?? 0),
+    );
+  }
+
+  const insertPipeline = db.prepare(`
+    INSERT INTO offer_pipeline (id, buyer, offer, stage, value_inr, recurring, next_action, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      buyer = excluded.buyer,
+      offer = excluded.offer,
+      value_inr = excluded.value_inr,
+      recurring = excluded.recurring,
+      next_action = excluded.next_action,
+      sort_order = excluded.sort_order,
+      updated_at = datetime('now')
+  `);
+  for (const offer of offerPipelineSeed) {
+    insertPipeline.run(
+      offer.id,
+      offer.buyer ?? "",
+      offer.offer ?? "",
+      offer.stage ?? "prospect",
+      Number(offer.valueInr ?? 0),
+      Number(offer.recurring ?? 0),
+      offer.next ?? "",
+      Number(offer.sortOrder ?? 0),
+    );
+  }
+
+  const insertLedger = db.prepare(`
+    INSERT OR IGNORE INTO cash_ledger (id, date, direction, amount_inr, category, note, source)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+  for (const row of cashLedgerSeed) {
+    insertLedger.run(
+      row.id,
+      row.date,
+      row.direction ?? "in",
+      Number(row.amountInr ?? 0),
+      row.category ?? "general",
+      row.note ?? "",
+      row.source ?? "seed",
+    );
+  }
+
+  db.prepare(`
+    INSERT INTO runway_state (
+      id, current_cash_inr, monthly_burn_inr, mrr_inr,
+      weekly_outbound_target, weekly_conversation_target, weekly_offer_target, milestone_date
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO NOTHING
+  `).run(
+    runwayStateSeed.id,
+    Number(runwayStateSeed.currentCashInr ?? 0),
+    Number(runwayStateSeed.monthlyBurnInr ?? 0),
+    Number(runwayStateSeed.mrrInr ?? 0),
+    Number(runwayStateSeed.weeklyOutboundTarget ?? 25),
+    Number(runwayStateSeed.weeklyConversationTarget ?? 3),
+    Number(runwayStateSeed.weeklyOfferTarget ?? 1),
+    runwayStateSeed.milestoneDate ?? "2027-02-15",
+  );
+
   const insertContext = db.prepare(`
     INSERT OR IGNORE INTO contexts (id, kind, title, body, source)
     VALUES (?, ?, ?, ?, ?)
@@ -330,6 +425,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const eventCount = db.prepare("SELECT count(*) AS count FROM calendar_events").get().count;
   const taskCount = db.prepare("SELECT count(*) AS count FROM tasks").get().count;
   const journeyCount = db.prepare("SELECT count(*) AS count FROM journey_entries").get().count;
-  console.log(JSON.stringify({ ok: true, dbPath, nodeCount, eventCount, taskCount, journeyCount }, null, 2));
+  const capitalCount = db.prepare("SELECT count(*) AS count FROM capital_targets").get().count;
+  const pipelineCount = db.prepare("SELECT count(*) AS count FROM offer_pipeline").get().count;
+  console.log(JSON.stringify({ ok: true, dbPath, nodeCount, eventCount, taskCount, journeyCount, capitalCount, pipelineCount }, null, 2));
   db.close();
 }

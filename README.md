@@ -34,7 +34,8 @@ npm run build
 - `/` - control tower and daily anchors
 - `/calendar` - recurring Foundry Week calendar matrix
 - `/projects` - portfolio hub for `~/Desktop/bolting/*`
-- `/journey` - two-year logbook, version ladder, capital goals, and playbook patterns
+- `/journey` - Obsidian-grade trek ledger with GPS, elevation, and branching alleys/valleys
+- `/capital` - Capital & Runway OS: targets, cash ledger, offer pipeline, and weekly income math
 - `/map` - node-editor command graph backed by local SQLite API
 - `/documents` - docs and connector artifacts
 - `/hskg` - launch brief for `hskg.vercel.app`
@@ -44,6 +45,7 @@ npm run build
 - `docs/horizon-build-plan.md` (master vertical-slice execution contract)
 - `docs/source-inputs/income_plan.md`
 - `docs/source-inputs/twelve_month_plan.md`
+- `docs/capital-runway-os.md`
 - `docs/horizon-operating-plan.md`
 - `docs/portfolio-command-map.md`
 - `docs/hskg-launch-brief.md`
