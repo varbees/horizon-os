@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openHorizonDb } from "./horizon-db.mjs";
 import { fetchFeed } from "./rss.mjs";
+import { getUsageSummary } from "./usage.mjs";
 
 const port = Number(process.env.HORIZON_API_PORT ?? 8787);
 const db = openHorizonDb();
@@ -402,6 +403,12 @@ const server = createServer(async (req, res) => {
       const id = decodeURIComponent(url.pathname.replace("/api/capital/pipeline/", ""));
       db.prepare("DELETE FROM offer_pipeline WHERE id = ?").run(id);
       return json(res, 200, { ok: true, id });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/usage") {
+      const force = url.searchParams.get("refresh") === "1";
+      const summary = await getUsageSummary({ force });
+      return json(res, 200, summary);
     }
 
     if (req.method === "GET" && url.pathname === "/api/signals") {

@@ -642,11 +642,18 @@ export const versionRoadmap = [
     output: "Local RSS fetch, category counts, Grid/List/Saved + time filters, prunable sources.",
   },
   {
+    version: "v1.1",
+    title: "Claude Usage Panel",
+    window: "June 2026",
+    status: "Shipping now",
+    output: "ccusage over ~/.claude: today/week tokens, cost, cache-hit, 7-day bars, model mix on the command center.",
+  },
+  {
     version: "v1.0",
-    title: "Intelligence + Claude Usage",
+    title: "Intelligence (agent-fed)",
     window: "July 2026",
     status: "Planned",
-    output: "Agent-fed Gmail/Calendar/meeting intelligence and a Claude usage panel from ~/.claude.",
+    output: "Agent-fed Gmail/Calendar/meeting intelligence into a local timeline the dashboard reads.",
   },
   {
     version: "v0.7-cal",

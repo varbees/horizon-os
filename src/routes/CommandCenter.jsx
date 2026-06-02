@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
+import UsagePanel from "../components/UsagePanel.jsx";
 import { addAction, deployAction, fetchActionQueue, updateAction } from "../lib/actionQueueApi.js";
 import { actionQueueSeed, projects, socialSkillCatalog } from "../data/horizon.js";
 
@@ -147,6 +148,10 @@ export default function CommandCenter() {
         <Scorecard icon={CircleDot} tone="text-brass" value={inQueue} label="In queue" sub="suggested + queued" />
         <Scorecard icon={Rocket} tone="text-signal" value={deployed} label="Deployed" sub="prompt written to project" />
         <Scorecard icon={CheckCircle2} tone="text-primary" value={done} label="Done" sub="closed this cycle" />
+      </section>
+
+      <section className="mt-5">
+        <UsagePanel />
       </section>
 
       <section className="mt-5">
