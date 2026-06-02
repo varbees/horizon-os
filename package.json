@@ -9,6 +9,7 @@
     "dev:full": "node scripts/dev-full.mjs",
     "db:init": "node scripts/horizon-db.mjs",
     "build": "vite build",
+    "test:e2e": "playwright test",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
@@ -32,6 +33,7 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",
