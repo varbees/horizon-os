@@ -1,15 +1,18 @@
 # Horizon OS Command Center
 
-Local command center for the Antharmaya foundry plan: service engine, current PhotoSelect + PlantSage work, HSKG as a closed proof, and the body/attention/spec backbone.
+Local revenue command center for the Antharmaya foundry: PhotoSelect as the primary revenue engine, varbees open-core products as the fast-cash lane, Horizon/Obsidian as the execution memory, and body/attention/spec as the backbone.
 
 ## Run
 
 ```bash
 npm install
+npm run db:init
+npm run projects:sweep
 npm run dev:full
 ```
 
 `npm run dev:full` starts the local SQLite API on `127.0.0.1:8787` and the Vite app on `127.0.0.1:5177`.
+`npm run projects:sweep` builds the local project index at `/home/driftr/Desktop/bolting/_horizon_project_index`.
 
 Frontend only:
 
@@ -21,6 +24,8 @@ Database setup/check:
 
 ```bash
 npm run db:init
+npm run projects:sweep
+npm run projects:sweep:watch
 ```
 
 ## Build
@@ -43,12 +48,14 @@ npm run build
 - `/vault` - Obsidian vault bridge: mirror Horizon state into the vault as Markdown and read notes back
 - `/map` - node-editor command graph backed by local SQLite API
 - `/documents` - docs and connector artifacts
-- `/hskg` - closure note for the parked `hskg.vercel.app` proof
 
 ## Canonical Docs
 
 - `docs/horizon-build-plan.md` (master vertical-slice execution contract)
 - `docs/command-center-plan.md` (10x command center: reel teardown + slice plan)
+- `docs/revenue-engine-reset.md` (money-first operating model and agent roles)
+- `docs/project-sweep-os.md` (local project inventory and hourly sweep loop)
+- `docs/agent-api-research-notes.md` (Jules, Gemini, ADK, and Claude hook notes)
 - `PRODUCT.md` / `DESIGN.md` (impeccable design context)
 - `docs/source-inputs/income_plan.md`
 - `docs/source-inputs/twelve_month_plan.md`

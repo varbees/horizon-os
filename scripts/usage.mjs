@@ -1,3 +1,5 @@
+import "./env.mjs";
+
 // Claude/agent usage summary from ccusage (reads ~/.claude session logs).
 // Spawns `npx ccusage daily --json`, parses, and computes a compact summary.
 // Cached in memory because the spawn takes a few seconds.

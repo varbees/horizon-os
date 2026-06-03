@@ -81,7 +81,7 @@ export default function CommandCenter() {
   }, []);
 
   const activeEngagements = useMemo(
-    () => projects.filter((p) => p.lane === "Focus Now" || p.lane === "Strategic Asset").length,
+    () => projects.filter((p) => p.now).length,
     [],
   );
   const inQueue = actions.filter((a) => a.status === "suggested" || a.status === "queued").length;
@@ -119,20 +119,20 @@ export default function CommandCenter() {
   return (
     <div>
       <SectionHeader
-        eyebrow="Command center"
-        title="Deploy work into any project."
-        copy="The operator surface: live status, the suggestions queue, and one-tap deploy of a Claude or Codex task into any bolting project as a ready-to-run prompt."
+        eyebrow="Revenue command center"
+        title="Turn signals into money actions."
+        copy="The operator surface for paid proof: deploy a Claude, Codex, Gemini, or Jules-ready task into the right project with buyer, offer, constraints, and done criteria."
       />
 
       <section className="overflow-hidden rounded-[var(--hz-radius-lg)] border border-outlineVariant bg-gradient-to-br from-primaryContainer/70 via-surfaceVariant to-secondaryContainer/50 p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <p className="font-mono text-[11px] uppercase tracking-[0.26em] text-primary">antharmaya / horizon-os</p>
-            <h2 className="mt-1 font-display text-4xl font-black tracking-tight text-paper">operator</h2>
+            <p className="font-mono text-[11px] uppercase tracking-[0.26em] text-primary">antharmaya / revenue engine</p>
+            <h2 className="mt-1 font-display text-4xl font-black tracking-tight text-paper">money moves</h2>
             <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs uppercase tracking-[0.18em] text-paper/60">
               <StatusBead value={socialSkillCatalog.length} label="skills armed" />
               <span aria-hidden="true">·</span>
-              <StatusBead value={activeEngagements} label="active engagements" />
+              <StatusBead value={activeEngagements} label="active money lanes" />
               <span aria-hidden="true">·</span>
               <StatusBead value={inQueue} label="suggestions in queue" />
             </p>
@@ -158,8 +158,8 @@ export default function CommandCenter() {
         <Panel className="p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.26em] text-brass">Action queue</p>
-              <h2 className="mt-2 font-display text-2xl font-bold">Suggestions you can deploy</h2>
+              <p className="font-mono text-[11px] uppercase tracking-[0.26em] text-brass">Deployable actions</p>
+              <h2 className="mt-2 font-display text-2xl font-bold">Only tasks that move money, proof, or distribution</h2>
             </div>
             <span className="rounded-full border border-outlineVariant bg-surfaceVariant px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-paper/52">
               {source === "live" ? "live · 127.0.0.1:8787" : "seed"}

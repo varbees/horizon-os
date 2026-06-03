@@ -285,6 +285,44 @@ CREATE TABLE IF NOT EXISTS command_log (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS project_sweep_runs (
+  id TEXT PRIMARY KEY,
+  root_paths_json TEXT NOT NULL DEFAULT '[]',
+  index_root TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'running',
+  started_at TEXT NOT NULL DEFAULT (datetime('now')),
+  finished_at TEXT,
+  summary_json TEXT NOT NULL DEFAULT '{}',
+  error_json TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE TABLE IF NOT EXISTS project_sweep_projects (
+  id TEXT PRIMARY KEY,
+  run_id TEXT NOT NULL REFERENCES project_sweep_runs(id) ON DELETE CASCADE,
+  project_id TEXT NOT NULL DEFAULT '',
+  name TEXT NOT NULL,
+  path TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'directory',
+  source TEXT NOT NULL DEFAULT 'scan',
+  category TEXT NOT NULL DEFAULT 'unknown-review',
+  lane TEXT NOT NULL DEFAULT 'Unknown',
+  status TEXT NOT NULL DEFAULT '',
+  relevance TEXT NOT NULL DEFAULT '',
+  next_action TEXT NOT NULL DEFAULT '',
+  index_link TEXT NOT NULL DEFAULT '',
+  is_git INTEGER NOT NULL DEFAULT 0,
+  git_branch TEXT NOT NULL DEFAULT '',
+  git_dirty INTEGER NOT NULL DEFAULT 0,
+  git_dirty_count INTEGER NOT NULL DEFAULT 0,
+  last_commit TEXT NOT NULL DEFAULT '',
+  last_commit_at TEXT NOT NULL DEFAULT '',
+  commit_count INTEGER NOT NULL DEFAULT 0,
+  stack_json TEXT NOT NULL DEFAULT '[]',
+  signals_json TEXT NOT NULL DEFAULT '{}',
+  last_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_node ON tasks(node_id);
 CREATE INDEX IF NOT EXISTS idx_contexts_kind ON contexts(kind);
@@ -301,3 +339,7 @@ CREATE INDEX IF NOT EXISTS idx_action_queue_project ON action_queue(project_id);
 CREATE INDEX IF NOT EXISTS idx_signals_status ON signals(status);
 CREATE INDEX IF NOT EXISTS idx_signals_category ON signals(category);
 CREATE INDEX IF NOT EXISTS idx_signals_published ON signals(published_at);
+CREATE INDEX IF NOT EXISTS idx_project_sweep_runs_finished ON project_sweep_runs(finished_at);
+CREATE INDEX IF NOT EXISTS idx_project_sweep_projects_run ON project_sweep_projects(run_id);
+CREATE INDEX IF NOT EXISTS idx_project_sweep_projects_project ON project_sweep_projects(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_sweep_projects_category ON project_sweep_projects(category);

@@ -1,10 +1,10 @@
 # Horizon Command Center Plan (10x)
 
-Expansion of Horizon OS into a full-width, tightly-integrated, actionable operator command center.
+Expansion of Horizon OS into a full-width, tightly-integrated, actionable revenue command center.
 Reference: the Obsidian + Claude command-center reel (`handroai__2026-05-26`, analysed frame by frame)
 and the OpenClaw layout. The goal is a single source of truth that is controllable: from Horizon you
-can deploy Codex/Claude tasks into any `~/Desktop/bolting/*` project and watch usage, signals, and
-intelligence in one place.
+can deploy Codex/Claude/Gemini/Jules-ready tasks into any `~/Desktop/bolting/*` project and watch
+usage, signals, vault memory, and buyer-facing actions in one place.
 
 ## Reference teardown (from the reel)
 
@@ -43,12 +43,13 @@ The React dashboard is local-first and cannot call MCP servers directly. The dur
 This keeps Horizon controllable and offline-capable while still surfacing live external context when an
 agent run refreshes it.
 
-## Action Queue = the actionable core
+## Action Queue = the money core
 
 Each queue item: title, summary, source, target project (`~/Desktop/bolting/*`), agent
 (`claude` | `codex`), a ready-to-run prompt, status (`suggested -> queued -> deployed -> done -> dismissed`),
 and impact. "Deploy" writes the prompt to a per-project file and logs the intent so the operator (or an
-agent) can execute it in that project. This is how Horizon deploys work into any project.
+agent) can execute it in that project. A task is valid only if it moves money, proof, distribution, or
+memory. Otherwise it is parked.
 
 ## Version slices
 

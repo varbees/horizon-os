@@ -4,10 +4,11 @@ Last updated: 2026-06-02
 
 ## Command-Center Role
 
-PlantSage is current field-product work inside Horizon OS alongside PhotoSelect.
-It should stay bounded to Stage 2 consistency: app/backend media payloads,
-MinIO/R2 ingest proof, unified capture, safe ledger cards, and the first
-Hariharakhona Place Pack. It should not expand into a new unrelated lane.
+PlantSage is strategic field-product proof inside Horizon OS, not the current
+money lane. It should stay bounded to Stage 2 consistency: app/backend media
+payloads, MinIO/R2 ingest proof, unified capture, safe ledger cards, and the
+first Hariharakhona Place Pack. It becomes active only if a buyer, paid path, or
+clear educational/content monetization signal appears.
 
 The core product is now clear:
 

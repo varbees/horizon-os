@@ -22,10 +22,10 @@ Supporting corpora:
 1. Service income first - cash floor before product sprawl (`income_plan` Phase 1).
 2. PhotoSelect is the flagship product and main proof loop.
 3. Body + Attention + Capital + Spec are the backbone, not optional habits (`twelve_month_plan`).
-4. Current active work is PhotoSelect plus PlantSage.
+4. Current active work is PhotoSelect plus varbees open-core fast cash.
 5. HSKG is the clean public delivery win and stays parked at `hskg.vercel.app`.
 6. Old projects are inputs unless they pass the 5-question buyer gate.
-7. Horizon OS and Component Forge support the current lanes; they do not become a third active product by default.
+7. Horizon OS supports the current lanes; it does not become a third active product by default.
 
 ## Expert Roles
 

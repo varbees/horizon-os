@@ -4,11 +4,11 @@ register: product
 
 ## Product purpose
 
-Horizon OS is the local-first operating layer for a solo technical founder building the Antharmaya
-foundry from full-time execution toward an offgrid safe haven. It is not a SaaS product; it is the
-operator's single source of truth and control surface. It tracks capital/runway, the two-year journey
-(an Obsidian-grade trek ledger), the project portfolio across `~/Desktop/bolting/*`, content, and a
-command center that can deploy Codex/Claude tasks into any project.
+Horizon OS is the local-first revenue operating layer for a solo technical founder building the
+Antharmaya foundry from unstable income toward financial freedom and an offgrid safe haven. It is not
+a SaaS product and not a passive dashboard; it is the operator's control surface for turning signals
+into money actions. It tracks capital/runway, the two-year journey, the portfolio across
+`~/Desktop/bolting/*`, content, and deployable agent tasks.
 
 ## Users
 
@@ -22,7 +22,7 @@ density and control, not hand-holding. The interface should feel like a cockpit,
 - Full-width and dense: use the whole screen, never compact everything into a narrow centered column.
 - Local-first and controllable: every screen works offline from seeded data; external context is fed
   by agent runs, never required for the UI to function.
-- Actionable: surfaces end in a next action or a deployable agent task, not just a readout.
+- Revenue-first: surfaces end in a next action, buyer signal, paid offer, or deployable agent task.
 
 ## Anti-references
 
@@ -33,7 +33,9 @@ density and control, not hand-holding. The interface should feel like a cockpit,
 
 ## Strategic principles
 
-1. PhotoSelect (flagship) and PlantSage (bounded Stage 2) are the active lanes; Horizon OS supports them.
-2. Capital math is weekly and concrete (gap to February 2027).
-3. The journey is a trek: places branch into alleys/valleys with real GPS and elevation.
-4. The command center deploys work into projects; it does not just display status.
+1. PhotoSelect is the primary revenue engine.
+2. varbees open-core developer products are the fast-cash lane.
+3. PlantSage is strategic proof unless a buyer or paid path appears.
+4. Capital math is weekly and concrete (gap to February 2027).
+5. The journey is a trek: places branch into alleys/valleys with real GPS and elevation.
+6. The command center deploys work into projects; it does not just display status.

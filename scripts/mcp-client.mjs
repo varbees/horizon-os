@@ -1,3 +1,5 @@
+import "./env.mjs";
+
 // Horizon MCP client manager. Lets the local API connect directly to HTTP MCP
 // servers and authenticate them via browser OAuth driven from the dashboard.
 // Tokens, client registration, and PKCE verifiers persist per server under

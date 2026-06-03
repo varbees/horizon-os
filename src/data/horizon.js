@@ -858,30 +858,43 @@ export const socialPostSeeds = [
 const BOLT = "/home/driftr/Desktop/bolting";
 export const actionQueueSeed = [
   {
-    id: "photoselect-domain",
-    title: "Point PhotoSelect production at photoselect.space",
-    summary: "Flagship domain is owned but production is not yet served from it.",
-    source: "infrastructure",
+    id: "photoselect-paid-waitlist",
+    title: "Ship PhotoSelect paid-waitlist conversion page",
+    summary: "One promise, one CTA, one no-call path to first paying studio signal.",
+    source: "revenue_engine",
     projectId: "photoselect",
     projectPath: `${BOLT}/photoselect`,
-    agent: "claude",
+    agent: "codex",
     impact: "high",
     prompt:
-      "Wire the production PhotoSelect deployment to photoselect.space: configure the Cloud Run domain mapping (or Cloudflare route), verify TLS, update env BASE_URL/CORS, and confirm a tokenized gallery link resolves on the live domain. Report the exact DNS records added under the Cloudflare account.",
+      "Build the PhotoSelect conversion page for no-call paid validation. Requirements: one clear promise for Indian wedding/event studios, one repeated CTA, paid-waitlist/pre-sale copy for first 10 studios, async WhatsApp/email path, pricing anchor, FAQ that removes hesitation, and an end-to-end capture store. Keep claims grounded in existing PhotoSelect docs and code. Verify mobile, form submission, and live route.",
     sortOrder: 0,
   },
   {
-    id: "plantsage-domain",
-    title: "Register plantsage.earth and reserve subdomains",
-    summary: "Canonical PlantSage domain is planned but not yet acquired.",
-    source: "infrastructure",
-    projectId: "plantsage",
-    projectPath: `${BOLT}/plantsage_app`,
+    id: "varbees-first-sku",
+    title: "Choose the first varbees paid developer SKU",
+    summary: "Turn Horizon patterns into a free core plus paid pro/template offer.",
+    source: "revenue_engine",
+    projectId: "varbees-fast-cash",
+    projectPath: "/home/driftr/Downloads/horizon-dashboard-preview",
     agent: "claude",
-    impact: "normal",
+    impact: "high",
     prompt:
-      "Plan the plantsage.earth acquisition under the Cloudflare account (beesharsha@gmail.com): list registration steps, reserve www and app subdomains, and draft the DNS plan for the Flutter app landing plus the FastAPI backend (ff_planter). Do not purchase; output the exact checklist.",
+      "Decide the first varbees open-core fast-cash SKU from the existing Horizon OS assets. Compare exactly three options: agent-command-center starter, Obsidian+SQLite action queue template, and usage/spend dashboard. For each: buyer, pain, free core, paid gate, price, 7-day MVP, why it can earn without calls. Pick one and create a build-ready spec plus README outline.",
     sortOrder: 1,
+  },
+  {
+    id: "distribution-daily-loop",
+    title: "Generate today's faceless distribution queue",
+    summary: "One original post, 20 value replies, and one saved signal converted into a money action.",
+    source: "distribution",
+    projectId: "horizon-os",
+    projectPath: "/home/driftr/Downloads/horizon-dashboard-preview",
+    agent: "claude",
+    impact: "high",
+    prompt:
+      "Use the current Signals, Vault notes, PhotoSelect status, and varbees SKU direction to generate today's faceless distribution queue: one X/LinkedIn original post, 20 target reply prompts to accounts/communities 2-10x larger, and one Reddit/IndieHackers post idea. The goal is conversations or waitlist clicks, not vanity posting.",
+    sortOrder: 2,
   },
   {
     id: "capital-burn",
@@ -894,19 +907,6 @@ export const actionQueueSeed = [
     impact: "high",
     prompt:
       "Compute a realistic monthly burn from the operator's recurring costs (Claude and other subscriptions, domain renewals, living survival floor) and PATCH /api/capital/runway with monthly_burn_inr so the runway and required-weekly math become true.",
-    sortOrder: 2,
-  },
-  {
-    id: "photoselect-proof",
-    title: "Draft PhotoSelect studio outreach + proof case study",
-    summary: "Convert the flagship into repeatable credibility: case study + 10-studio outreach.",
-    source: "income_plan",
-    projectId: "photoselect",
-    projectPath: `${BOLT}/photoselect`,
-    agent: "codex",
-    impact: "high",
-    prompt:
-      "Produce a one-page PhotoSelect case study (swipe selection, payment-gated delivery, WhatsApp link, delivery proof ledger) and a 10-studio outreach list with one specific, personalized opener per studio. Ground claims in agent_docs/launch_readiness.md and verification.md only.",
     sortOrder: 3,
   },
   {
@@ -984,19 +984,19 @@ export const projects = [
   },
   {
     id: "forge",
-    name: "Interactive Component Forge",
-    now: false,
-    horizon: "Support / sales asset",
-    revenue: "$5k-$10k first engagement, then retainers, only after the current lanes produce proof.",
-    fit: "Useful as outbound material and Horizon OS extraction work, but not a separate active project while PhotoSelect and PlantSage are running.",
+    name: "varbees Open-Core Fast Cash",
+    now: true,
+    horizon: "Current work / fast cash",
+    revenue: "Open-source core -> paid template, pro module, or hosted utility.",
+    fit: "Best bridge for faceless, no-call income: publish useful code, earn trust, then sell a concrete developer shortcut.",
     brief:
-      "A library of polished SaaS dashboard widgets, SVG explainers, and motion demos. Each outbound lead receives a tiny custom component showing how their app could feel.",
+      "A small developer product lane under varbees. Extract a useful Horizon OS pattern into a free repo, then gate the production-ready template, pro workflow, or hosted version behind a simple paid offer.",
     examples: [
-      "PhotoSelect-style album pipeline timeline for a SaaS founder.",
-      "RevOps automation canvas for a sales-led startup.",
-      "AI assistant audit panel that shows latency, cost, and risk.",
+      "Local-first agent command-center starter.",
+      "Obsidian + SQLite + action queue template.",
+      "Agent usage/spend dashboard with open-core README and paid pro kit.",
     ],
-    deliverables: ["Reusable components", "Sales snippets", "One-page offer", "Public OSS extraction when useful"],
+    deliverables: ["Free core repo", "Paid SKU spec", "Landing page", "Checkout path", "Build-in-public launch thread"],
   },
   {
     id: "hskg",
@@ -1025,10 +1025,10 @@ export const projects = [
   {
     id: "plantsage",
     name: "PlantSage Field Product",
-    now: true,
-    horizon: "Current work / Stage 2",
+    now: false,
+    horizon: "Strategic proof / Stage 2",
     revenue: "Field-data proof, app/backend depth, ecological education wedge, and Antharmaya credibility asset.",
-    fit: "Real fieldwork, real media, real backend/app contracts, and a place-aware product loop. Current work alongside PhotoSelect, kept bounded to Stage 2 consistency so it stays shippable.",
+    fit: "Real fieldwork, real media, real backend/app contracts, and a place-aware product loop. Valuable proof, but bounded until it has a buyer or paid path.",
     brief:
       "A Flutter + FastAPI ecological memory system: capture plant evidence in the field, attach GPS/trail context, run quick ID, generate an 8-domain species card, and grow Hariharakhona Region #001 into a reusable Place Pack model.",
     examples: [

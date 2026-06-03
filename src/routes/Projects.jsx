@@ -1,20 +1,63 @@
-import { ArrowRight, CheckCircle2, Filter, ShieldAlert } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowRight, CheckCircle2, Filter, RefreshCw, ShieldAlert } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
 import { orchestrationRules, portfolioLanes, portfolioProjects, weeklyOperatingSystem } from "../data/portfolio.js";
+import { fetchProjects, runProjectSweep } from "../lib/projectsApi.js";
 
 export default function Projects() {
   const [activeLane, setActiveLane] = useState("All");
   const [selectedId, setSelectedId] = useState("photoselect");
+  const [projectData, setProjectData] = useState({ projects: portfolioProjects, sweep: null });
+  const [sweeping, setSweeping] = useState(false);
+  const [sweepError, setSweepError] = useState("");
 
-  const selectedProject = portfolioProjects.find((project) => project.id === selectedId) ?? portfolioProjects[0];
+  useEffect(() => {
+    let active = true;
+    fetchProjects()
+      .then((data) => {
+        if (active) setProjectData({ projects: data.projects?.length ? data.projects : portfolioProjects, sweep: data.sweep ?? null });
+      })
+      .catch((error) => {
+        if (active) setSweepError(String(error.message ?? error));
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function handleSweep() {
+    setSweeping(true);
+    setSweepError("");
+    try {
+      const sweep = await runProjectSweep();
+      setProjectData((prev) => ({ ...prev, sweep }));
+    } catch (error) {
+      setSweepError(String(error.message ?? error));
+    } finally {
+      setSweeping(false);
+    }
+  }
+
+  const registryProjects = projectData.projects?.length ? projectData.projects : portfolioProjects;
+  const sweepProjects = projectData.sweep?.projects ?? [];
+  const sweepByProject = useMemo(() => {
+    const map = new Map();
+    sweepProjects.forEach((project) => {
+      if (!map.has(project.project_id)) map.set(project.project_id, project);
+    });
+    return map;
+  }, [sweepProjects]);
+  const dirtyProjects = sweepProjects.filter((project) => project.git_dirty_count > 0);
+
+  const selectedProject = registryProjects.find((project) => project.id === selectedId) ?? registryProjects[0];
+  const selectedLive = sweepByProject.get(selectedProject.id);
   const filteredProjects = useMemo(
-    () => (activeLane === "All" ? portfolioProjects : portfolioProjects.filter((project) => project.lane === activeLane)),
-    [activeLane],
+    () => (activeLane === "All" ? registryProjects : registryProjects.filter((project) => project.lane === activeLane)),
+    [activeLane, registryProjects],
   );
-  const focusProjects = portfolioProjects.filter((project) => project.lane === "Focus Now");
-  const resurrectProjects = portfolioProjects.filter((project) => project.lane === "Resurrect");
+  const focusProjects = registryProjects.filter((project) => project.lane === "Focus Now");
+  const resurrectProjects = registryProjects.filter((project) => project.lane === "Resurrect");
 
   return (
     <div>
@@ -22,7 +65,54 @@ export default function Projects() {
         eyebrow="Portfolio command center"
         title="One hub for every project, not another project."
         copy="This is the orchestration layer over ~/Desktop/bolting. It ranks what earns focus, what can be resurrected, what should be mined for parts, and what must stay archived so the work does not fragment."
+        action={
+          <button
+            type="button"
+            onClick={handleSweep}
+            disabled={sweeping}
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-black text-onPrimary transition hover:bg-primary/90 disabled:opacity-60"
+          >
+            <RefreshCw className={`h-4 w-4 ${sweeping ? "animate-spin" : ""}`} aria-hidden="true" />
+            {sweeping ? "Sweeping" : "Sweep projects"}
+          </button>
+        }
       />
+
+      <section className="mb-5 grid gap-3 lg:grid-cols-[1fr_1.2fr]">
+        <Panel className="p-4">
+          <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">Live sweep overlay</p>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <MiniStat label="Indexed" value={projectData.sweep?.summary?.projects ?? 0} />
+            <MiniStat label="Git repos" value={projectData.sweep?.summary?.git_repos ?? 0} />
+            <MiniStat label="Dirty" value={projectData.sweep?.summary?.dirty_repos ?? 0} warn={dirtyProjects.length > 0} />
+            <MiniStat label="Docs" value={projectData.sweep?.summary?.docs_and_ideas ?? 0} />
+          </div>
+          <p className="mt-3 break-words font-mono text-xs text-paper/48">
+            {projectData.sweep?.run?.index_root ?? "Run a sweep to build ~/Desktop/bolting/_horizon_project_index."}
+          </p>
+          {sweepError ? <p className="mt-2 text-xs font-bold text-rust">{sweepError}</p> : null}
+        </Panel>
+
+        <Panel className="p-4">
+          <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">Dirty repo queue</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {dirtyProjects.length ? (
+              dirtyProjects.slice(0, 8).map((project) => (
+                <button
+                  key={`${project.run_id}-${project.project_id}-${project.path}`}
+                  type="button"
+                  onClick={() => project.project_id && setSelectedId(project.project_id)}
+                  className="rounded-full border border-rust/30 bg-rust/10 px-3 py-1 text-xs font-black text-rust"
+                >
+                  {project.name} · {project.git_dirty_count}
+                </button>
+              ))
+            ) : (
+              <span className="text-sm text-paper/54">No dirty indexed repos yet, or no sweep has run.</span>
+            )}
+          </div>
+        </Panel>
+      </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
         <Panel className="p-5">
@@ -92,6 +182,17 @@ export default function Projects() {
           </div>
           <div className="mt-5 space-y-4">
             <DossierRow label="Path" value={selectedProject.path} mono />
+            {selectedLive ? (
+              <>
+                <DossierRow
+                  label="Live git state"
+                  value={`${selectedLive.is_git ? selectedLive.git_branch || "git repo" : "not a git repo"} · ${selectedLive.git_dirty_count} dirty files · ${selectedLive.last_commit || "no commit seen"}`}
+                  mono
+                  highlight={selectedLive.git_dirty_count > 0}
+                />
+                <DossierRow label="Index link" value={selectedLive.index_link} mono />
+              </>
+            ) : null}
             <DossierRow label="Market" value={selectedProject.market} />
             <DossierRow label="Role" value={selectedProject.role} />
             <DossierRow label="Evidence" value={selectedProject.evidence} />
@@ -129,29 +230,13 @@ export default function Projects() {
 
           <div className="mt-5 max-h-[38rem] space-y-2 overflow-auto pr-1">
             {filteredProjects.map((project) => (
-              <button
+              <ProjectRegistryButton
                 key={project.id}
-                type="button"
-                onClick={() => setSelectedId(project.id)}
-                className={`grid w-full gap-3 rounded-md border p-3 text-left transition sm:grid-cols-[minmax(0,1fr)_5rem] ${
-                  selectedProject.id === project.id
-                    ? "border-signal/50 bg-signal/10"
-                    : "border-outlineVariant bg-white/[0.025] hover:border-outline hover:bg-white/[0.055]"
-                }`}
-              >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="truncate text-base font-black text-paper">{project.name}</h3>
-                    <span className="rounded-full border border-outlineVariant px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-paper/42">
-                      {project.lane}
-                    </span>
-                  </div>
-                  <p className="mt-1 line-clamp-2 text-sm leading-6 text-paper/56">{project.next}</p>
-                </div>
-                <div className="flex items-center justify-start sm:justify-end">
-                  <Score score={project.score} />
-                </div>
-              </button>
+                project={project}
+                live={sweepByProject.get(project.id)}
+                selected={selectedProject.id === project.id}
+                onSelect={() => setSelectedId(project.id)}
+              />
             ))}
           </div>
         </Panel>
@@ -197,12 +282,51 @@ export default function Projects() {
               Command center doctrine
             </p>
             <p className="mt-2 text-sm leading-6 text-paper/62">
-              PhotoSelect earns the runway. HSKG and Component Forge generate fast public proof. Agent Linux Control and RateGuard become strategic leverage only after the income floor stops being fragile.
+              PhotoSelect earns recurring runway. varbees creates fast-cash developer products. PlantSage, HSKG, Agent Linux Control, and RateGuard stay proof or leverage until they show a paid path.
             </p>
           </div>
         </Panel>
       </section>
     </div>
+  );
+}
+
+function MiniStat({ label, value, warn = false }) {
+  return (
+    <div className={`rounded-md border p-3 ${warn ? "border-rust/30 bg-rust/10" : "border-outlineVariant bg-surfaceVariant"}`}>
+      <p className={`text-2xl font-black tabular-nums ${warn ? "text-rust" : "text-paper"}`}>{value}</p>
+      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-paper/46">{label}</p>
+    </div>
+  );
+}
+
+function ProjectRegistryButton({ project, live, selected, onSelect }) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`grid w-full gap-3 rounded-md border p-3 text-left transition sm:grid-cols-[minmax(0,1fr)_5rem] ${
+        selected ? "border-signal/50 bg-signal/10" : "border-outlineVariant bg-white/[0.025] hover:border-outline hover:bg-white/[0.055]"
+      }`}
+    >
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="truncate text-base font-black text-paper">{project.name}</h3>
+          <span className="rounded-full border border-outlineVariant px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-paper/42">
+            {project.lane}
+          </span>
+          {live?.git_dirty_count ? (
+            <span className="rounded-full border border-rust/30 bg-rust/10 px-2 py-0.5 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-rust">
+              {live.git_dirty_count} dirty
+            </span>
+          ) : null}
+        </div>
+        <p className="mt-1 line-clamp-2 text-sm leading-6 text-paper/56">{project.next}</p>
+      </div>
+      <div className="flex items-center justify-start sm:justify-end">
+        <Score score={project.score} />
+      </div>
+    </button>
   );
 }
 

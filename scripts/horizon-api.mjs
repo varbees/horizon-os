@@ -1,12 +1,16 @@
+import "./env.mjs";
+
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openHorizonDb } from "./horizon-db.mjs";
+import { runProjectSweep, latestProjectSweep } from "./project-sweep.mjs";
 import { fetchFeed } from "./rss.mjs";
 import { getUsageSummary } from "./usage.mjs";
 import { mcpServerSeed } from "../src/data/horizon.js";
+import { portfolioProjects } from "../src/data/portfolio.js";
 import { frontmatter, listNotes, readNote, vaultInfo, writeNote } from "./vault.mjs";
 import { callTool, connectServer, connectionState, disconnectServer, finishAuth, listTools } from "./mcp-client.mjs";
 
@@ -210,6 +214,18 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/api/command-base") {
       return json(res, 200, getCommandBase());
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/projects") {
+      return json(res, 200, {
+        projects: portfolioProjects,
+        sweep: latestProjectSweep(db),
+      });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/projects/sweep") {
+      const sweep = runProjectSweep(db);
+      return json(res, 200, sweep);
     }
 
     if (req.method === "GET" && url.pathname === "/api/calendar/events") {

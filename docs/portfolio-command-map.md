@@ -5,9 +5,9 @@ This document turns `~/Desktop/bolting/*` into one managed portfolio instead of 
 ## Command Doctrine
 
 1. PhotoSelect is the primary revenue proof.
-2. PlantSage is the current field-product proof: real data, real app/backend contracts, and reusable ingestion/storage lessons.
+2. varbees open-core developer products are the fast-cash lane.
 3. HSKG is now closed as completed public delivery proof at `hskg.vercel.app`.
-4. Horizon OS / Component Forge is the control layer and sales-engine wrapper, not a third active product unless a slice is explicitly chosen.
+4. PlantSage is strategic field-product proof: real data, real app/backend contracts, and reusable ingestion/storage lessons.
 5. Wedding Studio AI Ops is the first adjacent vertical AI upsell after PhotoSelect revenue proof.
 6. Agent Linux Control and RateGuard are strategic assets, not daily distractions.
 7. Old projects can donate patterns, components, docs, and proof, but they do not become active unless they pass buyer validation.
@@ -17,8 +17,8 @@ This document turns `~/Desktop/bolting/*` into one managed portfolio instead of 
 
 | Lane | Rule | Projects |
 | --- | --- | --- |
-| Focus Now | Current active work only | PhotoSelect, PlantSage |
-| Strategic Asset | High leverage, no daily build lane unless explicitly activated | Antharmaya Labs, Component Forge, Agent Linux Control, SecureClaw, agent-calendar-os |
+| Focus Now | Current active money work only | PhotoSelect, varbees Open-Core Fast Cash |
+| Strategic Asset | High leverage, no daily build lane unless explicitly activated | PlantSage, Antharmaya Labs, Component Forge, Agent Linux Control, SecureClaw, agent-calendar-os |
 | Resurrect | Valid idea, must be constrained before code | RateGuard, Layers Green AI Studio, WidgetForge, InvoAI, Wedding Studio AI Ops |
 | Park | Good engineering, wrong timing | Desktop PhotoSelect, Kriate, Vault-Wealth, Anthar Vault |
 | Archive | Reference only | HomeBase, EcoLogistix, Gravita8, SHOP, deskold, misc folders |
@@ -28,14 +28,14 @@ This document turns `~/Desktop/bolting/*` into one managed portfolio instead of 
 ### Week 1
 
 - Keep HSKG closed at `hskg.vercel.app`; no work unless a purchased domain or requested adjustment appears.
-- Finish PhotoSelect live-payment proof path or document the exact blocker.
-- Finish one PlantSage Stage 2 proof path: media payload, ingest dry-run, live capture, or safe ledger card.
-- Capture current PhotoSelect and PlantSage progress in Horizon OS; do not expand a new active lane.
+- Ship the PhotoSelect paid-waitlist/pre-sale page or document the exact blocker.
+- Choose the first varbees paid developer SKU: free core, paid gate, price, 7-day scope.
+- Capture current PhotoSelect and varbees progress in Horizon OS; do not expand a new active lane.
 
 ### Week 2
 
 - Run PhotoSelect pilot outreach to 10 studios.
-- Finish one PlantSage Stage 2 proof: MinIO/R2 media payload from backend into Flutter model fields.
+- Ship the varbees free-core README and repo skeleton.
 - Add only proven active work to `antharmaya.com`, if it helps sales or credibility.
 
 ### Week 3
