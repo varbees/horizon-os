@@ -13,6 +13,7 @@ import Inbox from "./routes/Inbox.jsx";
 import CommandCenter from "./routes/CommandCenter.jsx";
 import Signals from "./routes/Signals.jsx";
 import Connectors from "./routes/Connectors.jsx";
+import Vault from "./routes/Vault.jsx";
 
 const CalendarMatrix = lazy(() => import("./routes/CalendarMatrix.jsx"));
 
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="/inbox" element={<Inbox />} />
           <Route path="/signals" element={<Signals />} />
           <Route path="/connectors" element={<Connectors />} />
+          <Route path="/vault" element={<Vault />} />
           <Route path="/map" element={<SystemMap />} />
           <Route path="/documents" element={<Documents />} />
           <Route path="/hskg" element={<HskgLaunch />} />

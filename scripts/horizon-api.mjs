@@ -7,10 +7,77 @@ import { openHorizonDb } from "./horizon-db.mjs";
 import { fetchFeed } from "./rss.mjs";
 import { getUsageSummary } from "./usage.mjs";
 import { mcpServerSeed } from "../src/data/horizon.js";
+import { frontmatter, listNotes, readNote, vaultInfo, writeNote } from "./vault.mjs";
 import { callTool, connectServer, connectionState, disconnectServer, finishAuth, listTools } from "./mcp-client.mjs";
 
 function mcpServerById(id) {
   return mcpServerSeed.find((s) => s.id === id) ?? null;
+}
+
+const inrFmt = (n) => `INR ${Number(n ?? 0).toLocaleString("en-IN")}`;
+
+function syncVaultSnapshots() {
+  const stamp = new Date().toISOString();
+  const written = [];
+  const put = (relPath, body) => written.push(writeNote(relPath, body).path);
+
+  // Command Center
+  const actions = all("SELECT * FROM action_queue WHERE status != 'dismissed' ORDER BY status, sort_order");
+  const inQueue = actions.filter((a) => a.status === "suggested" || a.status === "queued").length;
+  const cmd = [
+    frontmatter({ title: "Command Center", source: "horizon-os", synced: stamp, tags: "horizon/command" }),
+    "# Command Center\n",
+    `Operator status: **${inQueue} suggestions in queue**, ${actions.filter((a) => a.status === "deployed").length} deployed.\n`,
+    "## Action queue\n",
+    ...actions.map((a) => `- [${a.status === "done" ? "x" : " "}] **${a.title}** (${a.agent} → ${a.project_id}) — ${a.summary}`),
+    "",
+  ].join("\n");
+  put("Horizon/Command Center.md", cmd);
+
+  // Capital
+  const runway = db.prepare("SELECT * FROM runway_state WHERE id = 'current'").get() ?? {};
+  const targets = all("SELECT * FROM capital_targets ORDER BY sort_order");
+  const pipeline = all("SELECT * FROM offer_pipeline ORDER BY sort_order");
+  const capital = [
+    frontmatter({ title: "Capital", source: "horizon-os", synced: stamp, tags: "horizon/capital" }),
+    "# Capital & Runway\n",
+    `- Cash: ${inrFmt(runway.current_cash_inr)} · Burn: ${inrFmt(runway.monthly_burn_inr)}/mo · MRR: ${inrFmt(runway.mrr_inr)}`,
+    `- Milestone: ${runway.milestone_date ?? "2027-02-15"}\n`,
+    "## Targets\n",
+    "| Target | Amount | Saved | Deadline |",
+    "| --- | --- | --- | --- |",
+    ...targets.map((t) => `| ${t.label} | ${inrFmt(t.target_inr)} | ${inrFmt(t.saved_inr)} | ${t.deadline} |`),
+    "\n## Offer pipeline\n",
+    ...pipeline.map((p) => `- **${p.buyer}** — ${p.offer} (${p.stage}, ${inrFmt(p.value_inr)})`),
+    "",
+  ].join("\n");
+  put("Horizon/Capital.md", capital);
+
+  // Journey
+  const entries = all("SELECT * FROM journey_entries ORDER BY date DESC, sort_order");
+  const journey = [
+    frontmatter({ title: "Journey", source: "horizon-os", synced: stamp, tags: "horizon/journey" }),
+    "# Journey Trek Ledger\n",
+    ...entries.map((e) => {
+      const geo = e.latitude != null ? ` \`${e.latitude},${e.longitude}\` @ ${e.altitude_m}m` : "";
+      const indent = e.parent_id ? "  " : "";
+      return `${indent}- **[${e.segment}] ${e.title}** (${e.date}, ${e.anchor})${geo}\n${indent}  - ${e.lesson}\n${indent}  - Next: ${e.next_action}`;
+    }),
+    "",
+  ].join("\n");
+  put("Horizon/Journey.md", journey);
+
+  // Saved signals
+  const saved = all("SELECT * FROM signals WHERE status = 'saved' ORDER BY coalesce(published_at, fetched_at) DESC LIMIT 100");
+  const sig = [
+    frontmatter({ title: "Signals - Saved", source: "horizon-os", synced: stamp, tags: "horizon/signals" }),
+    "# Saved Signals\n",
+    ...(saved.length ? saved.map((s) => `- [${s.source_name}] [${s.title}](${s.url}) — ${s.category}`) : ["_No saved signals yet._"]),
+    "",
+  ].join("\n");
+  put("Horizon/Signals - Saved.md", sig);
+
+  return { synced: stamp, files: written };
 }
 
 const port = Number(process.env.HORIZON_API_PORT ?? 8787);
@@ -409,6 +476,38 @@ const server = createServer(async (req, res) => {
       const id = decodeURIComponent(url.pathname.replace("/api/capital/pipeline/", ""));
       db.prepare("DELETE FROM offer_pipeline WHERE id = ?").run(id);
       return json(res, 200, { ok: true, id });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/vault") {
+      return json(res, 200, { ...vaultInfo(), notes: listNotes().slice(0, 80) });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/vault/note") {
+      const path = url.searchParams.get("path");
+      try {
+        return json(res, 200, { ok: true, ...readNote(path) });
+      } catch (error) {
+        return json(res, 400, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/vault/sync") {
+      try {
+        const result = syncVaultSnapshots();
+        return json(res, 200, { ok: true, ...result });
+      } catch (error) {
+        return json(res, 500, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/vault/note") {
+      const body = await readJson(req);
+      try {
+        const result = writeNote(body.path, body.content ?? "");
+        return json(res, 201, { ok: true, ...result });
+      } catch (error) {
+        return json(res, 400, { ok: false, error: String(error.message ?? error) });
+      }
     }
 
     if (req.method === "GET" && url.pathname === "/api/mcp") {

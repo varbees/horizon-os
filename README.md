@@ -40,6 +40,7 @@ npm run build
 - `/inbox` - Resource & Content Inbox: link capture, content backlog, and the social skills catalog
 - `/signals` - News & Signals: local RSS feed with category counts, filters, and prunable sources
 - `/connectors` - MCP Connectors: connect to MCP servers with browser OAuth, list and call tools
+- `/vault` - Obsidian vault bridge: mirror Horizon state into the vault as Markdown and read notes back
 - `/map` - node-editor command graph backed by local SQLite API
 - `/documents` - docs and connector artifacts
 - `/hskg` - closure note for the parked `hskg.vercel.app` proof
