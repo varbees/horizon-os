@@ -13,7 +13,6 @@ import {
   LayoutDashboard,
   PanelLeftClose,
   PanelLeftOpen,
-  Rocket,
   Rss,
   Terminal,
   Wallet,
@@ -40,7 +39,6 @@ const navGroups = [
       { to: "/vault", label: "Vault", icon: FolderGit2, detail: "Obsidian sync" },
       { to: "/map", label: "Map", icon: GitBranch, detail: "System graph" },
       { to: "/documents", label: "Docs", icon: FileText, detail: "Runbooks" },
-      { to: "/hskg", label: "HSKG", icon: Rocket, detail: "Closure note" },
     ],
   },
 ];
@@ -60,7 +58,6 @@ const mobileNavItems = [
   { to: "/vault", label: "Vault", icon: FolderGit2 },
   { to: "/map", label: "Map", icon: GitBranch },
   { to: "/documents", label: "Docs", icon: FileText },
-  { to: "/hskg", label: "HSKG", icon: Rocket },
 ];
 
 export default function Shell({ children }) {
@@ -175,7 +172,7 @@ export default function Shell({ children }) {
         className="fixed bottom-0 left-0 right-0 z-50 border-t border-outlineVariant bg-surface/94 px-2 pb-2 pt-2 backdrop-blur-xl lg:hidden"
         aria-label="Mobile primary"
       >
-        <div className="mx-auto grid max-w-2xl grid-cols-[repeat(13,minmax(0,1fr))] gap-1">
+        <div className="mx-auto grid max-w-2xl grid-cols-[repeat(12,minmax(0,1fr))] gap-1">
           {mobileNavItems.map((item) => (
             <MobileNavItem key={item.to} item={item} />
           ))}

@@ -26,7 +26,13 @@ function stripTags(value) {
 }
 
 function clean(value) {
-  return decodeEntities(stripTags(stripCdata(value))).trim();
+  // strip real tags, decode entities (which can reveal encoded tags/comments),
+  // then strip again so things like &lt;table&gt; or <!-- SC_OFF --> never render.
+  let v = stripCdata(value);
+  v = stripTags(v);
+  v = decodeEntities(v);
+  v = stripTags(v);
+  return v.replace(/\s+/g, " ").trim();
 }
 
 function tag(block, name) {

@@ -592,7 +592,12 @@ const server = createServer(async (req, res) => {
       const insert = db.prepare(`
         INSERT INTO signals (id, source_id, source_name, category, kind, title, url, summary, thumbnail, published_at, status, fetched_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', datetime('now'))
-        ON CONFLICT(id) DO UPDATE SET fetched_at = datetime('now')
+        ON CONFLICT(id) DO UPDATE SET
+          title = excluded.title,
+          summary = excluded.summary,
+          thumbnail = excluded.thumbnail,
+          published_at = excluded.published_at,
+          fetched_at = datetime('now')
       `);
       let inserted = 0;
       const errors = [];
