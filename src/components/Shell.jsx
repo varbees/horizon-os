@@ -6,6 +6,7 @@ import {
   BookOpen,
   FileText,
   Gauge,
+  Cable,
   GitBranch,
   Inbox,
   LayoutDashboard,
@@ -34,6 +35,7 @@ const navGroups = [
       { to: "/capital", label: "Capital", icon: Wallet, detail: "Runway math" },
       { to: "/inbox", label: "Inbox", icon: Inbox, detail: "Content intake" },
       { to: "/signals", label: "Signals", icon: Rss, detail: "News feed" },
+      { to: "/connectors", label: "Connectors", icon: Cable, detail: "MCP + auth" },
       { to: "/map", label: "Map", icon: GitBranch, detail: "System graph" },
       { to: "/documents", label: "Docs", icon: FileText, detail: "Runbooks" },
       { to: "/hskg", label: "HSKG", icon: Rocket, detail: "Closure note" },
@@ -52,6 +54,7 @@ const mobileNavItems = [
   { to: "/capital", label: "Capital", icon: Wallet },
   { to: "/inbox", label: "Inbox", icon: Inbox },
   { to: "/signals", label: "Signals", icon: Rss },
+  { to: "/connectors", label: "Connectors", icon: Cable },
   { to: "/map", label: "Map", icon: GitBranch },
   { to: "/documents", label: "Docs", icon: FileText },
   { to: "/hskg", label: "HSKG", icon: Rocket },
@@ -169,7 +172,7 @@ export default function Shell({ children }) {
         className="fixed bottom-0 left-0 right-0 z-50 border-t border-outlineVariant bg-surface/94 px-2 pb-2 pt-2 backdrop-blur-xl lg:hidden"
         aria-label="Mobile primary"
       >
-        <div className="mx-auto grid max-w-2xl grid-cols-11 gap-1">
+        <div className="mx-auto grid max-w-2xl grid-cols-12 gap-1">
           {mobileNavItems.map((item) => (
             <MobileNavItem key={item.to} item={item} />
           ))}

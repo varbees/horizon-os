@@ -13,6 +13,7 @@
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@schedule-x/calendar": "^4.6.0",
     "@schedule-x/calendar-controls": "^4.6.0",
     "@schedule-x/current-time": "^4.6.0",

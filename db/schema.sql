@@ -250,6 +250,22 @@ CREATE TABLE IF NOT EXISTS signals (
   fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS intelligence_items (
+  id TEXT PRIMARY KEY,
+  channel TEXT NOT NULL DEFAULT 'gmail',
+  title TEXT NOT NULL,
+  subtitle TEXT NOT NULL DEFAULT '',
+  summary TEXT NOT NULL DEFAULT '',
+  url TEXT NOT NULL DEFAULT '',
+  occurred_at TEXT,
+  status TEXT NOT NULL DEFAULT 'new',
+  unread INTEGER NOT NULL DEFAULT 1,
+  source TEXT NOT NULL DEFAULT 'seed',
+  payload_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS vectors (
   id TEXT PRIMARY KEY,
   context_id TEXT REFERENCES contexts(id) ON DELETE CASCADE,

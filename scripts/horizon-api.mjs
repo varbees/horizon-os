@@ -6,6 +6,12 @@ import { fileURLToPath } from "node:url";
 import { openHorizonDb } from "./horizon-db.mjs";
 import { fetchFeed } from "./rss.mjs";
 import { getUsageSummary } from "./usage.mjs";
+import { mcpServerSeed } from "../src/data/horizon.js";
+import { callTool, connectServer, connectionState, disconnectServer, finishAuth, listTools } from "./mcp-client.mjs";
+
+function mcpServerById(id) {
+  return mcpServerSeed.find((s) => s.id === id) ?? null;
+}
 
 const port = Number(process.env.HORIZON_API_PORT ?? 8787);
 const db = openHorizonDb();
@@ -403,6 +409,70 @@ const server = createServer(async (req, res) => {
       const id = decodeURIComponent(url.pathname.replace("/api/capital/pipeline/", ""));
       db.prepare("DELETE FROM offer_pipeline WHERE id = ?").run(id);
       return json(res, 200, { ok: true, id });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/mcp") {
+      return json(res, 200, {
+        servers: mcpServerSeed.map((s) => ({ ...s, state: connectionState(s.id) })),
+      });
+    }
+
+    if (req.method === "POST" && url.pathname.startsWith("/api/mcp/") && url.pathname.endsWith("/connect")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/mcp/", "").replace("/connect", ""));
+      const server = mcpServerById(id);
+      if (!server) return json(res, 404, { ok: false, error: "server_not_found" });
+      try {
+        const result = await connectServer(id, server.url);
+        return json(res, 200, { ok: true, ...result });
+      } catch (error) {
+        return json(res, 502, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
+    if (req.method === "GET" && url.pathname.startsWith("/api/mcp/") && url.pathname.endsWith("/callback")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/mcp/", "").replace("/callback", ""));
+      const code = url.searchParams.get("code");
+      const html = (msg, ok) =>
+        `<!doctype html><meta charset="utf-8"><body style="font-family:ui-sans-serif;background:#fbfff9;color:#17201a;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><h2>${ok ? "Connected" : "Auth failed"}</h2><p>${msg}</p><p style="color:#708078">You can close this tab.</p></div><script>setTimeout(()=>window.close(),1500)</script></body>`;
+      if (!code) {
+        res.writeHead(400, { "content-type": "text/html" });
+        return res.end(html("No authorization code returned.", false));
+      }
+      try {
+        await finishAuth(id, code);
+        res.writeHead(200, { "content-type": "text/html" });
+        return res.end(html(`${id} is connected to Horizon.`, true));
+      } catch (error) {
+        res.writeHead(502, { "content-type": "text/html" });
+        return res.end(html(String(error.message ?? error), false));
+      }
+    }
+
+    if (req.method === "POST" && url.pathname.startsWith("/api/mcp/") && url.pathname.endsWith("/tools")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/mcp/", "").replace("/tools", ""));
+      try {
+        const tools = await listTools(id);
+        return json(res, 200, { ok: true, tools: tools.map((t) => ({ name: t.name, description: t.description })) });
+      } catch (error) {
+        return json(res, 409, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
+    if (req.method === "POST" && url.pathname.startsWith("/api/mcp/") && url.pathname.endsWith("/call")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/mcp/", "").replace("/call", ""));
+      const body = await readJson(req);
+      try {
+        const result = await callTool(id, body.name, body.arguments ?? {});
+        return json(res, 200, { ok: true, result });
+      } catch (error) {
+        return json(res, 409, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
+    if (req.method === "POST" && url.pathname.startsWith("/api/mcp/") && url.pathname.endsWith("/disconnect")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/mcp/", "").replace("/disconnect", ""));
+      disconnectServer(id);
+      return json(res, 200, { ok: true });
     }
 
     if (req.method === "GET" && url.pathname === "/api/usage") {

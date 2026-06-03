@@ -650,10 +650,10 @@ export const versionRoadmap = [
   },
   {
     version: "v1.0",
-    title: "Intelligence (agent-fed)",
-    window: "July 2026",
-    status: "Planned",
-    output: "Agent-fed Gmail/Calendar/meeting intelligence into a local timeline the dashboard reads.",
+    title: "MCP Connectors",
+    window: "June 2026",
+    status: "Shipping now",
+    output: "Direct MCP client with browser OAuth from the dashboard; list and call Calendar/Gmail/Drive tools.",
   },
   {
     version: "v0.7-cal",
@@ -955,6 +955,14 @@ export const signalSeed = [
     thumbnail: "",
     publishedAt: "2026-06-03T00:00:00Z",
   },
+];
+
+// v1.0 MCP connectors. HTTP MCP servers Horizon can connect to and authenticate
+// via browser OAuth from the dashboard. URLs match the local Claude Code config.
+export const mcpServerSeed = [
+  { id: "google-calendar", name: "Google Calendar", url: "https://calendarmcp.googleapis.com/mcp/v1", category: "Intelligence", provides: "Upcoming events into the timeline." },
+  { id: "gmail", name: "Gmail", url: "https://gmailmcp.googleapis.com/mcp/v1", category: "Intelligence", provides: "Recent email highlights." },
+  { id: "google-drive", name: "Google Drive", url: "https://drivemcp.googleapis.com/mcp/v1", category: "Files", provides: "Recent documents and search." },
 ];
 
 export const projects = [
