@@ -7,6 +7,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openHorizonDb } from "./horizon-db.mjs";
 import { runProjectSweep, latestProjectSweep } from "./project-sweep.mjs";
+import { generateRevenueActions } from "./revenue-actions.mjs";
 import { fetchFeed } from "./rss.mjs";
 import { getUsageSummary } from "./usage.mjs";
 import { mcpServerSeed } from "../src/data/horizon.js";
@@ -108,6 +109,10 @@ async function readJson(req) {
 
 function all(sql, ...params) {
   return db.prepare(sql).all(...params);
+}
+
+function actionRows() {
+  return all("SELECT * FROM action_queue ORDER BY status, sort_order, created_at");
 }
 
 function calendarEventPayload(body) {
@@ -226,6 +231,15 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/projects/sweep") {
       const sweep = runProjectSweep(db);
       return json(res, 200, sweep);
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/revenue-actions/generate") {
+      const body = await readJson(req);
+      const result = generateRevenueActions(db, { sweep: body.sweep !== false });
+      return json(res, 200, {
+        ...result,
+        actions: actionRows(),
+      });
     }
 
     if (req.method === "GET" && url.pathname === "/api/calendar/events") {
@@ -682,7 +696,7 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/api/action-queue") {
       return json(res, 200, {
-        actions: all("SELECT * FROM action_queue ORDER BY status, sort_order, created_at"),
+        actions: actionRows(),
       });
     }
 

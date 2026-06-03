@@ -6,6 +6,7 @@ import {
   CircleDot,
   Clock,
   Cpu,
+  RefreshCw,
   Rocket,
   Terminal,
   X,
@@ -13,7 +14,7 @@ import {
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
 import UsagePanel from "../components/UsagePanel.jsx";
-import { addAction, deployAction, fetchActionQueue, updateAction } from "../lib/actionQueueApi.js";
+import { deployAction, fetchActionQueue, generateRevenueActions, updateAction } from "../lib/actionQueueApi.js";
 import { actionQueueSeed, projects, socialSkillCatalog } from "../data/horizon.js";
 
 const STATUS_FLOW = {
@@ -64,6 +65,8 @@ export default function CommandCenter() {
   const [actions, setActions] = useState(seedActions);
   const [source, setSource] = useState("seed");
   const [open, setOpen] = useState(null);
+  const [generating, setGenerating] = useState(false);
+  const [generatorStatus, setGeneratorStatus] = useState("");
   const now = useClock();
 
   useEffect(() => {
@@ -113,6 +116,23 @@ export default function CommandCenter() {
     setOpen((cur) => (cur && cur.id === action.id ? { ...cur, status: "deployed", deployed_path: path } : cur));
   }
 
+  async function generateFromSweep() {
+    setGenerating(true);
+    setGeneratorStatus("Sweeping projects and generating money actions...");
+    try {
+      const result = await generateRevenueActions({ sweep: true });
+      if (Array.isArray(result.actions)) setActions(result.actions);
+      setSource("live");
+      setGeneratorStatus(
+        `Generated ${result.generated?.length ?? 0} actions from ${result.sweep?.summary?.projects ?? 0} indexed items.`,
+      );
+    } catch (error) {
+      setGeneratorStatus(error instanceof Error ? error.message : "Revenue action generation failed.");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   const clock = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const day = now.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
 
@@ -160,10 +180,22 @@ export default function CommandCenter() {
             <div>
               <p className="font-mono text-[11px] uppercase tracking-[0.26em] text-brass">Deployable actions</p>
               <h2 className="mt-2 font-display text-2xl font-bold">Only tasks that move money, proof, or distribution</h2>
+              {generatorStatus ? <p className="mt-1 text-sm font-bold text-paper/58">{generatorStatus}</p> : null}
             </div>
-            <span className="rounded-full border border-outlineVariant bg-surfaceVariant px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-paper/52">
-              {source === "live" ? "live · 127.0.0.1:8787" : "seed"}
-            </span>
+            <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={generateFromSweep}
+                disabled={generating}
+                className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primaryContainer px-3 py-1.5 text-sm font-black text-onPrimaryContainer transition hover:border-primary disabled:cursor-not-allowed disabled:opacity-55"
+              >
+                <RefreshCw className={`h-4 w-4 ${generating ? "animate-spin" : ""}`} aria-hidden="true" />
+                Generate from sweep
+              </button>
+              <span className="rounded-full border border-outlineVariant bg-surfaceVariant px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-paper/52">
+                {source === "live" ? "live · 127.0.0.1:8787" : "seed"}
+              </span>
+            </div>
           </div>
 
           <div className="mt-5 divide-y divide-outlineVariant/70">

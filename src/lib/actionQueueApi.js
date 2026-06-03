@@ -29,3 +29,13 @@ export async function addAction(action) {
   if (!response.ok) throw new Error(`action add failed: ${response.status}`);
   return response.json();
 }
+
+export async function generateRevenueActions(options = {}) {
+  const response = await fetch("/api/revenue-actions/generate", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(options),
+  });
+  if (!response.ok) throw new Error(`revenue action generation failed: ${response.status}`);
+  return response.json();
+}

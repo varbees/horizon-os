@@ -139,3 +139,23 @@ It scans project roots, writes live repo facts into SQLite, and creates a non-de
 ```
 
 Use `npm run projects:sweep:watch` for the hourly loop. The sweep is not a nostalgia browser; it answers which repo changed, whether the work supports PhotoSelect or varbees, and what action should be deployed next.
+
+## Revenue action generator
+
+Run this from CLI:
+
+```bash
+npm run actions:generate
+```
+
+Or press **Generate from sweep** on `/command`.
+
+This converts the latest sweep into five deployable prompts:
+
+1. PhotoSelect paid-proof artifact.
+2. varbees fast-cash SKU.
+3. Dirty repo triage by money relevance.
+4. Downloaded research into three cash offers.
+5. Faceless distribution queue.
+
+The generator writes to `action_queue` with `source = revenue-engine`, so the same deploy/done/dismiss flow applies. Rule-based generation is the default; Gemini/Jules can assist later, but the operating loop must not depend on remote model availability.

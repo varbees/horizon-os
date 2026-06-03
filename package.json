@@ -10,6 +10,7 @@
     "db:init": "node scripts/horizon-db.mjs",
     "projects:sweep": "node scripts/project-sweep.mjs",
     "projects:sweep:watch": "node scripts/project-sweep.mjs --watch",
+    "actions:generate": "node scripts/revenue-actions.mjs",
     "build": "vite build",
     "test:e2e": "playwright test",
     "preview": "vite preview --host 127.0.0.1"
