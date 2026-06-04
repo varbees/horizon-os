@@ -760,6 +760,14 @@ const server = createServer(async (req, res) => {
       const filePath = resolve(queueDir, filename);
       const contents = buildRunnableSpec(action, { stamp });
       writeFileSync(filePath, contents, "utf8");
+      // mirror into the Obsidian vault as durable memory (control surface -> memory)
+      let vaultPath = "";
+      try {
+        const note = frontmatter({ title: action.title, source: "horizon-action", project: action.project_id, agent: action.agent, status: "deployed", deployed: stamp, tags: "horizon/action" }) + contents;
+        vaultPath = writeNote(`Horizon/Actions/${id}.md`, note).path;
+      } catch {
+        /* vault optional; deploy still succeeds */
+      }
       db.prepare("UPDATE action_queue SET status = 'deployed', deployed_path = ?, spec_path = ?, updated_at = datetime('now') WHERE id = ?").run(filePath, filePath, id);
       db.prepare("INSERT INTO command_log (id, actor, action, target, payload_json) VALUES (?, ?, ?, ?, ?)").run(
         randomUUID(),
@@ -768,7 +776,7 @@ const server = createServer(async (req, res) => {
         action.project_id || action.id,
         JSON.stringify({ id, agent: action.agent, path: filePath }),
       );
-      return json(res, 200, { ok: true, id, path: filePath });
+      return json(res, 200, { ok: true, id, path: filePath, vaultPath });
     }
 
     if (req.method === "PATCH" && url.pathname.startsWith("/api/action-queue/")) {
