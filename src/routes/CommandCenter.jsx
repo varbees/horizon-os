@@ -197,6 +197,8 @@ export default function CommandCenter() {
         </div>
       </section>
 
+      <LaneBanner />
+
       <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Scorecard icon={CircleDot} tone="text-brass" value={inQueue} label="In queue" sub="suggested + queued" />
         <Scorecard icon={Rocket} tone="text-signal" value={deployed} label="Deployed" sub="prompt written to project" />
@@ -303,6 +305,52 @@ function StatusBead({ value, label }) {
       <span className="font-black text-paper">{value}</span>
       {label}
     </span>
+  );
+}
+
+const LANES = [
+  {
+    tag: "engine",
+    tone: "border-signal/30 bg-signal/[0.07]",
+    dot: "bg-signal",
+    name: "PhotoSelect",
+    model: "B2B SaaS · flat studio price, zero commission",
+    move: "Unblock live creds → first paying studio → first 5",
+  },
+  {
+    tag: "fast-cash",
+    tone: "border-brass/30 bg-brass/[0.07]",
+    dot: "bg-brass",
+    name: "rateguard (varbees)",
+    move: "Open-source the core → paid hosted dashboard → first $",
+    model: "Open-core · free SDK, paid hosted tier",
+  },
+];
+
+function LaneBanner() {
+  return (
+    <section className="mt-5" aria-label="The two money lanes">
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-mono text-[11px] uppercase tracking-[0.26em] text-brass">Two lanes only</p>
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-paper/40">refuse a third until one pays</p>
+      </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        {LANES.map((lane) => (
+          <div key={lane.name} className={`rounded-[var(--hz-radius-lg)] border ${lane.tone} p-4`}>
+            <div className="flex items-center gap-2">
+              <span className={`h-2 w-2 rounded-full ${lane.dot}`} aria-hidden="true" />
+              <span className="font-mono text-[10px] font-black uppercase tracking-[0.18em] text-paper/60">{lane.tag}</span>
+            </div>
+            <h3 className="mt-2 font-display text-2xl font-black text-paper">{lane.name}</h3>
+            <p className="mt-1 text-sm text-paper/56">{lane.model}</p>
+            <p className="mt-3 flex items-start gap-1.5 border-t border-outlineVariant/70 pt-3 text-sm font-bold text-paper/72">
+              <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-paper/40" aria-hidden="true" />
+              {lane.move}
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
