@@ -21,7 +21,7 @@ function seedTask(task) {
     phase_id: task.phaseId ?? "",
     lane: task.lane ?? "General",
     title: task.title,
-    status: "open",
+    status: task.status ?? "open",
     priority: task.priority ?? "normal",
     revenue_impact: Number(task.revenueImpact ?? 0),
     due_at: task.dueAt ?? null,
@@ -31,6 +31,8 @@ function seedTask(task) {
 }
 
 const fallbackTasks = actionTasks.map(seedTask);
+const CURRENT_PHASE_ID = "weeks-1-4";
+const todayIso = () => new Date().toISOString().slice(0, 10);
 
 function compareTasks(a, b) {
   if (a.status === "done" && b.status !== "done") return 1;
@@ -40,12 +42,12 @@ function compareTasks(a, b) {
 
 export default function ActionBoard() {
   const [tasks, setTasks] = useState(fallbackTasks);
-  const [activePhase, setActivePhase] = useState("hackathon-week");
+  const [activePhase, setActivePhase] = useState(CURRENT_PHASE_ID);
   const [activeLane, setActiveLane] = useState("All");
   const [syncStatus, setSyncStatus] = useState("loading tasks");
   const [draftTitle, setDraftTitle] = useState("");
   const [draftLane, setDraftLane] = useState("Revenue floor");
-  const [draftDue, setDraftDue] = useState("2026-05-30");
+  const [draftDue, setDraftDue] = useState(todayIso);
 
   const loadTasks = async () => {
     setSyncStatus("loading tasks");

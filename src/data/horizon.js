@@ -193,11 +193,11 @@ export const strategicCourse = [
   {
     id: "dialysis-saathi",
     rank: "00",
-    stance: "Sprint Override",
-    title: "DialysisSaathi Hackathon Sprint",
+    stance: "Archived Reference",
+    title: "DialysisSaathi Runbook Reference",
     buyer: "Indian hemodialysis families and caregivers using WhatsApp.",
-    decision: "From May 24-30, treat this as the weekly build priority because the request was approved and the final submission is a hard Friday-style finish line.",
-    calendarRule: "Hackathon tasks override Flex and some Product blocks this week only; no day 6-7 buffer. After final submission, PhotoSelect returns to flagship priority.",
+    decision: "As of June 4, keep this on hold. Preserve the WhatsApp, OCR, Gemini, and healthcare-safety runbook as reusable parts only.",
+    calendarRule: "No calendar override. Reopen only for a healthcare buyer, hackathon follow-up, or concrete deployment request.",
   },
   {
     id: "photoselect-revenue",
@@ -863,7 +863,7 @@ export const actionQueueSeed = [
     summary: "One promise, one CTA, one no-call path to first paying studio signal.",
     source: "revenue_engine",
     projectId: "photoselect",
-    projectPath: `${BOLT}/active-money/photoselect`,
+    projectPath: `${BOLT}/01-revenue/photoselect`,
     agent: "codex",
     impact: "high",
     prompt:
@@ -915,7 +915,7 @@ export const actionQueueSeed = [
     summary: "MinIO/R2 media payload from backend into Flutter SpeciesCard fields.",
     source: "operating_plan",
     projectId: "plantsage",
-    projectPath: `${BOLT}/strategic/ff_planter`,
+    projectPath: `${BOLT}/03-strategic/ff-planter`,
     agent: "claude",
     impact: "normal",
     prompt:
@@ -1056,20 +1056,20 @@ export const documents = [
   {
     id: "dialysis-saathi-runbook",
     title: "DialysisSaathi Hackathon Runbook",
-    type: "Hackathon spec",
+    type: "Archived reference",
     owner: "You + Codex",
-    cadence: "Daily until May 30 submission",
-    purpose: "Keep the WhatsApp renal-care MVP scoped, safe, and submission-ready.",
-    next: "Before onboarding: push AGENTS.md + scaffold, echo WhatsApp messages, collect anonymized lab fixtures, and prepare the launch-format question.",
+    cadence: "Reference only",
+    purpose: "Preserve the WhatsApp renal-care MVP scope, safety boundaries, OCR fixtures, Gemini flow, and handoff notes for reuse.",
+    next: "No active work. Reopen only for a healthcare buyer, hackathon follow-up, or concrete deployment request.",
   },
   {
     id: "outskill-event-posture",
     title: "Outskill Event Posture",
     type: "Decision guardrail",
     owner: "You",
-    cadence: "During and 72h after hackathon",
+    cadence: "Archived",
     purpose: "Use the OpenAI/Codex mentorship and builder network while avoiding high-pressure paid-course decisions.",
-    next: "Ask specific Codex questions during the event; make no paid Outskill commitment on the call or same day.",
+    next: "No current action. Keep the no-pressure paid-cohort rule as a reusable guardrail.",
   },
   {
     id: "operating-plan",
@@ -1201,20 +1201,20 @@ export const documents = [
 
 export const phaseGates = [
   {
-    id: "hackathon-week",
-    order: 0,
-    label: "May 24-30",
-    title: "DialysisSaathi compressed sprint",
-    target: "Working WhatsApp MVP, repo, AGENTS.md, eval proof, 90-sec Loom, final hackathon submission by May 30.",
-    control: "Bend the week around the deadline; do not expand beyond lab ingest, trend card, diet stoplight, and handoff PDF. Loom quality matters as much as code.",
-  },
-  {
     id: "weeks-1-4",
-    order: 1,
+    order: 0,
     label: "Weeks 1-4",
     title: "Lock the floor",
     target: "$5k-$10k contract income, 10 buyer conversations, one public offer.",
     control: "Cash and conversations before extra product work.",
+  },
+  {
+    id: "hackathon-week",
+    order: 1,
+    label: "Archived",
+    title: "DialysisSaathi reference",
+    target: "WhatsApp, OCR, Gemini, and healthcare safety patterns retained; no active sprint.",
+    control: "Reference only. Do not reopen unless a healthcare buyer, hackathon follow-up, or concrete deployment request appears.",
   },
   {
     id: "months-2-5",
@@ -1263,7 +1263,7 @@ export const actionTasks = [
     revenueImpact: 0,
     dueAt: "2026-05-24",
     sortOrder: 1,
-    evidence: "Planning files live under `dialysissaathi/docs/`; extract stack, demo moments, risks, deadlines, and launch question into AGENTS.md.",
+    evidence: "Planning files live under `~/Desktop/bolting/07-archive/dialysissaathi/docs/`; keep stack, demo moments, risks, deadlines, and launch notes as reference unless the sprint is explicitly reactivated.",
   },
   {
     id: "action-dialysis-preflight-stack",
@@ -1629,7 +1629,7 @@ export const actionTasks = [
     revenueImpact: 0,
     dueAt: "2026-06-02",
     sortOrder: 120,
-    evidence: "`ff_planter` /identify returns image media fields; `plantsage_app` parses SpeciesMedia and LocalSpecies media fields. Finish the one shared payload and keep R2 secrets backend-only.",
+    evidence: "`ff-planter` /identify returns image media fields; `plantsage` parses SpeciesMedia and LocalSpecies media fields. Finish the one shared payload and keep R2 secrets backend-only.",
   },
   {
     id: "action-plantsage-ingest-proof",

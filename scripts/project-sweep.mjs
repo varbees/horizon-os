@@ -88,12 +88,11 @@ const knownCategory = new Map([
   ["dialysissaathi", "archive"],
   ["desktop-photoselect", "archive"],
   ["plantsage", "strategic-proof"],
-  ["plantsage_app", "strategic-proof"],
-  ["ff_planter", "strategic-proof"],
+  ["ff-planter", "strategic-proof"],
   ["agent-linux-control", "strategic-proof"],
-  ["rateguard-exp", "strategic-proof"],
+  ["rateguard", "active-money"],
   ["antharmaya-labs", "strategic-proof"],
-  ["layers-green-ai-studio", "resurrect-candidates"],
+  ["layers-ai-studio", "resurrect-candidates"],
   ["widgetforge", "resurrect-candidates"],
   ["vault-wealth", "strategic-proof"],
   ["anthar-vault", "strategic-proof"],
@@ -152,6 +151,19 @@ function gitSummary(path, kind) {
   };
 }
 
+function categoryFromNumberedPath(path) {
+  const normalized = String(path ?? "").replaceAll("\\", "/");
+  if (normalized.includes("/01-revenue/")) return "active-money";
+  if (normalized.includes("/02-fast-cash/rateguard")) return "active-money";
+  if (normalized.includes("/02-fast-cash/")) return "resurrect-candidates";
+  if (normalized.includes("/03-strategic/")) return "strategic-proof";
+  if (normalized.includes("/04-clients/")) return "archive";
+  if (normalized.includes("/05-salvage/")) return "archive";
+  if (normalized.includes("/06-reference/")) return "archive";
+  if (normalized.includes("/07-archive/")) return "archive";
+  return "";
+}
+
 function hasMarker(dir) {
   if (existsSync(join(dir, ".git"))) return true;
   return markers.some((marker) => existsSync(join(dir, marker)));
@@ -186,12 +198,15 @@ function stackClues(path, kind) {
 
 function categoryFor(candidate) {
   if (candidate.category) return candidate.category;
-  if (candidate.kind === "file") return "docs-and-ideas";
-  if (knownCategory.has(candidate.id)) return knownCategory.get(candidate.id);
   if (candidate.lane === "Focus Now") return "active-money";
   if (candidate.lane === "Strategic Asset") return "strategic-proof";
   if (candidate.lane === "Resurrect") return "resurrect-candidates";
   if (candidate.lane === "Archive" || candidate.lane === "Park") return "archive";
+  if (["Client Sites", "Content", "Merge", "Research", "Training"].includes(candidate.lane)) return "archive";
+  if (candidate.kind === "file") return "docs-and-ideas";
+  if (knownCategory.has(candidate.id)) return knownCategory.get(candidate.id);
+  const numberedCategory = categoryFromNumberedPath(candidate.path);
+  if (numberedCategory) return numberedCategory;
   return "unknown-review";
 }
 

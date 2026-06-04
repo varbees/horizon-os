@@ -2,7 +2,14 @@ import { ArrowRight, CheckCircle2, Filter, RefreshCw, ShieldAlert } from "lucide
 import { useEffect, useMemo, useState } from "react";
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
-import { orchestrationRules, portfolioLanes, portfolioProjects, weeklyOperatingSystem } from "../data/portfolio.js";
+import {
+  monetizationResearchRules,
+  orchestrationRules,
+  portfolioLanes,
+  portfolioProjects,
+  portfolioVerdicts,
+  weeklyOperatingSystem,
+} from "../data/portfolio.js";
 import { fetchProjects, runProjectSweep } from "../lib/projectsApi.js";
 
 export default function Projects() {
@@ -56,6 +63,18 @@ export default function Projects() {
     () => (activeLane === "All" ? registryProjects : registryProjects.filter((project) => project.lane === activeLane)),
     [activeLane, registryProjects],
   );
+  const verdictCounts = useMemo(
+    () =>
+      registryProjects.reduce((counts, project) => {
+        const verdict = project.verdict ?? "UNSET";
+        counts[verdict] = (counts[verdict] ?? 0) + 1;
+        return counts;
+      }, {}),
+    [registryProjects],
+  );
+  const codebaseFamiliesAudited = registryProjects.filter((project) => project.id !== "external-references").length;
+  const archivedFamiliesAudited = registryProjects.filter((project) => project.path?.includes("/07-archive/")).length;
+  const partsProjects = registryProjects.filter((project) => project.verdict === "PARTS").length;
   const focusProjects = registryProjects.filter((project) => project.lane === "Focus Now");
   const resurrectProjects = registryProjects.filter((project) => project.lane === "Resurrect");
 
@@ -110,6 +129,46 @@ export default function Projects() {
             ) : (
               <span className="text-sm text-paper/54">No dirty indexed repos yet, or no sweep has run.</span>
             )}
+          </div>
+        </Panel>
+      </section>
+
+      <section className="mb-5">
+        <Panel className="p-5">
+          <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+            <div>
+              <p className="font-mono text-[11px] uppercase tracking-[0.26em] text-brass">Actual codebases, judged by money path</p>
+              <h2 className="mt-2 font-display text-3xl font-bold">Codebase monetization lens</h2>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-paper/62">
+                Active lanes are still only PhotoSelect and RateGuard. The rest of ~/Desktop/bolting is ranked as SKU option, parts, client proof, reference, or archive so old code can help without becoming a third lane.
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <LensStat label="Actual codebase families audited" value={codebaseFamiliesAudited} />
+                <LensStat label="Archived families audited" value={archivedFamiliesAudited} />
+                <LensStat label="Reusable parts" value={partsProjects} />
+              </div>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-paper/42">Verdict mix</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {portfolioVerdicts.map((verdict) => (
+                    <VerdictPill key={verdict} verdict={verdict} count={verdictCounts[verdict] ?? 0} />
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-paper/42">Judging rules</p>
+                <ul className="mt-3 space-y-2">
+                  {monetizationResearchRules.slice(0, 4).map((rule) => (
+                    <li key={rule} className="flex gap-2 text-sm leading-6 text-paper/62">
+                      <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-signal" aria-hidden="true" />
+                      <span>{rule}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </div>
         </Panel>
       </section>
@@ -174,7 +233,9 @@ export default function Projects() {
             <Score score={selectedProject.score} large />
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            {[selectedProject.lane, selectedProject.status, selectedProject.leverage, selectedProject.effort].map((tag) => (
+            {[selectedProject.verdict, selectedProject.lane, selectedProject.status, selectedProject.leverage, selectedProject.effort]
+              .filter(Boolean)
+              .map((tag) => (
               <span key={tag} className="rounded-full border border-outlineVariant bg-white/[0.04] px-3 py-1 text-xs font-bold text-paper/66">
                 {tag}
               </span>
@@ -193,10 +254,14 @@ export default function Projects() {
                 <DossierRow label="Index link" value={selectedLive.index_link} mono />
               </>
             ) : null}
+            {selectedProject.verdict ? <DossierRow label="Money verdict" value={selectedProject.verdict} highlight /> : null}
             <DossierRow label="Market" value={selectedProject.market} />
             <DossierRow label="Role" value={selectedProject.role} />
             <DossierRow label="Evidence" value={selectedProject.evidence} />
+            {selectedProject.monetization ? <DossierRow label="Monetization path" value={selectedProject.monetization} /> : null}
             <DossierRow label="Next action" value={selectedProject.next} highlight />
+            {selectedProject.firstMove ? <DossierRow label="First move" value={selectedProject.firstMove} /> : null}
+            {selectedProject.reopenWhen ? <DossierRow label="Reopen when" value={selectedProject.reopenWhen} /> : null}
             <DossierRow label="Cadence" value={selectedProject.cadence} />
           </div>
         </Panel>
@@ -214,7 +279,7 @@ export default function Projects() {
           </div>
 
           <div className="mt-5 flex flex-wrap gap-2">
-            {[...new Set(["All", ...portfolioLanes.map((lane) => lane.id), "Merge", "Client Sites", "Training", "Research", "Content", "Reference"])].map((lane) => (
+            {[...new Set(["All", ...portfolioLanes.map((lane) => lane.id)])].map((lane) => (
               <button
                 key={lane}
                 type="button"
@@ -282,7 +347,7 @@ export default function Projects() {
               Command center doctrine
             </p>
             <p className="mt-2 text-sm leading-6 text-paper/62">
-              PhotoSelect earns recurring runway. varbees creates fast-cash developer products. PlantSage, HSKG, Agent Linux Control, and RateGuard stay proof or leverage until they show a paid path.
+              PhotoSelect earns recurring runway. RateGuard creates fast-cash developer trust. PlantSage, Norma, Agent Linux Control, SecureClaw, and archive projects stay proof or leverage until they show buyer pull.
             </p>
           </div>
         </Panel>
@@ -297,6 +362,29 @@ function MiniStat({ label, value, warn = false }) {
       <p className={`text-2xl font-black tabular-nums ${warn ? "text-rust" : "text-paper"}`}>{value}</p>
       <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-paper/46">{label}</p>
     </div>
+  );
+}
+
+function LensStat({ label, value }) {
+  return (
+    <div className="rounded-md border border-outlineVariant bg-surfaceVariant p-3">
+      <p className="text-2xl font-black tabular-nums text-paper">{value}</p>
+      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-paper/46">{label}</p>
+    </div>
+  );
+}
+
+function VerdictPill({ verdict, count }) {
+  return (
+    <span
+      className={`rounded-full border px-3 py-1 font-mono text-[10px] font-black uppercase tracking-[0.16em] ${
+        count
+          ? "border-signal/30 bg-signal/10 text-signal"
+          : "border-outlineVariant bg-white/[0.025] text-paper/36"
+      }`}
+    >
+      {verdict}: {count}
+    </span>
   );
 }
 
@@ -315,6 +403,11 @@ function ProjectRegistryButton({ project, live, selected, onSelect }) {
           <span className="rounded-full border border-outlineVariant px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-paper/42">
             {project.lane}
           </span>
+          {project.verdict ? (
+            <span className="rounded-full border border-signal/20 bg-signal/10 px-2 py-0.5 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-signal">
+              {project.verdict}
+            </span>
+          ) : null}
           {live?.git_dirty_count ? (
             <span className="rounded-full border border-rust/30 bg-rust/10 px-2 py-0.5 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-rust">
               {live.git_dirty_count} dirty

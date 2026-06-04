@@ -215,6 +215,14 @@ export function generateRevenueActions(db = openHorizonDb(), options = {}) {
   ];
 
   db.prepare("UPDATE action_queue SET status = 'dismissed', updated_at = datetime('now') WHERE source = 'revenue-engine' AND status IN ('suggested', 'queued') AND created_at < datetime('now', '-7 days')").run();
+  const keepIds = actions.map((item) => item.id);
+  db.prepare(`
+    UPDATE action_queue
+    SET status = 'dismissed', updated_at = datetime('now')
+    WHERE source = 'revenue-engine'
+      AND status IN ('suggested', 'queued')
+      AND id NOT IN (${keepIds.map(() => "?").join(", ")})
+  `).run(...keepIds);
 
   const upsert = db.prepare(`
     INSERT INTO action_queue (id, title, summary, source, project_id, project_path, agent, prompt, status, impact, sort_order)

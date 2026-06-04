@@ -32,11 +32,27 @@ test.describe("Horizon OS command center", () => {
     await expect(page.getByRole("heading", { name: "Capital Goals Through February 2027" })).toBeVisible();
   });
 
-  test("exposes new command graph nodes through the local SQLite API", async ({ request }) => {
-    const response = await request.get("http://127.0.0.1:8787/api/command-base");
-    expect(response.ok()).toBeTruthy();
+  test("defaults the action board to the current revenue phase", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
 
-    const data = await response.json();
+    const board = page.getByLabel("Action control board");
+    await expect(board.getByRole("heading", { name: "Make the plan move" })).toBeVisible();
+    await expect(board.getByRole("heading", { name: "Write the 30-day PhotoSelect implementation offer" })).toBeVisible();
+    await expect(board.getByRole("heading", { name: "Turn DialysisSaathi docs into the source-of-truth runbook" })).toHaveCount(0);
+  });
+
+  test("exposes new command graph nodes through the local SQLite API", async ({ request }) => {
+    let data;
+    await expect
+      .poll(async () => {
+        const response = await request.get("http://127.0.0.1:8787/api/command-base").catch(() => null);
+        if (!response?.ok()) return "offline";
+        data = await response.json();
+        return "ready";
+      })
+      .toBe("ready");
+
     expect(data.nodes).toHaveLength(15);
     expect(data.edges).toHaveLength(30);
     expect(data.tasks).toHaveLength(39);
@@ -46,5 +62,44 @@ test.describe("Horizon OS command center", () => {
     expect(data.tasks.map((task) => task.id)).toEqual(
       expect.arrayContaining(["action-journey-west-hill-template", "action-capital-baseline"]),
     );
+  });
+
+  test("keeps only current generated revenue actions active", async ({ request }) => {
+    let data;
+    await expect
+      .poll(async () => {
+        const response = await request.get("http://127.0.0.1:8787/api/action-queue").catch(() => null);
+        if (!response?.ok()) return "offline";
+        data = await response.json();
+        return "ready";
+      })
+      .toBe("ready");
+
+    const todayKey = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+    const activeGenerated = data.actions.filter(
+      (action) => action.source === "revenue-engine" && !["dismissed", "done"].includes(action.status),
+    );
+
+    expect(activeGenerated).toHaveLength(5);
+    expect(activeGenerated.every((action) => action.id.startsWith(`rev-${todayKey}-`))).toBeTruthy();
+    expect(activeGenerated.find((action) => action.project_id === "photoselect")?.project_path).toBe(
+      "/home/driftr/Desktop/bolting/01-revenue/photoselect",
+    );
+  });
+
+  test("shows the codebase monetization lens for active and archived projects", async ({ page }) => {
+    await page.goto("/projects");
+    await page.waitForLoadState("networkidle");
+
+    await expect(page.getByRole("heading", { name: "Codebase monetization lens" })).toBeVisible();
+    await expect(page.getByText("Actual codebase families audited")).toBeVisible();
+    await expect(page.getByText("Active lanes are still only PhotoSelect and RateGuard.")).toBeVisible();
+
+    await page.getByRole("button", { name: /BBS Agent Platforms/ }).click();
+    await expect(page.getByText("~/Desktop/bolting/07-archive/bbs-agents")).toBeVisible();
+    await expect(page.getByText("WhatsApp and omnichannel agent patterns are reusable")).toBeVisible();
+
+    await page.getByRole("button", { name: /LiquiLogic POS Archive/ }).click();
+    await expect(page.getByText("Point-of-sale and inventory flows are real")).toBeVisible();
   });
 });

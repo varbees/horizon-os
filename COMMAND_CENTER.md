@@ -31,18 +31,20 @@ means the work is the face, not a photo.
 | --- | --- | --- | --- | --- | --- |
 | PhotoSelect | ACTIVE (engine) | Payment-gated gallery delivery + selfie search; studios get paid faster | Indian wedding/event studios | Live; billing wired | No-call conversion page + paid waitlist; white-glove first 10 |
 | rateguard (varbees) | ACTIVE (fast-cash) | Drop-in rate limiting + LLM token budgets + circuit breakers (Go/Node/Python) | Backend/AI devs shipping LLM apps | 3 tested SDKs exist | Open-source core; define free vs paid (hosted policy dashboard) |
-| PlantSage (app + ff_planter) | PARKED (strategic) | GPS plant ID + 8-domain research | Field/agri, hobbyists | WIP, no payment | Bounded Stage-2; revenue only if a buyer appears |
-| ff_planter as Research-API | PARKED (SKU option) | Domain research-as-a-service (plants→mushrooms→crops) | Agri NGOs, devs | Prototype | Behind rateguard; open-source + hosted tier later |
-| dialysissaathi | PARKED (proof) | WhatsApp + Gemini domain assistant | Renal-care families | Hackathon WIP | Finish hackathon; reuse WhatsApp-LLM pattern |
+| PlantSage (app + ff-planter) | PARKED (strategic) | GPS plant ID + 8-domain research | Field/agri, hobbyists | WIP, no payment | Bounded Stage-2; revenue only if a buyer appears |
+| ff-planter as Research-API | PARKED (SKU option) | Domain research-as-a-service (plants→mushrooms→crops) | Agri NGOs, devs | Prototype | Behind rateguard; open-source + hosted tier later |
+| dialysissaathi | PARKED (proof) | WhatsApp + Gemini domain assistant | Renal-care families | On hold | Keep the WhatsApp/Gemini runbook as reusable parts; no active hackathon work |
 | desktop-photoselect | PARKED | Tauri offline studio shell | Studios | WIP | Defer until web hits ~₹5k/mo MRR |
 | deskold | HARVEST | Finix split-payment + PCI patterns | n/a | reference | Lift split-payment into PhotoSelect when fee-split is needed |
 | antharmaya-labs, hskg, kriate, vault-wealth, A Game of Self, dlog, gravita8, homebase, ecologistix, widgetforge, billing-copilot, bio-base, anthar-vault, dasa, cheapandbesttravels, vaman-studios | ARCHIVE / REFERENCE | Patterns only | n/a | n/a | Mine on demand; no active work |
+| archived bbs/chik/twigs/adhi/sept codebases | ARCHIVE / PARTS | WhatsApp agents, lab booking, POS, analytics, old client/mobile work | n/a | audited by family | Mine only named parts into PhotoSelect/RateGuard; never reopen as lane three |
 
 Full evidence: `docs/portfolio-revenue-map.md`; money analysis: `docs/portfolio-monetization-map.md`.
 Projects now live **one level down** under priority-numbered category folders in
 `~/Desktop/bolting/{01-revenue,02-fast-cash,03-strategic,04-clients,05-salvage,06-reference,07-archive}`
-(every project at `bolting/<NN-category>/<project>`, no nesting; map: `~/Desktop/bolting/STRUCTURE.md`;
-reversible move log: `_horizon_reorg_manifest.tsv`, 69 moves). The live engine is `01-revenue/photoselect`.
+(priority buckets are `bolting/<NN-category>/<project>`; archive/salvage families may contain nested
+actual code roots; map: `~/Desktop/bolting/STRUCTURE.md`; reversible move log:
+`_horizon_reorg_manifest.tsv`, 69 moves). The live engine is `01-revenue/photoselect`.
 Vendor clones are quarantined in `~/Desktop/bolting/_external` and excluded from the agent view.
 
 ## 4. Stack

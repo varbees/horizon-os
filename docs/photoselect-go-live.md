@@ -1,6 +1,6 @@
 # PhotoSelect Go-Live — the real gaps
 
-Honest status after reading the repo (`~/Desktop/bolting/active-money/photoselect`). PhotoSelect is
+Honest status after reading the repo (`~/Desktop/bolting/01-revenue/photoselect`). PhotoSelect is
 **not** an early-stage product that needs a landing page built. It is live at `app.photoselect.space`
 with a complete v2 marketing funnel. Building a new landing would duplicate shipped work and violate
 the repo's roadmap-first contract. The bottleneck is credentials + distribution, exactly as the
@@ -55,6 +55,6 @@ This is doing, not building. Horizon's role: generate the build-in-public posts 
 ## Where new building effort actually creates value
 
 PhotoSelect is build-complete for launch. The greenfield, faceless, no-call fast-cash lane that is
-NOT yet built is the **rateguard open-core SKU** (`fast-cash/rateguard-exp`): three tested SDKs already
+NOT yet built is the **rateguard open-core SKU** (`02-fast-cash/rateguard`): three tested SDKs already
 exist; the missing pieces are the open-source positioning, the free-core vs paid-tier split, the
 README that sells, and the checkout. That is where coding hours produce new money, not duplication.

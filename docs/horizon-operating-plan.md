@@ -12,7 +12,7 @@ Build a two-year Antharmaya foundry path from full-time execution to a stable sa
 - Antharmaya public foundry positioning
 - PhotoSelect public product proof
 - Current local portfolio scan across `~/Desktop/bolting/*`
-- PlantSage field-product proof from `plantsage_app`, `ff_planter`, and the 2026-05-29 Hariharakhona ridge session
+- PlantSage field-product proof from `03-strategic/plantsage`, `03-strategic/ff-planter`, and the 2026-05-29 Hariharakhona ridge session
 
 ## Operating Rule
 

@@ -20,14 +20,13 @@ place -> capture -> quick ID -> stored media -> research card -> atlas -> map pr
 
 | Repo | Path | Role |
 | --- | --- | --- |
-| PlantSage App | `/home/driftr/Desktop/bolting/plantsage_app` | Flutter mobile product, capture UX, map, atlas, card reveal, profile, alpha config |
-| PlantSage Backend | `/home/driftr/Desktop/bolting/ff_planter` | FastAPI `/identify`, Gemini vision/research, SQLite, reports, storage, served artifacts |
+| PlantSage App | `/home/driftr/Desktop/bolting/03-strategic/plantsage` | Flutter mobile product, capture UX, map, atlas, card reveal, profile, alpha config |
+| PlantSage Backend | `/home/driftr/Desktop/bolting/03-strategic/ff-planter` | FastAPI `/identify`, Gemini vision/research, SQLite, reports, storage, served artifacts |
 | Raw field assets | `/home/driftr/Desktop/plantsagefieldwork_and_assets` | Source photos/videos/texts; not a Git storage location |
 
 ## Backend State
 
-`ff_planter` is now documented as the canonical PlantSage backend, despite the
-folder name. It has:
+`ff-planter` is the canonical PlantSage backend. It has:
 
 - FastAPI app with `/identify`, `/ready`, `/health`, `/api/dashboard`,
   `/observations`, `/research-jobs`, species reports, and served HTML artifacts.
@@ -47,7 +46,7 @@ folder name. It has:
 Current backend command:
 
 ```bash
-cd /home/driftr/Desktop/bolting/ff_planter
+cd /home/driftr/Desktop/bolting/03-strategic/ff-planter
 python -m uvicorn api.main:app --reload --port 8080
 ```
 
@@ -60,7 +59,7 @@ python -m uvicorn api.main:app --reload --port 8080
 
 ## App State
 
-`plantsage_app` is the Flutter product surface for `plantsage.earth`. It has:
+`plantsage` is the Flutter product surface for `plantsage.earth`. It has:
 
 - Stage 1 app shell with map, atlas, identify, card reveal, and profile routes.
 - Riverpod-backed capture controller and pipeline service.
@@ -79,7 +78,7 @@ python -m uvicorn api.main:app --reload --port 8080
 Current app checks:
 
 ```bash
-cd /home/driftr/Desktop/bolting/plantsage_app
+cd /home/driftr/Desktop/bolting/03-strategic/plantsage
 flutter analyze
 flutter test
 ```
