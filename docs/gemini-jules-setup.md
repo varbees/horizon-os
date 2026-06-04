@@ -34,6 +34,24 @@ Connect those GitHub repos to Jules via the Jules GitHub app, then they appear i
 `GET /api/jules/sources`. Dispatch an enriched, reviewed action with the matching `source`. Keep
 `requirePlanApproval: true` for anything that writes to a repo.
 
+## Auto-enrich new actions
+
+After a sweep generates actions, enrich the new ones into runnable specs in one step:
+
+- `npm run actions:generate:enrich` — generate revenue actions, then auto-enrich them.
+- `npm run actions:enrich` — enrich just the un-enriched actions (standalone).
+- `POST /api/action-queue/enrich-all` — same, from the API (for a UI button or the hourly loop).
+
+`scripts/auto-enrich.mjs` is quota-safe: it enriches a bounded batch (`HORIZON_ENRICH_LIMIT`, default 6)
+with a delay between calls and **stops cleanly on a 429** (`stoppedForQuota: true`) so the operating
+loop never blocks on Gemini quota. Run it again after the daily quota resets.
+
+## Dispatch to Jules from the UI
+
+The action drawer has a **Send to Jules** button: it lists connected repos
+(`GET /api/jules/sources`), you pick the source + branch, and dispatch creates a plan-gated session.
+Verified end-to-end: a real session was created on `antharmaya/The-Layers-of-Computation`.
+
 ## Operating rules
 
 - Keys are server-side only. Never import them into browser bundles.

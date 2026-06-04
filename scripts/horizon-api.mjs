@@ -16,6 +16,7 @@ import { frontmatter, listNotes, readNote, vaultInfo, writeNote } from "./vault.
 import { callTool, connectServer, connectionState, disconnectServer, finishAuth, listTools } from "./mcp-client.mjs";
 import { buildRunnableSpec } from "./action-spec.mjs";
 import { enrichAction, geminiAvailable } from "./gemini.mjs";
+import { autoEnrich } from "./auto-enrich.mjs";
 import {
   createSession as julesCreateSession,
   getSession as julesGetSession,
@@ -729,6 +730,16 @@ const server = createServer(async (req, res) => {
         Number(body.sort_order ?? body.sortOrder ?? 0),
       );
       return json(res, 201, { ok: true, id });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/action-queue/enrich-all") {
+      const body = await readJson(req);
+      try {
+        const result = await autoEnrich({ db, limit: Number(body.limit) || undefined });
+        return json(res, 200, result);
+      } catch (error) {
+        return json(res, 502, { ok: false, error: String(error.message ?? error) });
+      }
     }
 
     if (req.method === "GET" && url.pathname === "/api/jules/sources") {
