@@ -68,8 +68,10 @@ export function generateRevenueActions(db = openHorizonDb(), options = {}) {
 
   const photoSelect = projectBy(
     currentSweep,
-    (project) => /photoselect/i.test(project.project_id) && project.category === "active-money",
-    { project_id: "photoselect", name: "PhotoSelect", path: "/home/driftr/Desktop/bolting/photoselect" },
+    // Match the live engine by path/id; tolerant of the bolting folder layout so a
+    // category rename (e.g. active-money -> 01-revenue) never strands the generator.
+    (project) => /photoselect/i.test(project.project_id) && !/desktop-photoselect/i.test(project.path ?? "") && /bolting/.test(project.path ?? ""),
+    { project_id: "photoselect", name: "PhotoSelect", path: "/home/driftr/Desktop/bolting/01-revenue/photoselect" },
   );
   const horizon = projectBy(
     currentSweep,

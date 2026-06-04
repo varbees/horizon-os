@@ -38,11 +38,12 @@ means the work is the face, not a photo.
 | deskold | HARVEST | Finix split-payment + PCI patterns | n/a | reference | Lift split-payment into PhotoSelect when fee-split is needed |
 | antharmaya-labs, hskg, kriate, vault-wealth, A Game of Self, dlog, gravita8, homebase, ecologistix, widgetforge, billing-copilot, bio-base, anthar-vault, dasa, cheapandbesttravels, vaman-studios | ARCHIVE / REFERENCE | Patterns only | n/a | n/a | Mine on demand; no active work |
 
-Full evidence: `docs/portfolio-revenue-map.md`. Projects now live under category folders in
-`~/Desktop/bolting/{active-money,fast-cash,strategic,harvest,support,reference,archive,client-sites}`
-(map: `~/Desktop/bolting/STRUCTURE.md`; reversible move log: `_horizon_reorg_manifest.tsv`). Vendor
-clones are quarantined in `~/Desktop/bolting/_external` and excluded from the agent view. Regenerable
-artifacts were pruned (~16 GB); rebuild deps on reopen.
+Full evidence: `docs/portfolio-revenue-map.md`; money analysis: `docs/portfolio-monetization-map.md`.
+Projects now live **one level down** under priority-numbered category folders in
+`~/Desktop/bolting/{01-revenue,02-fast-cash,03-strategic,04-clients,05-salvage,06-reference,07-archive}`
+(every project at `bolting/<NN-category>/<project>`, no nesting; map: `~/Desktop/bolting/STRUCTURE.md`;
+reversible move log: `_horizon_reorg_manifest.tsv`, 69 moves). The live engine is `01-revenue/photoselect`.
+Vendor clones are quarantined in `~/Desktop/bolting/_external` and excluded from the agent view.
 
 ## 4. Stack
 

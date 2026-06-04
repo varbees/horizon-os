@@ -18,7 +18,7 @@ export const portfolioProjects = [
   {
     id: "photoselect",
     name: "PhotoSelect",
-    path: "~/Desktop/bolting/photoselect",
+    path: "~/Desktop/bolting/01-revenue/photoselect",
     lane: "Focus Now",
     status: "Revenue engine",
     score: 96,
@@ -125,7 +125,7 @@ export const portfolioProjects = [
   {
     id: "rateguard-exp",
     name: "RateGuard",
-    path: "~/Desktop/bolting/rateguard-exp",
+    path: "~/Desktop/bolting/02-fast-cash/rateguard",
     lane: "Resurrect",
     status: "Harden Before Publish",
     score: 77,
