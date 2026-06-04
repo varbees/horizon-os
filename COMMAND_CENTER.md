@@ -38,7 +38,11 @@ means the work is the face, not a photo.
 | deskold | HARVEST | Finix split-payment + PCI patterns | n/a | reference | Lift split-payment into PhotoSelect when fee-split is needed |
 | antharmaya-labs, hskg, kriate, vault-wealth, A Game of Self, dlog, gravita8, homebase, ecologistix, widgetforge, billing-copilot, bio-base, anthar-vault, dasa, cheapandbesttravels, vaman-studios | ARCHIVE / REFERENCE | Patterns only | n/a | n/a | Mine on demand; no active work |
 
-Full evidence: `docs/portfolio-revenue-map.md`.
+Full evidence: `docs/portfolio-revenue-map.md`. Projects now live under category folders in
+`~/Desktop/bolting/{active-money,fast-cash,strategic,harvest,support,reference,archive,client-sites}`
+(map: `~/Desktop/bolting/STRUCTURE.md`; reversible move log: `_horizon_reorg_manifest.tsv`). Vendor
+clones are quarantined in `~/Desktop/bolting/_external` and excluded from the agent view. Regenerable
+artifacts were pruned (~16 GB); rebuild deps on reopen.
 
 ## 4. Stack
 

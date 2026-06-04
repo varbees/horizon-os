@@ -863,7 +863,7 @@ export const actionQueueSeed = [
     summary: "One promise, one CTA, one no-call path to first paying studio signal.",
     source: "revenue_engine",
     projectId: "photoselect",
-    projectPath: `${BOLT}/photoselect`,
+    projectPath: `${BOLT}/active-money/photoselect`,
     agent: "codex",
     impact: "high",
     prompt:
@@ -915,7 +915,7 @@ export const actionQueueSeed = [
     summary: "MinIO/R2 media payload from backend into Flutter SpeciesCard fields.",
     source: "operating_plan",
     projectId: "plantsage",
-    projectPath: `${BOLT}/ff_planter`,
+    projectPath: `${BOLT}/strategic/ff_planter`,
     agent: "claude",
     impact: "normal",
     prompt:
