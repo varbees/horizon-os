@@ -15,6 +15,7 @@ import { portfolioProjects } from "../src/data/portfolio.js";
 import { frontmatter, listNotes, readNote, vaultInfo, writeNote } from "./vault.mjs";
 import { callTool, connectServer, connectionState, disconnectServer, finishAuth, listTools } from "./mcp-client.mjs";
 import { buildRunnableSpec } from "./action-spec.mjs";
+import { enrichAction, geminiAvailable } from "./gemini.mjs";
 
 function mcpServerById(id) {
   return mcpServerSeed.find((s) => s.id === id) ?? null;
@@ -723,6 +724,32 @@ const server = createServer(async (req, res) => {
       return json(res, 201, { ok: true, id });
     }
 
+    if (req.method === "PATCH" && url.pathname.startsWith("/api/action-queue/") && url.pathname.endsWith("/enrich")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/action-queue/", "").replace("/enrich", ""));
+      const action = db.prepare("SELECT * FROM action_queue WHERE id = ?").get(id);
+      if (!action) return json(res, 404, { ok: false, error: "action_not_found" });
+      if (!geminiAvailable()) return json(res, 503, { ok: false, error: "gemini_key_missing" });
+      try {
+        const fields = await enrichAction(action);
+        db.prepare(`
+          UPDATE action_queue SET goal = ?, constraints = ?, done_criteria = ?, tools = ?, prompt = ?,
+            cwd = COALESCE(NULLIF(cwd,''), ?), enriched = 1, updated_at = datetime('now')
+          WHERE id = ?
+        `).run(
+          fields.goal,
+          fields.constraints,
+          fields.done_criteria,
+          fields.tools,
+          fields.prompt || action.prompt,
+          action.project_path || "",
+          id,
+        );
+        return json(res, 200, { ok: true, id, ...fields });
+      } catch (error) {
+        return json(res, 502, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
     if (req.method === "PATCH" && url.pathname.startsWith("/api/action-queue/") && url.pathname.endsWith("/deploy")) {
       const id = decodeURIComponent(url.pathname.replace("/api/action-queue/", "").replace("/deploy", ""));
       const action = db.prepare("SELECT * FROM action_queue WHERE id = ?").get(id);
@@ -751,7 +778,8 @@ const server = createServer(async (req, res) => {
       const body = await readJson(req);
       db.prepare(`
         UPDATE action_queue SET title = ?, summary = ?, project_id = ?, project_path = ?, agent = ?,
-          prompt = ?, status = ?, impact = ?, sort_order = ?, updated_at = datetime('now')
+          prompt = ?, status = ?, impact = ?, sort_order = ?, cwd = ?, goal = ?, constraints = ?,
+          done_criteria = ?, tools = ?, updated_at = datetime('now')
         WHERE id = ?
       `).run(
         body.title ?? existing.title,
@@ -763,6 +791,11 @@ const server = createServer(async (req, res) => {
         body.status ?? existing.status,
         body.impact ?? existing.impact,
         Number(body.sort_order ?? existing.sort_order),
+        body.cwd ?? existing.cwd,
+        body.goal ?? existing.goal,
+        body.constraints ?? existing.constraints,
+        body.done_criteria ?? body.doneCriteria ?? existing.done_criteria,
+        body.tools ?? existing.tools,
         id,
       );
       return json(res, 200, { ok: true, id });
