@@ -50,6 +50,7 @@ function ensureActionQueueColumns(db) {
     ["tools", "TEXT NOT NULL DEFAULT ''"],
     ["spec_path", "TEXT NOT NULL DEFAULT ''"],
     ["enriched", "INTEGER NOT NULL DEFAULT 0"],
+    ["jules_session_id", "TEXT NOT NULL DEFAULT ''"],
   ];
   for (const [name, definition] of columns) {
     if (!existingColumns.has(name)) {

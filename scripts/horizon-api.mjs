@@ -16,6 +16,13 @@ import { frontmatter, listNotes, readNote, vaultInfo, writeNote } from "./vault.
 import { callTool, connectServer, connectionState, disconnectServer, finishAuth, listTools } from "./mcp-client.mjs";
 import { buildRunnableSpec } from "./action-spec.mjs";
 import { enrichAction, geminiAvailable } from "./gemini.mjs";
+import {
+  createSession as julesCreateSession,
+  getSession as julesGetSession,
+  julesAvailable,
+  listActivities as julesListActivities,
+  listSources as julesListSources,
+} from "./jules.mjs";
 
 function mcpServerById(id) {
   return mcpServerSeed.find((s) => s.id === id) ?? null;
@@ -722,6 +729,64 @@ const server = createServer(async (req, res) => {
         Number(body.sort_order ?? body.sortOrder ?? 0),
       );
       return json(res, 201, { ok: true, id });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/jules/sources") {
+      if (!julesAvailable()) return json(res, 503, { ok: false, error: "jules_key_missing" });
+      try {
+        return json(res, 200, { ok: true, sources: await julesListSources() });
+      } catch (error) {
+        return json(res, 502, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
+    if (req.method === "GET" && url.pathname.startsWith("/api/jules/sessions/")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/jules/sessions/", ""));
+      try {
+        const [session, activities] = await Promise.all([julesGetSession(id), julesListActivities(id).catch(() => [])]);
+        return json(res, 200, { ok: true, session, activities });
+      } catch (error) {
+        return json(res, 502, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
+    if (req.method === "POST" && url.pathname.startsWith("/api/action-queue/") && url.pathname.endsWith("/jules")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/action-queue/", "").replace("/jules", ""));
+      const action = db.prepare("SELECT * FROM action_queue WHERE id = ?").get(id);
+      if (!action) return json(res, 404, { ok: false, error: "action_not_found" });
+      if (!julesAvailable()) return json(res, 503, { ok: false, error: "jules_key_missing" });
+      const body = await readJson(req);
+      if (!body.source) {
+        // help the caller pick a connected repo
+        try {
+          return json(res, 409, { ok: false, error: "source_required", sources: await julesListSources() });
+        } catch (error) {
+          return json(res, 409, { ok: false, error: "source_required", sourcesError: String(error.message ?? error) });
+        }
+      }
+      try {
+        const prompt = buildRunnableSpec(action);
+        const session = await julesCreateSession({
+          prompt,
+          source: body.source,
+          startingBranch: body.branch ?? body.startingBranch ?? "main",
+          title: action.title,
+          requirePlanApproval: body.requirePlanApproval !== false,
+          automationMode: body.automationMode,
+        });
+        const sessionId = session.id ?? session.name ?? "";
+        db.prepare("UPDATE action_queue SET jules_session_id = ?, status = 'deployed', updated_at = datetime('now') WHERE id = ?").run(sessionId, id);
+        db.prepare("INSERT INTO command_log (id, actor, action, target, payload_json) VALUES (?, ?, ?, ?, ?)").run(
+          randomUUID(),
+          "horizon",
+          "jules_dispatch",
+          action.project_id || action.id,
+          JSON.stringify({ id, sessionId }),
+        );
+        return json(res, 200, { ok: true, id, sessionId, session });
+      } catch (error) {
+        return json(res, 502, { ok: false, error: String(error.message ?? error) });
+      }
     }
 
     if (req.method === "PATCH" && url.pathname.startsWith("/api/action-queue/") && url.pathname.endsWith("/enrich")) {
