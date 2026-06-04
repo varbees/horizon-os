@@ -33,8 +33,29 @@ export function openHorizonDb() {
   db.exec(readFileSync(schemaPath, "utf8"));
   ensureCalendarColumns(db);
   ensureTaskColumns(db);
+  ensureActionQueueColumns(db);
   seed(db);
   return db;
+}
+
+// Executable action fields: an action is runnable only when it carries cwd, goal,
+// constraints, done-criteria, tools, and a generated spec. Non-destructive.
+function ensureActionQueueColumns(db) {
+  const existingColumns = new Set(db.prepare("PRAGMA table_info(action_queue)").all().map((column) => column.name));
+  const columns = [
+    ["cwd", "TEXT NOT NULL DEFAULT ''"],
+    ["goal", "TEXT NOT NULL DEFAULT ''"],
+    ["constraints", "TEXT NOT NULL DEFAULT ''"],
+    ["done_criteria", "TEXT NOT NULL DEFAULT ''"],
+    ["tools", "TEXT NOT NULL DEFAULT ''"],
+    ["spec_path", "TEXT NOT NULL DEFAULT ''"],
+    ["enriched", "INTEGER NOT NULL DEFAULT 0"],
+  ];
+  for (const [name, definition] of columns) {
+    if (!existingColumns.has(name)) {
+      db.exec(`ALTER TABLE action_queue ADD COLUMN ${name} ${definition}`);
+    }
+  }
 }
 
 function ensureCalendarColumns(db) {
