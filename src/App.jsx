@@ -4,6 +4,7 @@ import { AnimatePresence } from "framer-motion";
 import Shell from "./components/Shell.jsx";
 import Overview from "./routes/Overview.jsx";
 import Projects from "./routes/Projects.jsx";
+import ProjectDetail from "./routes/ProjectDetail.jsx";
 import SystemMap from "./routes/SystemMap.jsx";
 import Documents from "./routes/Documents.jsx";
 import HskgLaunch from "./routes/HskgLaunch.jsx";
@@ -33,6 +34,7 @@ export default function App() {
             }
           />
           <Route path="/projects" element={<Projects />} />
+          <Route path="/project/:id" element={<ProjectDetail />} />
           <Route path="/journey" element={<JourneyLog />} />
           <Route path="/capital" element={<Capital />} />
           <Route path="/inbox" element={<Inbox />} />

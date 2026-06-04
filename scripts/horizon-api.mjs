@@ -18,6 +18,7 @@ import { buildRunnableSpec } from "./action-spec.mjs";
 import { enrichAction, geminiAvailable } from "./gemini.mjs";
 import { autoEnrich } from "./auto-enrich.mjs";
 import { runCycle as runHorizonCycle, loopStatus } from "./horizon-loop.mjs";
+import { gitDetail } from "./git-detail.mjs";
 import {
   createSession as julesCreateSession,
   getSession as julesGetSession,
@@ -735,6 +736,19 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/api/loop/status") {
       return json(res, 200, loopStatus());
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/projects/git") {
+      const path = url.searchParams.get("path") ?? "";
+      // Only inspect paths under the operator's bolting workspace or this repo.
+      if (!/bolting|horizon-dashboard-preview/.test(path)) {
+        return json(res, 400, { ok: false, error: "path_not_allowed" });
+      }
+      try {
+        return json(res, 200, gitDetail(path));
+      } catch (error) {
+        return json(res, 500, { ok: false, error: String(error.message ?? error) });
+      }
     }
 
     if (req.method === "POST" && url.pathname === "/api/loop/run") {

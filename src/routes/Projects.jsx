@@ -1,5 +1,6 @@
-import { ArrowRight, CheckCircle2, Filter, RefreshCw, ShieldAlert } from "lucide-react";
+import { ArrowRight, CheckCircle2, Filter, Maximize2, RefreshCw, ShieldAlert } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
 import {
@@ -229,6 +230,12 @@ export default function Projects() {
             <div>
               <p className="font-mono text-[11px] uppercase tracking-[0.26em] text-brass">Selected dossier</p>
               <h2 className="mt-2 font-display text-3xl font-bold">{selectedProject.name}</h2>
+              <Link
+                to={`/project/${selectedProject.id}`}
+                className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-signal hover:underline"
+              >
+                <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" /> Open full screen
+              </Link>
             </div>
             <Score score={selectedProject.score} large />
           </div>
