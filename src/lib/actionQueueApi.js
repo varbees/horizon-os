@@ -27,6 +27,28 @@ export async function enrichActionWithGemini(id) {
   return data;
 }
 
+export async function fetchJulesSources() {
+  const response = await fetch("/api/jules/sources");
+  const data = await response.json().catch(() => ({ ok: false }));
+  if (!response.ok) throw new Error(data.error || `jules sources failed: ${response.status}`);
+  return data.sources ?? [];
+}
+
+export async function dispatchToJules(id, body) {
+  const response = await fetch(`/api/action-queue/${encodeURIComponent(id)}/jules`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body ?? {}),
+  });
+  const data = await response.json().catch(() => ({ ok: false }));
+  if (!response.ok) {
+    const err = new Error(data.error || `jules dispatch failed: ${response.status}`);
+    err.sources = data.sources;
+    throw err;
+  }
+  return data;
+}
+
 export async function addAction(action) {
   const response = await fetch("/api/action-queue", {
     method: "POST",

@@ -14,7 +14,7 @@ import {
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
 import UsagePanel from "../components/UsagePanel.jsx";
-import { deployAction, enrichActionWithGemini, fetchActionQueue, generateRevenueActions, updateAction } from "../lib/actionQueueApi.js";
+import { deployAction, dispatchToJules, enrichActionWithGemini, fetchActionQueue, fetchJulesSources, generateRevenueActions, updateAction } from "../lib/actionQueueApi.js";
 import { actionQueueSeed, projects, socialSkillCatalog } from "../data/horizon.js";
 
 const STATUS_FLOW = {
@@ -303,6 +303,28 @@ function ActionDrawer({ action, onClose, onDeploy, onEnrich }) {
     }
   }
 
+  const [jules, setJules] = useState({ open: false, sources: [], source: "", branch: "main", busy: false, result: null, error: null });
+
+  async function openJules() {
+    setJules((j) => ({ ...j, open: true, busy: true, error: null }));
+    try {
+      const sources = await fetchJulesSources();
+      setJules((j) => ({ ...j, sources, source: sources[0]?.name ?? "", branch: sources[0]?.githubRepo?.defaultBranch?.displayName ?? "main", busy: false }));
+    } catch (e) {
+      setJules((j) => ({ ...j, busy: false, error: String(e.message || e) }));
+    }
+  }
+
+  async function sendToJules() {
+    setJules((j) => ({ ...j, busy: true, error: null }));
+    try {
+      const res = await dispatchToJules(action.id, { source: jules.source, branch: jules.branch });
+      setJules((j) => ({ ...j, busy: false, result: res }));
+    } catch (e) {
+      setJules((j) => ({ ...j, busy: false, error: String(e.message || e) }));
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-[70] flex justify-end bg-paper/20 backdrop-blur-sm" onClick={onClose}>
       <div
@@ -369,6 +391,64 @@ function ActionDrawer({ action, onClose, onDeploy, onEnrich }) {
             <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
           </button>
         )}
+
+        <div className="mt-5 border-t border-outlineVariant pt-4">
+          {jules.result ? (
+            <div className="flex items-start gap-2 rounded-md border border-signal/30 bg-signal/10 p-3">
+              <Cpu className="mt-0.5 h-4 w-4 shrink-0 text-signal" aria-hidden="true" />
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-paper">Jules session created</p>
+                <p className="break-words font-mono text-xs text-paper/60">{jules.result.sessionId || "(id pending)"}</p>
+                <p className="mt-1 text-xs text-paper/56">Review the plan in jules.google.com; it requires your approval before changes.</p>
+              </div>
+            </div>
+          ) : !jules.open ? (
+            <button
+              type="button"
+              onClick={openJules}
+              className="inline-flex items-center gap-1.5 rounded-md border border-outlineVariant bg-surfaceVariant px-3 py-1.5 text-sm font-black text-paper transition hover:border-outline"
+            >
+              <Cpu className="h-4 w-4 text-brass" aria-hidden="true" /> Send to Jules (async repo agent)
+            </button>
+          ) : (
+            <div className="rounded-md border border-outlineVariant bg-surfaceVariant p-3">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/46">Dispatch to a connected repo</p>
+              {jules.busy && !jules.sources.length ? (
+                <p className="mt-2 text-sm text-paper/56">Loading sources…</p>
+              ) : (
+                <>
+                  <select
+                    value={jules.source}
+                    onChange={(e) => setJules((j) => ({ ...j, source: e.target.value }))}
+                    className="mt-2 w-full rounded-md border border-outlineVariant bg-white/70 px-2 py-1.5 text-sm text-paper outline-none"
+                  >
+                    {jules.sources.length === 0 ? <option value="">No connected repos — connect one in the Jules app</option> : null}
+                    {jules.sources.map((s) => (
+                      <option key={s.name} value={s.name}>{s.githubRepo ? `${s.githubRepo.owner}/${s.githubRepo.repo}` : s.name}</option>
+                    ))}
+                  </select>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      value={jules.branch}
+                      onChange={(e) => setJules((j) => ({ ...j, branch: e.target.value }))}
+                      placeholder="branch"
+                      className="w-28 rounded-md border border-outlineVariant bg-white/70 px-2 py-1.5 font-mono text-xs text-paper outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={sendToJules}
+                      disabled={jules.busy || !jules.source}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-black text-onPrimary disabled:opacity-60"
+                    >
+                      <ArrowUpRight className="h-4 w-4" aria-hidden="true" /> {jules.busy ? "Dispatching…" : "Dispatch (plan-gated)"}
+                    </button>
+                  </div>
+                </>
+              )}
+              {jules.error ? <p className="mt-2 text-xs text-rust">{jules.error}</p> : null}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
