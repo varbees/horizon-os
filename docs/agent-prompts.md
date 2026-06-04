@@ -87,6 +87,15 @@ a new card.
 
 ---
 
+## Per-project status (live git)
+
+Each project has a full screen at `/project/:id` (reachable from Projects → dossier → "Open full
+screen") showing live git status + controls. The data comes from `GET /api/projects/git?path=<path>`
+(`scripts/git-detail.mjs`): branch, ahead/behind, dirty files, recent commits, and the GitHub web URL.
+It is read-only and tolerant of `~` and split-path families. Use it to answer "what changed in
+project X?" without leaving Horizon. The hourly loop keeps the summary counts fresh; this endpoint is
+the on-demand detail.
+
 ## Codex (xhigh) note
 
 Codex gets the same Boot prompt (section 0). Codex is best pointed at a single deployed spec:
