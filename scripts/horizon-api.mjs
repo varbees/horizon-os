@@ -14,6 +14,7 @@ import { mcpServerSeed } from "../src/data/horizon.js";
 import { portfolioProjects } from "../src/data/portfolio.js";
 import { frontmatter, listNotes, readNote, vaultInfo, writeNote } from "./vault.mjs";
 import { callTool, connectServer, connectionState, disconnectServer, finishAuth, listTools } from "./mcp-client.mjs";
+import { buildRunnableSpec } from "./action-spec.mjs";
 
 function mcpServerById(id) {
   return mcpServerSeed.find((s) => s.id === id) ?? null;
@@ -730,30 +731,9 @@ const server = createServer(async (req, res) => {
       const stamp = new Date().toISOString();
       const filename = `${id}.md`;
       const filePath = resolve(queueDir, filename);
-      const contents = [
-        `# Horizon deploy: ${action.title}`,
-        "",
-        `- id: ${id}`,
-        `- agent: ${action.agent}`,
-        `- project: ${action.project_id}`,
-        `- project_path: ${action.project_path}`,
-        `- source: ${action.source}`,
-        `- deployed_at: ${stamp}`,
-        "",
-        "## Summary",
-        action.summary || "(none)",
-        "",
-        "## Prompt",
-        "",
-        "```",
-        action.prompt || "(empty)",
-        "```",
-        "",
-        `Run this in ${action.project_path || "the target project"} with \`${action.agent}\`.`,
-        "",
-      ].join("\n");
+      const contents = buildRunnableSpec(action, { stamp });
       writeFileSync(filePath, contents, "utf8");
-      db.prepare("UPDATE action_queue SET status = 'deployed', deployed_path = ?, updated_at = datetime('now') WHERE id = ?").run(filePath, id);
+      db.prepare("UPDATE action_queue SET status = 'deployed', deployed_path = ?, spec_path = ?, updated_at = datetime('now') WHERE id = ?").run(filePath, filePath, id);
       db.prepare("INSERT INTO command_log (id, actor, action, target, payload_json) VALUES (?, ?, ?, ?, ?)").run(
         randomUUID(),
         "horizon",
