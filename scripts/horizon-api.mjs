@@ -17,6 +17,7 @@ import { callTool, connectServer, connectionState, disconnectServer, finishAuth,
 import { buildRunnableSpec } from "./action-spec.mjs";
 import { enrichAction, geminiAvailable } from "./gemini.mjs";
 import { autoEnrich } from "./auto-enrich.mjs";
+import { runCycle as runHorizonCycle, loopStatus } from "./horizon-loop.mjs";
 import {
   createSession as julesCreateSession,
   getSession as julesGetSession,
@@ -730,6 +731,20 @@ const server = createServer(async (req, res) => {
         Number(body.sort_order ?? body.sortOrder ?? 0),
       );
       return json(res, 201, { ok: true, id });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/loop/status") {
+      return json(res, 200, loopStatus());
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/loop/run") {
+      const body = await readJson(req);
+      try {
+        const cycle = await runHorizonCycle({ db, enrichLimit: Number(body.enrichLimit) || undefined });
+        return json(res, 200, cycle);
+      } catch (error) {
+        return json(res, 502, { ok: false, error: String(error.message ?? error) });
+      }
     }
 
     if (req.method === "POST" && url.pathname === "/api/action-queue/enrich-all") {

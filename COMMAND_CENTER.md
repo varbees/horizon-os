@@ -50,7 +50,10 @@ artifacts were pruned (~16 GB); rebuild deps on reopen.
   InsightFace FastAPI sidecar, Razorpay payments, Cloudflare R2 media, Next.js 16 PWA frontend.
 - **rateguard**: Go / Node / Python SDKs (`packages/sdk-*`), OTel attributes.
 - **Horizon OS** (this repo): React + Vite, local SQLite via Node API on `127.0.0.1:8787`, Obsidian
-  vault bridge, MCP connectors, ccusage. Control surface only.
+  vault bridge, MCP connectors, ccusage. Control surface only. The autonomous orchestrator is
+  `scripts/horizon-loop.mjs` (`npm run horizon:watch`): one quota-safe cycle = sweep → generate →
+  enrich → readiness, heartbeat in `.horizon/loop-status.json`. It surfaces ready actions but never
+  auto-dispatches; Jules dispatch stays operator-triggered + plan-gated. See `docs/operating-loop.md`.
 - **Dev env**: Fedora/Nobara, Claude Code + Codex, Gemini key in `.env` (server-side only), Jules for
   async repo work.
 
