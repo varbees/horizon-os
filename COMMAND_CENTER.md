@@ -54,12 +54,23 @@ artifacts were pruned (~16 GB); rebuild deps on reopen.
 - **Dev env**: Fedora/Nobara, Claude Code + Codex, Gemini key in `.env` (server-side only), Jules for
   async repo work.
 
-## 5. Positioning / Offer (PhotoSelect)
+## 5. Positioning / Offer (PhotoSelect) — grounded in the repo's own product/GTM docs
 
-- **One promise**: deliver a client's wedding gallery as a paid, searchable link; the studio gets paid
-  before originals download.
-- **Buyer**: Indian wedding/event studio owner, on a phone, software-starved.
+- **The single most painful step it kills (answered)**: the post-shoot **client delivery + payment
+  collection** mess — sharing thousands of photos over WhatsApp/Drive, chasing clients for selections,
+  not knowing who opened/picked, and chasing payment for weeks. PhotoSelect collapses that into one
+  ledger per album: upload -> WhatsApp link -> client selects -> payment gate -> instant unlock ->
+  delivery proof.
+- **Live hero promise (already shipped on the v2 landing)**: **"Shot Sunday. Delivered Monday."**
+- **Founder-led sales line**: deliver client galleries and get paid without WhatsApp chaos, Drive
+  links, or a PhotoSelect commission on client download payments. (Say "zero PhotoSelect commission".)
+- **Buyer**: high-volume Indian wedding/event studio owner, on a phone, software-starved.
+- **Wedge**: flat studio pricing + **zero commission** on client download payments; originals stay
+  locked until payment clears.
 - **Alternative it beats**: manual WeTransfer/Drive delivery + chasing payments, or clunky foreign tools.
+- **Status**: landing v2 is **live with early-access capture** (`FounderEarlyAccess`). The real gaps
+  are NOT a landing page; they are credentials (live Razorpay/WhatsApp/prod DB migration 61) and
+  distribution. See `docs/photoselect-go-live.md`.
 - **Price**: free trial + one paid plan; pre-sale "first 10 studios, 50% off for life".
 - **Acquisition (no calls)**: useful presence in photographer FB/WhatsApp/IG groups → landing page →
   paid waitlist → async WhatsApp/email onboarding → white-glove setup → paid proof.
@@ -94,6 +105,9 @@ posts, replies, dollars. See `docs/revenue-engine-reset.md` "First 7 days".
 
 ## TODOs needing the operator's answers
 
-- PhotoSelect: confirm the single most painful workflow step to lead the landing page with.
+- ~~PhotoSelect: confirm the single most painful workflow step.~~ ANSWERED (section 5): post-shoot
+  client delivery + payment collection. Landing already ships this as "Shot Sunday. Delivered Monday."
+- PhotoSelect go-live: provide live Razorpay keys + WhatsApp provider creds, and approve prod DB
+  migration 61, so the live-payment proof path can be exercised (see `docs/photoselect-go-live.md`).
 - rateguard: confirm the free-core vs paid-gate split and the launch price.
 - Confirm the varbees GitHub org/handle and the Antharmaya X/Reddit handles are claimed.
