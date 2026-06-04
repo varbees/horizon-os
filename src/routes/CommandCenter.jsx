@@ -8,13 +8,15 @@ import {
   Cpu,
   RefreshCw,
   Rocket,
+  Send,
   Terminal,
+  Waypoints,
   X,
 } from "lucide-react";
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
 import UsagePanel from "../components/UsagePanel.jsx";
-import { deployAction, dispatchToJules, enrichActionWithGemini, fetchActionQueue, fetchJulesSources, generateRevenueActions, updateAction } from "../lib/actionQueueApi.js";
+import { deployAction, dispatchToJules, enrichActionWithGemini, fetchActionQueue, fetchJulesSources, fetchLoopStatus, generateRevenueActions, runLoopCycle, updateAction } from "../lib/actionQueueApi.js";
 import { actionQueueSeed, projects, socialSkillCatalog } from "../data/horizon.js";
 
 const STATUS_FLOW = {
@@ -67,6 +69,8 @@ export default function CommandCenter() {
   const [open, setOpen] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [generatorStatus, setGeneratorStatus] = useState("");
+  const [loop, setLoop] = useState(null);
+  const [loopBusy, setLoopBusy] = useState(false);
   const now = useClock();
 
   useEffect(() => {
@@ -77,6 +81,9 @@ export default function CommandCenter() {
         setActions(data.actions);
         setSource("live");
       })
+      .catch(() => {});
+    fetchLoopStatus()
+      .then((data) => active && setLoop(data))
       .catch(() => {});
     return () => {
       active = false;
@@ -90,6 +97,24 @@ export default function CommandCenter() {
   const inQueue = actions.filter((a) => a.status === "suggested" || a.status === "queued").length;
   const deployed = actions.filter((a) => a.status === "deployed").length;
   const done = actions.filter((a) => a.status === "done").length;
+  const readyForJules = actions.filter((a) => a.enriched && a.status !== "dismissed" && a.status !== "done").length;
+
+  async function runLoop() {
+    setLoopBusy(true);
+    try {
+      const cycle = await runLoopCycle({});
+      setLoop(cycle);
+      const data = await fetchActionQueue();
+      if (Array.isArray(data.actions) && data.actions.length) {
+        setActions(data.actions);
+        setSource("live");
+      }
+    } catch {
+      /* loop endpoint offline — leave last heartbeat in place */
+    } finally {
+      setLoopBusy(false);
+    }
+  }
 
   function advance(action) {
     const next = STATUS_FLOW[action.status] ?? "queued";
@@ -172,10 +197,15 @@ export default function CommandCenter() {
         </div>
       </section>
 
-      <section className="mt-4 grid gap-3 sm:grid-cols-3">
+      <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Scorecard icon={CircleDot} tone="text-brass" value={inQueue} label="In queue" sub="suggested + queued" />
         <Scorecard icon={Rocket} tone="text-signal" value={deployed} label="Deployed" sub="prompt written to project" />
+        <Scorecard icon={Send} tone="text-rust" value={readyForJules} label="Ready for Jules" sub="enriched, awaiting dispatch" />
         <Scorecard icon={CheckCircle2} tone="text-primary" value={done} label="Done" sub="closed this cycle" />
+      </section>
+
+      <section className="mt-4">
+        <LoopStrip loop={loop} busy={loopBusy} onRun={runLoop} now={now} />
       </section>
 
       <section className="mt-5">
@@ -218,6 +248,11 @@ export default function CommandCenter() {
                       </span>
                       {action.impact === "high" ? (
                         <span className="rounded-full border border-rust/30 bg-rust/10 px-2 py-0.5 font-mono text-[10px] font-black uppercase tracking-[0.14em] text-rust">high</span>
+                      ) : null}
+                      {action.enriched ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-signal/30 bg-signal/10 px-2 py-0.5 font-mono text-[10px] font-black uppercase tracking-[0.14em] text-signal">
+                          <Send className="h-3 w-3" aria-hidden="true" /> jules-ready
+                        </span>
                       ) : null}
                       <span className={`inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.14em] ${agentTone[action.agent] ?? "text-paper/50"}`}>
                         <Cpu className="h-3 w-3" aria-hidden="true" /> {action.agent}
@@ -268,6 +303,72 @@ function StatusBead({ value, label }) {
       <span className="font-black text-paper">{value}</span>
       {label}
     </span>
+  );
+}
+
+function LoopStrip({ loop, busy, onRun, now }) {
+  const s = loop?.stages ?? {};
+  const ranAt = loop?.startedAt ? new Date(loop.startedAt) : null;
+  const neverRun = !loop || loop.reason === "never_run" || !ranAt;
+  const agoMin = ranAt ? Math.max(0, Math.round((now - ranAt) / 60000)) : null;
+  const enrich = s.enrich ?? {};
+  const enrichLabel = enrich.skipped
+    ? "skipped (no key)"
+    : `${enrich.enriched ?? 0} enriched${enrich.stoppedForQuota ? " · quota hit" : ""}`;
+  const cells = neverRun
+    ? []
+    : [
+        { k: "Swept", v: `${s.sweep?.projects ?? "—"}`, sub: `${s.sweep?.dirtyRepos ?? 0} dirty` },
+        { k: "Generated", v: `${s.generate?.actions ?? "—"}`, sub: "money actions" },
+        { k: "Enriched", v: `${enrich.enriched ?? 0}`, sub: enrichLabel },
+        { k: "Ready", v: `${s.ready?.enrichedActions ?? "—"}`, sub: "for dispatch" },
+      ];
+
+  return (
+    <Panel className="p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.26em] text-brass">
+            <Waypoints className="h-3.5 w-3.5" aria-hidden="true" /> Operating loop
+          </p>
+          <h2 className="mt-2 font-display text-2xl font-bold text-paper">
+            {neverRun ? "Loop has not run yet" : "sweep → generate → enrich → ready"}
+          </h2>
+          <p className="mt-1 text-sm text-paper/56">
+            {neverRun
+              ? "Run npm run horizon:watch for the autonomous loop, or trigger one cycle now."
+              : (
+                <>
+                  Last cycle {agoMin === 0 ? "just now" : `${agoMin} min ago`}
+                  <span className={`ml-2 font-mono text-[11px] font-black uppercase tracking-[0.14em] ${loop.ok ? "text-signal" : "text-rust"}`}>
+                    {loop.ok ? "ok" : `${loop.errors?.length ?? 0} err`}
+                  </span>
+                </>
+              )}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onRun}
+          disabled={busy}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-primary/30 bg-primaryContainer px-3 py-1.5 text-sm font-black text-onPrimaryContainer transition hover:border-primary disabled:cursor-not-allowed disabled:opacity-55"
+        >
+          <RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} aria-hidden="true" />
+          {busy ? "Running cycle…" : "Run loop now"}
+        </button>
+      </div>
+      {cells.length ? (
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {cells.map((c) => (
+            <div key={c.k} className="rounded-[var(--hz-radius-sm)] border border-outlineVariant bg-surfaceVariant p-3">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/46">{c.k}</p>
+              <p className="mt-1 text-2xl font-black tabular-nums text-paper">{c.v}</p>
+              <p className="truncate text-xs text-paper/52">{c.sub}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </Panel>
   );
 }
 

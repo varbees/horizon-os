@@ -59,6 +59,23 @@ export async function addAction(action) {
   return response.json();
 }
 
+export async function fetchLoopStatus() {
+  const response = await fetch("/api/loop/status");
+  if (!response.ok) throw new Error(`loop status failed: ${response.status}`);
+  return response.json();
+}
+
+export async function runLoopCycle(body) {
+  const response = await fetch("/api/loop/run", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body ?? {}),
+  });
+  const data = await response.json().catch(() => ({ ok: false }));
+  if (!response.ok) throw new Error(data.error || `loop run failed: ${response.status}`);
+  return data;
+}
+
 export async function generateRevenueActions(options = {}) {
   const response = await fetch("/api/revenue-actions/generate", {
     method: "POST",
