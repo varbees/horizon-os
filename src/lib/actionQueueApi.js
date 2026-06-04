@@ -20,6 +20,13 @@ export async function deployAction(id) {
   return response.json();
 }
 
+export async function enrichActionWithGemini(id) {
+  const response = await fetch(`/api/action-queue/${encodeURIComponent(id)}/enrich`, { method: "PATCH" });
+  const data = await response.json().catch(() => ({ ok: false }));
+  if (!response.ok) throw new Error(data.error || `enrich failed: ${response.status}`);
+  return data;
+}
+
 export async function addAction(action) {
   const response = await fetch("/api/action-queue", {
     method: "POST",

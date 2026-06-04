@@ -14,7 +14,7 @@ import {
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
 import UsagePanel from "../components/UsagePanel.jsx";
-import { deployAction, fetchActionQueue, generateRevenueActions, updateAction } from "../lib/actionQueueApi.js";
+import { deployAction, enrichActionWithGemini, fetchActionQueue, generateRevenueActions, updateAction } from "../lib/actionQueueApi.js";
 import { actionQueueSeed, projects, socialSkillCatalog } from "../data/horizon.js";
 
 const STATUS_FLOW = {
@@ -114,6 +114,14 @@ export default function CommandCenter() {
     }
     setActions((prev) => prev.map((a) => (a.id === action.id ? { ...a, status: "deployed", deployed_path: path } : a)));
     setOpen((cur) => (cur && cur.id === action.id ? { ...cur, status: "deployed", deployed_path: path } : cur));
+  }
+
+  async function enrich(action) {
+    if (source !== "live") throw new Error("Start npm run dev:full to enrich with Gemini.");
+    const fields = await enrichActionWithGemini(action.id);
+    const merge = (a) => ({ ...a, goal: fields.goal, constraints: fields.constraints, done_criteria: fields.done_criteria, tools: fields.tools, prompt: fields.prompt ?? a.prompt, enriched: 1 });
+    setActions((prev) => prev.map((a) => (a.id === action.id ? merge(a) : a)));
+    setOpen((cur) => (cur && cur.id === action.id ? merge(cur) : cur));
   }
 
   async function generateFromSweep() {
@@ -249,7 +257,7 @@ export default function CommandCenter() {
         </Panel>
       </section>
 
-      {open ? <ActionDrawer action={open} onClose={() => setOpen(null)} onDeploy={() => deploy(open)} /> : null}
+      {open ? <ActionDrawer action={open} onClose={() => setOpen(null)} onDeploy={() => deploy(open)} onEnrich={() => enrich(open)} /> : null}
     </div>
   );
 }
@@ -278,7 +286,23 @@ function Scorecard({ icon: Icon, tone, value, label, sub }) {
   );
 }
 
-function ActionDrawer({ action, onClose, onDeploy }) {
+function ActionDrawer({ action, onClose, onDeploy, onEnrich }) {
+  const [enriching, setEnriching] = useState(false);
+  const [err, setErr] = useState(null);
+  const runnable = Boolean((action.goal || action.summary) && (action.cwd || action.project_path));
+
+  async function handleEnrich() {
+    setEnriching(true);
+    setErr(null);
+    try {
+      await onEnrich();
+    } catch (e) {
+      setErr(String(e.message || e));
+    } finally {
+      setEnriching(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-[70] flex justify-end bg-paper/20 backdrop-blur-sm" onClick={onClose}>
       <div
@@ -299,11 +323,29 @@ function ActionDrawer({ action, onClose, onDeploy }) {
 
         <div className="mt-4 grid grid-cols-2 gap-3">
           <Meta icon={Cpu} label="Agent" value={action.agent} />
-          <Meta icon={Clock} label="Status" value={action.status} />
+          <Meta icon={Clock} label={runnable ? "Runnable" : "Status"} value={runnable ? "ready to deploy" : action.status} />
         </div>
 
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/46">Executable spec</p>
+          <button
+            type="button"
+            onClick={handleEnrich}
+            disabled={enriching}
+            className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-black text-primary transition hover:bg-primary/15 disabled:opacity-60"
+          >
+            <Cpu className="h-3.5 w-3.5" aria-hidden="true" /> {enriching ? "Enriching…" : action.enriched ? "Re-enrich" : "Enrich with Gemini"}
+          </button>
+        </div>
+        {err ? <p className="mt-1 text-xs text-rust">{err}</p> : null}
+
+        {action.goal ? <SpecBlock label="Goal" text={action.goal} /> : null}
+        {action.constraints ? <SpecBlock label="Constraints" text={action.constraints} /> : null}
+        {action.done_criteria ? <SpecBlock label="Definition of done" text={action.done_criteria} check /> : null}
+        {action.tools ? <SpecBlock label="Tools" text={action.tools} /> : null}
+
         <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-paper/46">Target path</p>
-        <p className="mt-1 break-words font-mono text-xs text-paper/64">{action.project_path}</p>
+        <p className="mt-1 break-words font-mono text-xs text-paper/64">{action.cwd || action.project_path}</p>
 
         <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-paper/46">Prompt</p>
         <pre className="mt-1 whitespace-pre-wrap rounded-md border border-outlineVariant bg-surfaceVariant p-3 font-mono text-xs leading-5 text-paper/78">{action.prompt}</pre>
@@ -328,6 +370,27 @@ function ActionDrawer({ action, onClose, onDeploy }) {
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+function SpecBlock({ label, text, check = false }) {
+  const items = String(text).split(/\r?\n/).map((l) => l.replace(/^[-*\d.\s[\]x]+/i, "").trim()).filter(Boolean);
+  return (
+    <div className="mt-3">
+      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/46">{label}</p>
+      {items.length > 1 ? (
+        <ul className="mt-1 space-y-1">
+          {items.map((it, i) => (
+            <li key={i} className="flex gap-2 text-sm leading-6 text-paper/74">
+              <span className="mt-0.5 text-paper/40">{check ? "☐" : "•"}</span>
+              <span>{it}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-1 text-sm leading-6 text-paper/74">{text}</p>
+      )}
     </div>
   );
 }
