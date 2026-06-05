@@ -1,101 +1,115 @@
-# Horizon OS — Deep Research Brief (v3, needs-first)
+# Horizon OS — Deep Research Prompt (v4, enterprise-grade system design)
 
-## Why this version exists (read before using)
+Paste the block below into a **fresh deep-research chat** in each tool (Claude Code, Perplexity,
+Gemini, ChatGPT). It is self-contained. The goal is no longer "should I build this" — that decision
+is made. The goal is a **buildable, end-to-end, enterprise-grade design for Horizon OS** as the durable
+backbone of a solo founder's multi-year money journey.
 
-Five AI tools already researched the earlier versions of this brief. Four of them
-(Perplexity, Gemini, ChatGPT, and the first draft) independently produced the *same*
-elaborate architecture — payment-webhook ingestion, `revenue_events` tables, MRR/ROI math,
-FTS5 memory schemas, build-in-public funnel dashboards — for a founder who has **zero
-revenue and zero audience**. One of them invented a database schema. They did this because
-the brief *listed candidate features*, so each tool dutifully designed those features. Only
-one tool ignored the list and asked whether any of it moves money today; its answer was no.
+---
 
-So this version **names no candidate features and no tools.** Listing them seeds the answer.
-Your job is not to evaluate a feature list — it is to diagnose, from the founder's real
-situation, what Horizon actually needs (which may be "almost nothing"), and to protect his
-time. Padding the answer with impressive architecture is the failure mode, not the goal.
+```
+ROLE
+You are a principal systems architect and skeptical operating-partner. Design the end-to-end,
+enterprise-grade architecture for a personal "money operating system" called Horizon OS, owned and run
+by a single solo, faceless developer-founder. This is his backbone for the next 2+ years: a system that
+continuously ingests his own work across his projects and helps him convert that work into income, with
+him in control. It must be a true system that works end to end — not a pile of scripts, not a bloated
+enterprise SaaS clone. Enterprise-grade means: durable, reliable, secure, observable, configurable, and
+extensible by one person over years — at a solo operator's scale.
 
-## How to run this
+If you can read a local repository (e.g. you are a coding agent), read these first and ground every
+claim in the real code, citing file paths: COMMAND_CENTER.md, docs/operating-loop.md,
+docs/portfolio-monetization-map.md, docs/agent-prompts.md, scripts/horizon-loop.mjs,
+scripts/project-sweep.mjs, scripts/git-detail.mjs, scripts/horizon-api.mjs, src/. If you are web-only,
+use the ground truth below and do not assume capabilities that aren't described.
 
-- **If you can read the repo (e.g. Claude Code):** read `COMMAND_CENTER.md`, then
-  `docs/operating-loop.md`, `docs/portfolio-monetization-map.md`, `docs/agent-prompts.md`,
-  and skim `scripts/horizon-loop.mjs`, `scripts/project-sweep.mjs`, `scripts/git-detail.mjs`.
-  Ground every claim in what is actually there; cite file paths.
-- **If you are web-only:** use the facts below as ground truth. Do not assume Horizon needs
-  any capability it doesn't already have — argue for it from the founder's goal, or don't.
+GROUND TRUTH — the founder and his real assets (he is starting at zero money, not at nothing)
+- Solo, faceless developer-founder. No team, no sales calls, no jobs, no paid ads, low burn. 2+ year horizon.
+- Real shipped infrastructure with real traffic (NOT pre-product): multiple live domains and products on
+  Cloudflare (a flagship B2B SaaS with tens of thousands of monthly hits, plus several other live sites),
+  deployed Workers/Pages, R2 storage, status pages, scoped API tokens.
+- Pre-monetization: strong traffic and infra, but no paying customer yet, and a near-zero public audience.
+- Two priority products: a live B2B SaaS (his revenue engine) and an open-core developer SDK (fast cash).
+- Many additional repos/projects of varying value, already organized on disk.
+- An existing, working version of Horizon OS he wants to evolve — local-first: a React+Vite dashboard, a
+  Node API on 127.0.0.1, SQLite, an Obsidian vault for durable memory, and an hourly "loop" that:
+  sweeps his git projects, ranks them by a money verdict, shows per-project git status, and queues tasks
+  that can be enriched by an LLM and dispatched to coding agents (plan-gated).
+- Known failure mode to design against: he is a builder, so he is tempted to keep polishing the tool
+  instead of shipping product. The system must fight this, not feed it.
 
-## The founder and the real situation (the only lens that matters)
+THE SYSTEM'S NORTH STAR (anchor every recommendation to this)
+Horizon's one job: continuously turn the founder's own work into money, by (a) always knowing the true,
+current state of everything he is building, and (b) routing his limited time and his AI agents to the
+highest-money-leverage next move — with him steering. Today his work sources are hardcoded to one folder;
+the system must become configurable (arbitrary project sources, identities, lanes, later money/providers)
+without a rewrite.
 
-- Solo, faceless developer-founder. No team, no calls, no jobs, no paid ads, low burn.
-- **Revenue: ₹0 / $0.** No paying customer has ever paid for anything.
-- **Audience: ~0.** Near-zero followers and near-zero posts under either identity.
-- **Two real, pre-revenue products:** PhotoSelect (a live B2B SaaS for Indian wedding/event
-  studios — built, deployed, but no paying studio yet) and rateguard (3 working SDKs, not
-  open-sourced yet).
-- **A documented tendency to build tooling instead of shipping product.** The founder keeps
-  improving his personal command-center ("Horizon OS") because building a tool to manage his
-  building *feels* like progress. Treat this as the central risk in your analysis.
-- **Horizon OS already exists and works:** a local-first command center that sweeps his git
-  repos under `~/Desktop/bolting/*`, ranks projects by a money verdict, shows per-project git
-  status, and queues tasks for AI agents. It is built. The live question is *what now*.
+THE BAR (what "enterprise-grade, end-to-end" means here — at solo scale)
+- Durable: a stable data model and core that survive 2 years of monthly evolution without rewrites.
+- Reliable: the loop never blocks, failures are isolated, remote/LLM/quota outages degrade gracefully.
+- Secure: it will hold API keys and (later) payment/webhook secrets; local-first threat model; secrets
+  never reach the browser; any borrowed code is read-and-audited, never blindly installed.
+- Observable: heartbeats, logs, and status a solo operator can trust at a glance.
+- Configurable & extensible: config-driven sources/identities/lanes; a minimal, safe extension/skill model
+  so new capabilities slot in monthly without touching the core.
+- Honest about sequencing: design the full architecture, but rank what to BUILD NOW vs GATE behind concrete
+  triggers, so the system grows with real need and never becomes instrumentation for data that doesn't exist yet.
 
-## The prime directive (the only ranking rule)
+RIGOR RULES (this matters — five prior research runs failed here)
+- Do not pad. A sharp, sequenced answer beats a long feature catalogue. Five earlier tools each produced
+  near-identical money-dashboard / memory / funnel architectures for capabilities the founder has no data
+  for yet; do not repeat that. Design those layers' INTERFACES so they slot in cleanly later, but do not
+  build dashboards for revenue/audience/history that don't exist yet — gate them behind triggers instead.
+- Rank everything by leverage toward the 2-year money goal. Separate "founder execution a tool can't do"
+  from "what the system can genuinely accelerate," and say which proposed features are theater.
+- Specify durable contracts concretely (the canonical data model, the action lifecycle, the source/ingestion
+  interface, the agent-dispatch contract) — these are worth pinning down. Avoid speculative UI.
+- Build-vs-borrow = read-for-patterns, audit-before-trust. Assume popular agent frameworks carry real CVEs
+  and malicious community plugins; never propose importing a runtime/marketplace into a secrets-holding
+  system. Cite sources for external claims.
 
-Score every recommendation by one question:
+DESIGN THE SYSTEM ACROSS THESE LAYERS (frame each as: current state → the gap → the durable design →
+build-now vs gate-later → smallest first slice)
+1. System thesis & scope: the durable core vs the evolving edge; what Horizon must be and must never become;
+   how it stays sharp for 2 years and resists becoming procrastination.
+2. Canonical data & state model: the schema for projects, work-events, actions, outcomes, identities, and
+   (interface-only for now) money; how it migrates safely over years; local-first SQLite + the Obsidian vault.
+3. Work-ingestion engine: make project sources CONFIGURABLE (arbitrary git repos, deploy/host signals,
+   file watchers, manual entry) instead of one hardcoded folder; the signal model that updates status in
+   near-real-time without noise; multi-machine reality.
+4. Agentic execution layer: the action lifecycle (capture → enrich → plan-gate → dispatch → verify →
+   record); how it safely drives multiple coding agents; the orchestration/owned-vs-borrowed boundary;
+   sandboxing/least-privilege for agent-run code.
+5. Money/outcome layer (INTERFACE NOW, DATA LATER): how the system will represent revenue, map it to
+   projects, and rank work by money — designed so it activates the moment real revenue exists, without
+   instrumenting emptiness today.
+6. Memory/learning layer (GATED): how the system accumulates and recalls the founder's decisions and what
+   has worked; markdown vault now; indexed/learned memory only past a concrete trigger.
+7. Interface & operator UX: the command-center surface that makes the true state legible and lowers operator
+   overhead; the per-project view; the "works with me" loop.
+8. Configurability & extensibility: config-driven sources/identities/lanes/providers; a minimal, secure
+   extension/skill model enabling safe monthly evolution without core rewrites.
+9. Security & secrets: the local-first threat model; secret handling; audit posture for any external code.
+10. Reliability & observability: heartbeats, failure isolation, graceful degradation, the trust surface.
+11. Sequencing & roadmap: given his REAL situation (real traffic + infra, pre-revenue, deliberately building
+    the backbone), the leverage-ranked order of what to build now, next, and gate — always tied to the
+    2-year money goal.
 
-> **Does this raise the probability that a stranger pays him money within the next 30 days?**
+REQUIRED DELIVERABLES (in this order)
+A. One-paragraph system thesis: Horizon's single durable job and the line it must never cross.
+B. The end-to-end architecture: the layers above as one coherent system, with the durable contracts
+   (data model, action lifecycle, source-ingestion interface, agent-dispatch contract) specified concretely.
+C. Durable core vs evolving edge: what is frozen-stable vs what is meant to change monthly.
+D. Sequenced roadmap ranked by money leverage: build-now (next ~2–4 weeks), next, and explicitly deferred —
+   each item with its smallest first slice.
+E. Trigger table: each deferred capability → the concrete revenue/audience/usage threshold that unlocks it →
+   its first slice when it unlocks.
+F. Build-vs-borrow read-list: only audited patterns/sources worth studying, each with a one-line "why" and a
+   security/maintenance caveat. Cite sources.
+G. Risks & anti-patterns: the specific ways this system could rot, bloat, or become procrastination, and the
+   tripwires that catch it early.
 
-Anything that instruments, measures, remembers, or optimizes something that **does not exist
-yet** (revenue, an audience, months of usage history) scores **zero** today — say so plainly.
-Rank ruthlessly. A short, blunt answer that says "stop building the tool" beats a long one
-full of schemas.
-
-## The questions (diagnostic — derive the need, don't pick from a menu)
-
-1. **The bottleneck.** For *this* founder, today, what is the single biggest thing between
-   him and a first paying customer? Decide honestly whether it is a tooling gap at all, or
-   whether it is execution (shipping PhotoSelect's paid path, talking to studios, posting in
-   public). You are allowed — encouraged — to conclude "the tool is not the bottleneck."
-
-2. **Horizon's one job.** If Horizon may keep exactly **one** job, what should it be and why?
-   What is everything else it does (or that someone might add) costing him in focus and time?
-
-3. **The waste audit.** Name what — in Horizon today or in any tempting addition — is
-   *sophisticated procrastination*: work that feels productive but moves no money. Give the
-   concrete tripwires that signal he's polishing the workshop instead of doing the job.
-
-4. **The trigger map.** For each capability worth deferring (not building now), state the
-   concrete revenue/audience/usage threshold that should unlock it later, so good ideas are
-   *gated*, not lost. Example shape: "Build X only once Y is true." You choose X and Y.
-
-5. **Only if it survives the prime directive:** the realistic faceless-distribution path from
-   zero (channels, cadence, what actually converts developers/founders), and — separately —
-   whether any external code is worth *reading for patterns* (never installing; audit before
-   trust; assume agent frameworks carry real CVEs and malicious plugins). If neither passes
-   the directive at this stage, say so and move on.
-
-## Required output (in this order)
-
-1. **The honest priority list** — the real next 3–5 moves ranked by the prime directive, even
-   if all of them are *outside* Horizon (ship the paid waitlist, onboard a studio by hand,
-   open-source rateguard, post daily). Be specific to this founder.
-2. **The bounded Horizon verdict** — one paragraph: freeze, trim, or extend? State exactly
-   what Horizon is allowed to be at ₹0 revenue and the single line it must not cross. "Freeze
-   it, it's already enough" is an acceptable and possibly correct answer.
-3. **The trigger table** — deferred capability → the threshold that unlocks it → the smallest
-   first slice to build *when* it unlocks.
-4. **Read-list (not clone-list)** — only patterns/sources that survive the directive, each
-   with a one-line "why" and a security/maintenance caveat. Cite sources for external claims.
-
-## Hard refusals (call these out if you catch yourself or another answer doing them)
-
-- Designing revenue/MRR/ROI/"money-relevance" schemas while revenue is ₹0.
-- Instrumenting a posts→followers→leads funnel with no posts and no followers.
-- Adding memory/learning to improve actions that don't yet produce money.
-- Proposing to import any agent framework's runtime or marketplace into a system that will
-  hold payment secrets.
-- Any plan whose first concrete step is a Horizon feature rather than a customer-facing move.
-
-If most tempting ideas fall here, the correct deliverable is: "money impact ≈ zero; freeze the
-tool and go do [the specific customer-facing work]." That is a successful research outcome,
-not a failure to find features.
+Be specific to THIS founder and THIS system. Where you must assume, state the assumption. Prefer durable
+contracts and honest sequencing over breadth. End with the single highest-leverage thing to build first and why.
+```
