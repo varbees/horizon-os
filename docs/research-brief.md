@@ -1,80 +1,101 @@
-# Horizon OS — Deep Research Brief
+# Horizon OS — Deep Research Brief (v3, needs-first)
 
-Hand this to Claude Code (Opus 4.8) or Codex (xhigh) to research how to evolve Horizon from a
-project-tracking loop into a true **financial OS that yields money**. The agent must read the repo
-first and produce a decision doc — not rewrite anything.
+## Why this version exists (read before using)
 
-## Context (where Horizon stands)
+Five AI tools already researched the earlier versions of this brief. Four of them
+(Perplexity, Gemini, ChatGPT, and the first draft) independently produced the *same*
+elaborate architecture — payment-webhook ingestion, `revenue_events` tables, MRR/ROI math,
+FTS5 memory schemas, build-in-public funnel dashboards — for a founder who has **zero
+revenue and zero audience**. One of them invented a database schema. They did this because
+the brief *listed candidate features*, so each tool dutifully designed those features. Only
+one tool ignored the list and asked whether any of it moves money today; its answer was no.
 
-Local-first, money-focused operating loop. Sweeps `~/Desktop/bolting/*` for git changes → generates
-revenue actions → enriches them into runnable specs (Gemini) → surfaces what's ready → operator
-dispatches to Jules (plan-gated). React+Vite dashboard, Node API on `127.0.0.1:8787`, SQLite,
-Obsidian vault for durable memory. Autonomous loop: `npm run horizon:watch`. Per-project screen:
-`/project/:id` with live git status + controls.
+So this version **names no candidate features and no tools.** Listing them seeds the answer.
+Your job is not to evaluate a feature list — it is to diagnose, from the founder's real
+situation, what Horizon actually needs (which may be "almost nothing"), and to protect his
+time. Padding the answer with impressive architecture is the failure mode, not the goal.
 
-**Competitor snapshot (already pulled):** OpenClaw = multi-agent orchestration via ACP protocol +
-ClawHub skills marketplace (TS/Node). Hermes = SQLite-FTS5 learning-loop memory that models the user
-across sessions. NanoClaw = stripped-down OpenClaw core. **None are money-focused** — that is our
-wedge. There is **no dominant integrated "financial OS" for solo founders**; the market is fragmented
-point tools (Taskade, Supabase, Lemon Squeezy, Cursor).
+## How to run this
 
-## The 5 questions to answer
+- **If you can read the repo (e.g. Claude Code):** read `COMMAND_CENTER.md`, then
+  `docs/operating-loop.md`, `docs/portfolio-monetization-map.md`, `docs/agent-prompts.md`,
+  and skim `scripts/horizon-loop.mjs`, `scripts/project-sweep.mjs`, `scripts/git-detail.mjs`.
+  Ground every claim in what is actually there; cite file paths.
+- **If you are web-only:** use the facts below as ground truth. Do not assume Horizon needs
+  any capability it doesn't already have — argue for it from the founder's goal, or don't.
 
-1. **Build vs borrow (per component):** which parts of OpenClaw / Hermes / NanoClaw to copy vs build
-   fresh — their multi-agent routing, memory model, skill system. Give GitHub URLs worth cloning into
-   `~/Desktop/bolting/_external` for scanning.
-2. **Money instrumentation:** minimal money layer — payment-provider webhook ingestion
-   (Razorpay/Stripe/Lemon Squeezy/Paddle) → MRR/cash/runway → per-project ROI → a "money-relevance"
-   score that ranks actions by expected revenue impact.
-3. **Continuous tracking:** real-time vs polling (git hooks, file watchers, GitHub webhooks) and the
-   cadence/signal model that updates project status without noise.
-4. **Memory/learning:** should we add a Hermes-style FTS5 + summarization memory on top of the
-   Obsidian vault so the loop learns the operator and improves action quality? Sketch schema +
-   write/recall path.
-5. **Distribution:** instrument the varbees build-in-public funnel (posts → signals → followers →
-   leads) inside Horizon.
+## The founder and the real situation (the only lens that matters)
 
-## Copy-paste prompt
+- Solo, faceless developer-founder. No team, no calls, no jobs, no paid ads, low burn.
+- **Revenue: ₹0 / $0.** No paying customer has ever paid for anything.
+- **Audience: ~0.** Near-zero followers and near-zero posts under either identity.
+- **Two real, pre-revenue products:** PhotoSelect (a live B2B SaaS for Indian wedding/event
+  studios — built, deployed, but no paying studio yet) and rateguard (3 working SDKs, not
+  open-sourced yet).
+- **A documented tendency to build tooling instead of shipping product.** The founder keeps
+  improving his personal command-center ("Horizon OS") because building a tool to manage his
+  building *feels* like progress. Treat this as the central risk in your analysis.
+- **Horizon OS already exists and works:** a local-first command center that sweeps his git
+  repos under `~/Desktop/bolting/*`, ranks projects by a money verdict, shows per-project git
+  status, and queues tasks for AI agents. It is built. The live question is *what now*.
 
-```
-You are doing deep strategic research for "Horizon OS", a local-first, money-focused operating
-system for a solo, faceless founder (no calls, no jobs, two identities: varbees builder + Antharmaya
-Labs). Read these first, in order, and treat them as ground truth:
-- COMMAND_CENTER.md
-- docs/operating-loop.md, docs/portfolio-monetization-map.md, docs/agent-prompts.md
-- scripts/horizon-loop.mjs, scripts/git-detail.mjs, scripts/project-sweep.mjs
+## The prime directive (the only ranking rule)
 
-Goal: tell me how to evolve Horizon from a project-tracking loop into a true FINANCIAL OS that yields
-money, grounded in what already exists. Do NOT rewrite anything; produce a decision doc.
+Score every recommendation by one question:
 
-Research and answer these 5 questions with specific, cited recommendations:
-1. BUILD VS BORROW: For OpenClaw (ACP multi-agent orchestration + ClawHub skills), Hermes
-   (SQLite-FTS5 learning-loop memory), and NanoClaw (minimal core) — for each, name the exact
-   components worth copying into Horizon vs building fresh. If a repo is worth scanning, give the
-   GitHub URL and I will clone it into ~/Desktop/bolting/_external for inspection.
-2. MONEY INSTRUMENTATION: Design the minimal money layer — payment-provider webhook ingestion
-   (Razorpay/Stripe/Lemon Squeezy/Paddle), MRR/cash/runway, per-project ROI, and a "money-relevance"
-   score that ranks actions by expected revenue impact.
-3. CONTINUOUS TRACKING: Recommend real-time-vs-polling (git hooks, file watchers, GitHub webhooks)
-   and the cadence/signal model that updates project status without noise.
-4. MEMORY/LEARNING: Should we add a Hermes-style FTS5 + summarization memory on top of the Obsidian
-   vault so the loop learns the operator and improves action quality? Sketch the schema + write/recall.
-5. DISTRIBUTION: How to instrument the varbees build-in-public funnel (posts -> signals -> followers
-   -> leads) inside Horizon.
+> **Does this raise the probability that a stranger pays him money within the next 30 days?**
 
-For each: current state in this repo, the gap, the recommended approach, effort (S/M/L), and the
-single highest-leverage first slice. Rank all recommendations by money impact. End with a 1-page
-"next 3 builds" plan. Cite sources for every external claim.
-```
+Anything that instruments, measures, remembers, or optimizes something that **does not exist
+yet** (revenue, an audience, months of usage history) scores **zero** today — say so plainly.
+Rank ruthlessly. A short, blunt answer that says "stop building the tool" beats a long one
+full of schemas.
 
-## Hand back to the builder
+## The questions (diagnostic — derive the need, don't pick from a menu)
 
-The decision doc's **"next 3 builds" ranking** + any **GitHub URLs to clone into `_external`**. The
-builder resumes on the highest-money-impact slice first.
+1. **The bottleneck.** For *this* founder, today, what is the single biggest thing between
+   him and a first paying customer? Decide honestly whether it is a tooling gap at all, or
+   whether it is execution (shipping PhotoSelect's paid path, talking to studios, posting in
+   public). You are allowed — encouraged — to conclude "the tool is not the bottleneck."
 
-Research grounding already used:
-- https://www.ycombinator.com/blog/ycs-essential-startup-advice
-- https://stripe.com/guides/atlas/saas-pricing
-- https://handbook.opencoreventures.com/open-core-business-model/
-- https://www.bvp.com/assets/uploads/2026/02/The_AI_pricing_playbook_for_founders_Bessemer_Venture_Partners_2026.pdf
-- https://thenewstack.io/persistent-ai-agents-compared/ (OpenClaw vs Hermes)
+2. **Horizon's one job.** If Horizon may keep exactly **one** job, what should it be and why?
+   What is everything else it does (or that someone might add) costing him in focus and time?
+
+3. **The waste audit.** Name what — in Horizon today or in any tempting addition — is
+   *sophisticated procrastination*: work that feels productive but moves no money. Give the
+   concrete tripwires that signal he's polishing the workshop instead of doing the job.
+
+4. **The trigger map.** For each capability worth deferring (not building now), state the
+   concrete revenue/audience/usage threshold that should unlock it later, so good ideas are
+   *gated*, not lost. Example shape: "Build X only once Y is true." You choose X and Y.
+
+5. **Only if it survives the prime directive:** the realistic faceless-distribution path from
+   zero (channels, cadence, what actually converts developers/founders), and — separately —
+   whether any external code is worth *reading for patterns* (never installing; audit before
+   trust; assume agent frameworks carry real CVEs and malicious plugins). If neither passes
+   the directive at this stage, say so and move on.
+
+## Required output (in this order)
+
+1. **The honest priority list** — the real next 3–5 moves ranked by the prime directive, even
+   if all of them are *outside* Horizon (ship the paid waitlist, onboard a studio by hand,
+   open-source rateguard, post daily). Be specific to this founder.
+2. **The bounded Horizon verdict** — one paragraph: freeze, trim, or extend? State exactly
+   what Horizon is allowed to be at ₹0 revenue and the single line it must not cross. "Freeze
+   it, it's already enough" is an acceptable and possibly correct answer.
+3. **The trigger table** — deferred capability → the threshold that unlocks it → the smallest
+   first slice to build *when* it unlocks.
+4. **Read-list (not clone-list)** — only patterns/sources that survive the directive, each
+   with a one-line "why" and a security/maintenance caveat. Cite sources for external claims.
+
+## Hard refusals (call these out if you catch yourself or another answer doing them)
+
+- Designing revenue/MRR/ROI/"money-relevance" schemas while revenue is ₹0.
+- Instrumenting a posts→followers→leads funnel with no posts and no followers.
+- Adding memory/learning to improve actions that don't yet produce money.
+- Proposing to import any agent framework's runtime or marketplace into a system that will
+  hold payment secrets.
+- Any plan whose first concrete step is a Horizon feature rather than a customer-facing move.
+
+If most tempting ideas fall here, the correct deliverable is: "money impact ≈ zero; freeze the
+tool and go do [the specific customer-facing work]." That is a successful research outcome,
+not a failure to find features.
