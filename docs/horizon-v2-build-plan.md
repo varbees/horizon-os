@@ -74,10 +74,18 @@ existing `status` column; each transition writes a `work_event`.
 `describe(repo) → {branch, dirty, ahead/behind, lastCommit, commitCount, githubUrl}`, `classify(repo)`.
 `fs-glob` is the only adapter built now; `github-api`/`cloudflare`/`stripe` slot in behind it later.
 
-**4. Agent-dispatch contract** (Jules, concrete): write `agent_dispatches` row + `idempotency_key`
-**before** `createSession({requirePlanApproval:true})`; persist `sessions/{id}`; one reconcile pass per
-loop polls open dispatches, maps the 9 states, captures the PR URL into `result_url`, writes a
-`work_event`, closes/flags the action. All behind `scripts/jules.mjs`.
+**4. Agent-dispatch contract — a pluggable EXECUTOR REGISTRY** (operator requirement: new agent
+APIs/SDKs must drop in without touching core). An executor adapter implements
+`dispatch(action) → externalId`, `poll(externalId) → state`, `reconcile(externalId) → {result, workEvent}`,
+plus a capability descriptor (`programmatic | handoff`, `planGated?`, `repoWrite?`). The core loop routes
+by `action.dispatch_target` to a registry keyed by adapter name — adding an executor = add one local,
+audited adapter module + register it; **never** import an agent runtime/marketplace into the daemon.
+First adapters: `jules` (programmatic, concrete below), `gemini` (server-side enrich), `handoff`
+(Claude Code / Codex spec — writes `.horizon/queue/<id>.md`). Same shape for **source adapters** (`type`-keyed).
+*Jules adapter (concrete):* write `agent_dispatches` row + `idempotency_key` **before**
+`createSession({requirePlanApproval:true})`; persist `sessions/{id}`; one reconcile pass per loop polls
+open dispatches, maps the 9 states, captures the PR URL into `result_url`, writes a `work_event`,
+closes/flags the action. All behind `scripts/jules.mjs`.
 
 ## Build-now — the ~20–25h slice (one focused week, additive to existing code)
 

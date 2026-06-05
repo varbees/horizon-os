@@ -4,6 +4,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
+import { runMigrations } from "./migrate.mjs";
 import {
   actionQueueSeed,
   actionTasks,
@@ -34,6 +35,7 @@ export function openHorizonDb() {
   ensureCalendarColumns(db);
   ensureTaskColumns(db);
   ensureActionQueueColumns(db);
+  runMigrations(db, { dbPath }); // v2 additive core: WAL/FULL, source registry, work_events, dispatches
   seed(db);
   return db;
 }
