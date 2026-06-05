@@ -18,17 +18,15 @@ import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { openHorizonDb } from "./horizon-db.mjs";
+import { loadSources, priorityFor, syncSourcesToDb } from "./sources.mjs";
 import { portfolioProjects } from "../src/data/portfolio.js";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const home = homedir();
 const desktop = resolve(home, "Desktop");
-const rootConfig = [
-  resolve(desktop, "bolting"),
-  resolve(desktop, "Documents"),
-  resolve(home, "Documents"),
-  resolve(home, "Downloads"),
-];
+// Roots come from the config-driven source registry (.horizon/sources.json), not hardcode.
+// Env HORIZON_PROJECT_SWEEP_ROOTS still appends ad-hoc roots for power users.
+const sourcesConfig = loadSources();
 const scanRoots = [
   ...new Set(
     String(process.env.HORIZON_PROJECT_SWEEP_ROOTS ?? "")
@@ -36,7 +34,7 @@ const scanRoots = [
       .map((part) => part.trim())
       .filter(Boolean)
       .map((part) => resolve(part.startsWith("~/") ? join(home, part.slice(2)) : part))
-      .concat(rootConfig)
+      .concat(sourcesConfig.roots.map((source) => source.absPath))
       .filter(existsSync),
   ),
 ];
@@ -445,6 +443,8 @@ export function runProjectSweep(db = openHorizonDb()) {
   const started = new Date().toISOString();
   cleanIndex();
 
+  syncSourcesToDb(db, sourcesConfig.roots); // mirror declared roots into the registry table
+
   db.prepare(`
     INSERT INTO project_sweep_runs (id, root_paths_json, index_root, status, started_at)
     VALUES (?, ?, ?, 'running', ?)
@@ -456,6 +456,8 @@ export function runProjectSweep(db = openHorizonDb()) {
         const category = categoryFor(candidate);
         const stack = stackClues(candidate.path, candidate.kind);
         const git = gitSummary(candidate.path, candidate.kind);
+        // Per-project money weighting from the source registry (config-driven).
+        const prio = priorityFor(sourcesConfig.priorities, candidate.id);
         const project = {
           run_id: runId,
           project_id: candidate.id,
@@ -464,7 +466,7 @@ export function runProjectSweep(db = openHorizonDb()) {
           kind: candidate.kind,
           source: candidate.source,
           category,
-          lane: candidate.lane ?? "Unknown",
+          lane: prio?.lane || candidate.lane || "Unknown",
           status: candidate.status ?? "",
           relevance: candidate.relevance ?? "",
           next_action: candidate.next_action ?? "",
@@ -473,6 +475,8 @@ export function runProjectSweep(db = openHorizonDb()) {
             relative_path: relative(home, candidate.path),
             index_error: "",
             dirty_status: git.status_short ?? "",
+            weight: prio?.weight ?? 0,
+            lane_source: prio ? "config" : "default",
           },
           is_git: git.is_git ?? 0,
           git_branch: git.branch ?? "",
