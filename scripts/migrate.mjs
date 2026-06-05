@@ -110,6 +110,17 @@ const MIGRATIONS = [
       WHERE state = '' OR state IS NULL`);
     },
   },
+  {
+    version: 2,
+    name: "idempotency_unique",
+    up(db) {
+      // The dispatch double-send guard. PARTIAL unique: enforce uniqueness only for real
+      // keys — the '' default on pre-dispatch rows must be exempt or every empty key collides.
+      db.exec(
+        `CREATE UNIQUE INDEX IF NOT EXISTS idx_action_idem ON action_queue(idempotency_key) WHERE idempotency_key != ''`,
+      );
+    },
+  },
 ];
 
 const LATEST = MIGRATIONS.reduce((m, x) => Math.max(m, x.version), 0);
