@@ -27,6 +27,7 @@ import { runProjectSweep } from "./project-sweep.mjs";
 import { generateRevenueActions } from "./revenue-actions.mjs";
 import { autoEnrich } from "./auto-enrich.mjs";
 import { geminiAvailable } from "./gemini.mjs";
+import { reconcileDispatches } from "./reconcile.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const HORIZON_DIR = resolve(root, ".horizon");
@@ -102,6 +103,16 @@ export async function runCycle({ db: providedDb, enrichLimit } = {}) {
     cycle.errors.push("ready: " + msg(e));
   }
 
+  // 5. reconcile open Jules dispatches (no webhooks → poll once per cycle)
+  try {
+    const rec = await reconcileDispatches(db);
+    cycle.stages.reconcile = rec.skipped
+      ? { skipped: rec.skipped }
+      : { polled: rec.polled, reconciled: rec.reconciled };
+  } catch (e) {
+    cycle.errors.push("reconcile: " + msg(e));
+  }
+
   cycle.finishedAt = new Date().toISOString();
   cycle.ok = cycle.errors.length === 0;
   writeHeartbeat(cycle);
@@ -131,6 +142,7 @@ if (isCli) {
       `generate:${s.generate?.actions ?? "-"}`,
       `enrich:${s.enrich?.skipped ? "skip" : `${s.enrich?.enriched ?? 0}${s.enrich?.stoppedForQuota ? "(quota)" : ""}`}`,
       `ready:${s.ready?.enrichedActions ?? "-"}`,
+      `reconcile:${s.reconcile?.skipped ? "skip" : `${s.reconcile?.reconciled ?? 0}/${s.reconcile?.polled ?? 0}`}`,
       cycle.ok ? "OK" : `ERR(${cycle.errors.length})`,
     ].join("  ");
     console.log(`[${cycle.startedAt}] ${line}`);

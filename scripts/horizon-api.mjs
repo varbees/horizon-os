@@ -804,6 +804,20 @@ const server = createServer(async (req, res) => {
           return json(res, 409, { ok: false, error: "source_required", sourcesError: String(error.message ?? error) });
         }
       }
+      // Double-dispatch guard: one open Jules dispatch per action at a time.
+      const openDispatch = db
+        .prepare("SELECT id, external_id FROM agent_dispatches WHERE action_id = ? AND agent = 'jules' AND reconciled_at = ''")
+        .get(action.id);
+      if (openDispatch) {
+        return json(res, 409, { ok: false, error: "already_dispatched", dispatchId: openDispatch.id, sessionId: openDispatch.external_id });
+      }
+      // Outbox row written BEFORE the call (idempotency key persisted first).
+      const priorCount = db.prepare("SELECT COUNT(*) AS n FROM agent_dispatches WHERE action_id = ?").get(action.id).n;
+      const idempotencyKey = `jules:${id}:${priorCount + 1}`;
+      const dispatchRow = db
+        .prepare("INSERT INTO agent_dispatches (action_id, agent, idempotency_key, external_state, dispatched_at) VALUES (?, 'jules', ?, 'dispatching', datetime('now'))")
+        .run(action.id, idempotencyKey);
+      const dispatchId = dispatchRow.lastInsertRowid;
       try {
         const prompt = buildRunnableSpec(action);
         const session = await julesCreateSession({
@@ -815,7 +829,8 @@ const server = createServer(async (req, res) => {
           automationMode: body.automationMode,
         });
         const sessionId = session.id ?? session.name ?? "";
-        db.prepare("UPDATE action_queue SET jules_session_id = ?, status = 'deployed', updated_at = datetime('now') WHERE id = ?").run(sessionId, id);
+        db.prepare("UPDATE agent_dispatches SET external_id = ?, external_state = 'in_progress', last_polled_at = datetime('now') WHERE id = ?").run(sessionId, dispatchId);
+        db.prepare("UPDATE action_queue SET jules_session_id = ?, dispatch_target = 'jules', state = 'dispatched', dispatched_at = datetime('now'), idempotency_key = ?, status = 'deployed', updated_at = datetime('now') WHERE id = ?").run(sessionId, idempotencyKey, id);
         db.prepare("INSERT INTO command_log (id, actor, action, target, payload_json) VALUES (?, ?, ?, ?, ?)").run(
           randomUUID(),
           "horizon",
@@ -823,9 +838,11 @@ const server = createServer(async (req, res) => {
           action.project_id || action.id,
           JSON.stringify({ id, sessionId }),
         );
-        return json(res, 200, { ok: true, id, sessionId, session });
+        return json(res, 200, { ok: true, id, sessionId, dispatchId, session });
       } catch (error) {
-        return json(res, 502, { ok: false, error: String(error.message ?? error) });
+        const errMsg = String(error.message ?? error);
+        db.prepare("UPDATE agent_dispatches SET external_state = 'failed', reconciled_at = datetime('now'), last_error = ? WHERE id = ?").run(errMsg.slice(0, 200), dispatchId);
+        return json(res, 502, { ok: false, error: errMsg });
       }
     }
 
