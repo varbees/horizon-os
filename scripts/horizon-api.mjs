@@ -19,6 +19,9 @@ import { enrichAction, geminiAvailable } from "./gemini.mjs";
 import { autoEnrich } from "./auto-enrich.mjs";
 import { runCycle as runHorizonCycle, loopStatus } from "./horizon-loop.mjs";
 import { gitDetail } from "./git-detail.mjs";
+import { trustSummary } from "./trust.mjs";
+import { rankActions } from "./ranking.mjs";
+import { loadSources, priorityFor } from "./sources.mjs";
 import {
   createSession as julesCreateSession,
   getSession as julesGetSession,
@@ -736,6 +739,26 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/api/loop/status") {
       return json(res, 200, loopStatus());
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/trust") {
+      try {
+        const trust = trustSummary(db);
+        // Inherit money weight + lane from the source registry by project slug (tolerant match),
+        // so ranking reflects the operator's money priorities, not just lifecycle state.
+        const { priorities } = loadSources();
+        const actions = db.prepare("SELECT * FROM action_queue WHERE status != 'dismissed'").all().map((a) => {
+          const pr = priorityFor(priorities, a.project_id);
+          return { ...a, priority_score: a.priority_score || pr?.weight || 0, lane: a.lane || pr?.lane || "" };
+        });
+        const nextMoves = rankActions(actions).slice(0, 5).map((a) => ({
+          id: a.id, title: a.title, project_id: a.project_id, lane: a.lane,
+          state: a.state, priority_score: a.priority_score, enriched: a.enriched,
+        }));
+        return json(res, 200, { ok: true, trust, nextMoves });
+      } catch (error) {
+        return json(res, 500, { ok: false, error: String(error.message ?? error) });
+      }
     }
 
     if (req.method === "GET" && url.pathname === "/api/projects/git") {

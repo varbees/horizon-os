@@ -2,6 +2,8 @@
 // self-contained Markdown prompt an agent (Claude Code / Codex / Jules) can
 // execute in the target project without any other context.
 
+import { redactForSpec } from "./redact.mjs";
+
 function bullets(text) {
   if (!text) return [];
   return String(text)
@@ -50,7 +52,9 @@ export function buildRunnableSpec(action, { stamp = new Date().toISOString() } =
     "End with: what shipped, the path/URL, what's left, and the single highest-leverage next action.",
     "",
   ];
-  return lines.join("\n");
+  // Scrub any secret that leaked into goal/prompt/constraints before the spec is written to
+  // .horizon/queue, mirrored to Obsidian, or handed to an agent.
+  return redactForSpec(lines.join("\n"));
 }
 
 export function specMeta(action) {

@@ -16,7 +16,7 @@ import {
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
 import UsagePanel from "../components/UsagePanel.jsx";
-import { deployAction, dispatchToJules, enrichActionWithGemini, fetchActionQueue, fetchJulesSources, fetchLoopStatus, generateRevenueActions, runLoopCycle, updateAction } from "../lib/actionQueueApi.js";
+import { deployAction, dispatchToJules, enrichActionWithGemini, fetchActionQueue, fetchJulesSources, fetchLoopStatus, fetchTrust, generateRevenueActions, runLoopCycle, updateAction } from "../lib/actionQueueApi.js";
 import { actionQueueSeed, projects, socialSkillCatalog } from "../data/horizon.js";
 
 const STATUS_FLOW = {
@@ -71,6 +71,8 @@ export default function CommandCenter() {
   const [generatorStatus, setGeneratorStatus] = useState("");
   const [loop, setLoop] = useState(null);
   const [loopBusy, setLoopBusy] = useState(false);
+  const [trust, setTrust] = useState(null);
+  const [nextMoves, setNextMoves] = useState([]);
   const now = useClock();
 
   useEffect(() => {
@@ -84,6 +86,13 @@ export default function CommandCenter() {
       .catch(() => {});
     fetchLoopStatus()
       .then((data) => active && setLoop(data))
+      .catch(() => {});
+    fetchTrust()
+      .then((data) => {
+        if (!active) return;
+        setTrust(data.trust);
+        setNextMoves(data.nextMoves ?? []);
+      })
       .catch(() => {});
     return () => {
       active = false;
@@ -209,6 +218,12 @@ export default function CommandCenter() {
       <section className="mt-4">
         <LoopStrip loop={loop} busy={loopBusy} onRun={runLoop} now={now} />
       </section>
+
+      {trust ? (
+        <section className="mt-4">
+          <TrustStrip trust={trust} nextMove={nextMoves[0]} />
+        </section>
+      ) : null}
 
       <section className="mt-5">
         <UsagePanel />
@@ -351,6 +366,59 @@ function LaneBanner() {
         ))}
       </div>
     </section>
+  );
+}
+
+// WIP tripwire threshold: more than this many in-flight Horizon-self actions means the
+// builder is polishing the tool instead of shipping product — surface it, don't hide it.
+const HORIZON_WIP_LIMIT = 3;
+
+function TrustStrip({ trust, nextMove }) {
+  const wipOver = (trust.horizonSelfWip ?? 0) > HORIZON_WIP_LIMIT;
+  const cells = [
+    { k: "Loop", v: trust.loopOk ? "ok" : "down", tone: trust.loopOk ? "text-signal" : "text-rust", sub: trust.loopAgeMinutes != null ? `${trust.loopAgeMinutes}m ago` : "never run" },
+    { k: "Quota", v: trust.quotaState === "ok" ? "ok" : trust.quotaState === "quota" ? "spent" : "—", tone: trust.quotaState === "quota" ? "text-brass" : "text-paper", sub: "gemini enrich" },
+    { k: "Dispatches", v: trust.openDispatches ?? 0, tone: (trust.openDispatches ?? 0) > 0 ? "text-brass" : "text-paper", sub: "open / awaiting" },
+    { k: "Tool WIP", v: trust.horizonSelfWip ?? 0, tone: wipOver ? "text-rust" : "text-paper", sub: wipOver ? `over limit (${HORIZON_WIP_LIMIT})` : "horizon-self" },
+  ];
+  return (
+    <Panel className="p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <p className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.26em] text-brass">
+            <Waypoints className="h-3.5 w-3.5" aria-hidden="true" /> Trust &amp; next move
+          </p>
+          {nextMove ? (
+            <>
+              <h2 className="mt-2 font-display text-2xl font-bold text-paper">{nextMove.title}</h2>
+              <p className="mt-1 flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-paper/52">
+                <span className="rounded-full border border-signal/30 bg-signal/10 px-2 py-0.5 font-black text-signal">{nextMove.lane || "unranked"}</span>
+                <span>· {nextMove.project_id}</span>
+                <span>· score {nextMove.priority_score ?? 0}</span>
+                <span>· {nextMove.state || "captured"}</span>
+              </p>
+            </>
+          ) : (
+            <h2 className="mt-2 font-display text-2xl font-bold text-paper/70">No ranked move yet</h2>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-[36rem]">
+          {cells.map((c) => (
+            <div key={c.k} className={`rounded-[var(--hz-radius-sm)] border bg-surfaceVariant p-3 ${c.k === "Tool WIP" && wipOver ? "border-rust/40" : "border-outlineVariant"}`}>
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-paper/46">{c.k}</p>
+              <p className={`mt-1 text-xl font-black tabular-nums ${c.tone}`}>{c.v}</p>
+              <p className="truncate text-xs text-paper/50">{c.sub}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+      {wipOver ? (
+        <p className="mt-4 flex items-start gap-2 border-t border-rust/20 pt-3 text-xs font-bold text-rust/90">
+          <CircleDot className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          {trust.horizonSelfWip} Horizon-self actions in flight — you&apos;re polishing the workshop. Ship a PhotoSelect / rateguard move before opening another.
+        </p>
+      ) : null}
+    </Panel>
   );
 }
 

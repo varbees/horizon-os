@@ -59,6 +59,12 @@ export async function addAction(action) {
   return response.json();
 }
 
+export async function fetchTrust() {
+  const response = await fetch("/api/trust");
+  if (!response.ok) throw new Error(`trust unavailable: ${response.status}`);
+  return response.json();
+}
+
 export async function fetchLoopStatus() {
   const response = await fetch("/api/loop/status");
   if (!response.ok) throw new Error(`loop status failed: ${response.status}`);
