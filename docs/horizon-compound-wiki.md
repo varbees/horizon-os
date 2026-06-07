@@ -32,6 +32,23 @@ From `~/Desktop/bolting/_external/turbovec`:
 - Stable IDs via `IdMapIndex` fit `wiki_chunks.id`.
 - The current slice does not import turbovec into the Node daemon; it uses contextual `wiki_chunks` plus BM25-lite scoring and keeps vector search behind a future adapter.
 
+From `~/Desktop/bolting/_external/ccode/claude-code-main`:
+
+- The missed pattern is not the terminal UI; it is context introspection before tool loops.
+- Horizon now has a context-budget estimator for preflight packets, similar in spirit to ccode's `/context` command: show category/token pressure before sending work to an agent.
+- The command/tool boundary reinforces that intelligence belongs in scripts/modules first, with UI consuming read-only summaries.
+
+From `~/Desktop/bolting/_external/openclaw/openclaw`:
+
+- The missed patterns are doctor checks, queue discipline, retry/failover policy, session pruning, and durable memory flushes before compaction.
+- Horizon has now adopted the first slice: `horizonDoctor(db)` and `/api/doctor` report loop, wiki, retrieval, source registry, dispatch outbox, and self-WIP health.
+- Queue/retry/failover should be added only if real external dispatch collisions or provider failures appear.
+
+From `~/Desktop/bolting/_external/threedotslabs/wild-workouts-go-ddd-example`:
+
+- Keep business/domain logic separate from transport and UI.
+- Horizon's intelligence modules should stay in scripts with pure/read-only contracts where possible; React should render them, not own them.
+
 ## Runtime Behavior
 
 `scripts/wiki.mjs` owns the compound wiki:
@@ -43,9 +60,11 @@ From `~/Desktop/bolting/_external/turbovec`:
 - `runWikiLint(db)` writes `wiki/meta/Wiki Repair Plan.md` and returns a machine-readable repair plan.
 - `updateContradictionStatus(db, { id, status, note })` marks contradiction rows open, resolved, or superseded without deleting evidence.
 - `buildPreflightContext(db, action)` and `formatPreflightContext(packet)` attach wiki hot/index/search hits, action row, dispatch history, and trust state to deployed specs.
+- `summarizeContextBudget(packet)` estimates preflight context size by category and records top contributors/recommendations before dispatch.
+- `horizonDoctor(db)` returns a read-only operator health contract for loop, wiki graph, retrieval, source registry, outbox, and Horizon-self WIP.
 - `wikiStatus(db)` reports source/page/chunk counts, latest sync, graph health, and retrieval ladder state.
 - `searchWiki(db, query)` searches contextual `wiki_chunks` with BM25-lite scoring and returns note paths that can be opened in Horizon.
-- `lintWiki(db)` reports missing wikilinks, missing files, orphans, source/entity gaps, unresolved contradictions, and repair actions.
+- `lintWiki(db)` reports missing wikilinks, missing files, orphans, source/entity gaps, unresolved contradictions, frontmatter gaps, empty sections, and repair actions.
 
 The autonomous loop calls `syncHorizonWiki(db)` after sweep, generate, enrich, readiness, and dispatch reconciliation. That means every loop cycle compiles live state into the vault.
 
@@ -88,11 +107,15 @@ These pages intentionally serve the money OS: action quality, buyer evidence, di
 - `POST /api/wiki/coverage` runs the curated source coverage pack.
 - `POST /api/wiki/capture` files a question and answer back into `wiki/questions/`.
 - `POST /api/wiki/lint` writes the current repair plan and returns machine-readable fixes.
+- `GET /api/doctor` returns the read-only Horizon doctor summary.
+- `POST /api/context-budget` estimates a supplied preflight/context packet.
 - `POST /api/vault/sync` now writes both the old `Horizon/` snapshots and the compound wiki.
 
 ## CLI
 
 ```bash
+npm run horizon:doctor
+npm run context:budget < packet.json
 npm run wiki:status
 npm run wiki:sync
 npm run wiki:search -- turbovec local vector
@@ -117,6 +140,9 @@ This slice is ready when:
 - Sync writes `wiki/domains/Outcome Learning.md` from closed actions, outcomes, and work events.
 - Contradictions carry stable IDs and status values: open, resolved, or superseded.
 - Retrieval uses contextual chunk prefixes and BM25-lite scoring before any vector adapter.
+- Preflight specs include context budget state, top contributors, and a concrete trimming recommendation.
+- Doctor returns loop/wiki/retrieval/source/outbox/self-WIP health from one read-only contract.
+- Lint flags frontmatter gaps and empty sections.
 - Search retrieves the generated pages.
 - The loop compiles wiki state automatically.
 - Obsidian can render the graph from wikilinks.

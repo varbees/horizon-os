@@ -15,6 +15,8 @@
     "actions:generate:enrich": "node scripts/revenue-actions.mjs && node scripts/auto-enrich.mjs",
     "horizon": "node scripts/horizon-loop.mjs",
     "horizon:watch": "node scripts/horizon-loop.mjs --watch",
+    "horizon:doctor": "node scripts/doctor.mjs",
+    "context:budget": "node scripts/context-budget.mjs",
     "wiki:status": "node scripts/wiki.mjs",
     "wiki:sync": "node scripts/wiki.mjs sync",
     "wiki:search": "node scripts/wiki.mjs search",

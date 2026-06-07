@@ -16,10 +16,12 @@ import { frontmatter, listNotes, readNote, vaultInfo, writeNote } from "./vault.
 import { callTool, connectServer, connectionState, disconnectServer, finishAuth, listTools } from "./mcp-client.mjs";
 import { buildRunnableSpec } from "./action-spec.mjs";
 import { buildPreflightContext, formatPreflightContext } from "./preflight-context.mjs";
+import { summarizeContextBudget } from "./context-budget.mjs";
 import { enrichAction, geminiAvailable } from "./gemini.mjs";
 import { autoEnrich } from "./auto-enrich.mjs";
 import { runCycle as runHorizonCycle, loopStatus } from "./horizon-loop.mjs";
 import { gitDetail } from "./git-detail.mjs";
+import { horizonDoctor } from "./doctor.mjs";
 import { trustSummary } from "./trust.mjs";
 import { rankActions } from "./ranking.mjs";
 import { loadSources, priorityFor } from "./sources.mjs";
@@ -559,6 +561,23 @@ const server = createServer(async (req, res) => {
         return json(res, 200, { ok: true, wiki: wikiStatus(db) });
       } catch (error) {
         return json(res, 500, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/doctor") {
+      try {
+        return json(res, 200, { ok: true, doctor: horizonDoctor(db) });
+      } catch (error) {
+        return json(res, 500, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/context-budget") {
+      try {
+        const body = await readJson(req);
+        return json(res, 200, { ok: true, budget: summarizeContextBudget(body.packet ?? body, body.options ?? {}) });
+      } catch (error) {
+        return json(res, 400, { ok: false, error: String(error.message ?? error) });
       }
     }
 

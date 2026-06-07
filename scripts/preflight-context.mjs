@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { summarizeContextBudget } from "./context-budget.mjs";
 import { trustSummary } from "./trust.mjs";
 import { vaultRoot } from "./vault.mjs";
 import { searchWiki } from "./wiki.mjs";
@@ -88,7 +89,7 @@ function uniqueResults(results) {
 
 export function buildPreflightContext(db, action, { limit = 6 } = {}) {
   const query = actionQuery(action);
-  return {
+  const packet = {
     generatedAt: new Date().toISOString(),
     query,
     action: actionSummary(action),
@@ -98,6 +99,8 @@ export function buildPreflightContext(db, action, { limit = 6 } = {}) {
     dispatchHistory: dispatchHistory(db, action),
     trust: trustSummary(db),
   };
+  packet.contextBudget = summarizeContextBudget(packet);
+  return packet;
 }
 
 export function formatPreflightContext(packet) {
@@ -134,6 +137,12 @@ export function formatPreflightContext(packet) {
     `- openDispatches: ${packet.trust.openDispatches}`,
     `- quotaState: ${packet.trust.quotaState}`,
     `- horizonSelfWip: ${packet.trust.horizonSelfWip}`,
+    "",
+    "### Context budget",
+    `- state: ${packet.contextBudget?.state ?? "unknown"}`,
+    `- estimated tokens: ${packet.contextBudget?.totalTokens ?? 0}/${packet.contextBudget?.maxTokens ?? 0} (${packet.contextBudget?.percentage ?? 0}%)`,
+    `- top contributors: ${(packet.contextBudget?.topContributors ?? []).map((row) => `${row.name}:${row.tokens}`).join(", ") || "none"}`,
+    `- recommendation: ${(packet.contextBudget?.recommendations ?? ["Context packet is within the configured budget."])[0]}`,
     "",
   ].join("\n");
 }

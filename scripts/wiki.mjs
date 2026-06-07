@@ -120,6 +120,13 @@ const MEMORY_BACKLOG = [
     summary: "Improve chunk retrieval with contextual prefixes and BM25-style scoring before a turbovec adapter.",
     done: "Retrieval quality improves measurably without hosted vector infrastructure.",
   },
+  {
+    id: "operator-health-and-context-budget",
+    title: "Operator Health And Context Budget",
+    status: "shipped",
+    summary: "Adopt the ccode/OpenClaw missed patterns: doctor checks plus context-size accounting before agent dispatch.",
+    done: "Horizon has a read-only doctor module, context-budget estimator, API endpoints, CLI scripts, and preflight budget lines.",
+  },
 ];
 
 const DEFAULT_COVERAGE_SOURCES = [
@@ -343,6 +350,63 @@ function extractLinks(content) {
   let match;
   while ((match = re.exec(content))) links.add(match[1].trim());
   return [...links].filter(Boolean).sort();
+}
+
+function parseFrontmatterFields(content) {
+  const match = String(content ?? "").match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+  if (!match) return { exists: false, fields: {} };
+  const fields = {};
+  for (const rawLine of match[1].split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const fieldMatch = line.match(/^([A-Za-z0-9_-]+)\s*:\s*(.*)$/);
+    if (fieldMatch) fields[fieldMatch[1]] = fieldMatch[2] ?? "";
+  }
+  return { exists: true, fields };
+}
+
+function requiredFrontmatterFields(kind) {
+  const base = ["type", "title", "updated", "status"];
+  if (kind === "source") return [...base, "source_path", "raw_path", "content_hash"];
+  return base;
+}
+
+function frontmatterGapsFor(page, content) {
+  const parsed = parseFrontmatterFields(content);
+  const missing = [];
+  if (!parsed.exists) {
+    missing.push("frontmatter");
+  } else {
+    for (const field of requiredFrontmatterFields(page.kind)) {
+      if (!(field in parsed.fields) || String(parsed.fields[field] ?? "").trim() === "") missing.push(field);
+    }
+  }
+  if (missing.length === 0) return null;
+  return { path: page.path, title: page.title, kind: page.kind, missing };
+}
+
+function emptySectionsFor(page, content) {
+  const body = stripFrontmatter(content);
+  const headings = [];
+  const re = /^(#{2,4})\s+(.+)$/gm;
+  let match;
+  while ((match = re.exec(body))) {
+    headings.push({ level: match[1].length, heading: match[2].trim(), start: match.index, end: re.lastIndex });
+  }
+  const sections = [];
+  for (let index = 0; index < headings.length; index += 1) {
+    const current = headings[index];
+    const next = headings.find((candidate, candidateIndex) => candidateIndex > index && candidate.level <= current.level);
+    const sliceEnd = next ? next.start : body.length;
+    const contentAfterHeading = body.slice(current.end, sliceEnd)
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/^\s*> \[!(?:note|todo|contradiction)\].*$/gim, "")
+      .trim();
+    if (!contentAfterHeading) {
+      sections.push({ path: page.path, title: page.title, heading: current.heading, level: current.level });
+    }
+  }
+  return sections.slice(0, 8);
 }
 
 function chunksFor(content, maxChars = 1200) {
@@ -596,6 +660,9 @@ function hotMarkdown(db) {
       capturePayload = null;
     }
   }
+  const backlogRows = MEMORY_BACKLOG.filter((item) => item.status !== "shipped")
+    .slice(0, 4)
+    .map((item) => `- [[Living Memory Backlog]]: ${item.title} - ${item.summary}`);
   return [
     frontmatter({
       type: "meta",
@@ -630,7 +697,9 @@ function hotMarkdown(db) {
     "- When wiki volume is high enough, install/build the turbovec adapter and embed `wiki_chunks`.",
     "",
     "## Living Memory Backlog",
-    ...MEMORY_BACKLOG.filter((item) => item.status !== "shipped").slice(0, 4).map((item) => `- [[Living Memory Backlog]]: ${item.title} - ${item.summary}`),
+    ...(backlogRows.length
+      ? backlogRows
+      : ["- All listed living-memory backbone items are shipped; next work is driven by lint, retrieval, dispatch, or buyer evidence."]),
     "",
   ].join("\n");
 }
@@ -1064,7 +1133,9 @@ function liveOperatingPages(db) {
 }
 
 function sourcePages() {
-  return CORE_SOURCES.map((source) => ({
+  return CORE_SOURCES.map((source) => {
+    const rawPath = `.raw/horizon-intelligence/${source.id}.md`;
+    return {
     path: `wiki/sources/${source.title}.md`,
     kind: "source",
     source,
@@ -1075,6 +1146,8 @@ function sourcePages() {
         updated: isoNow(),
         source_url: source.sourceUrl ? JSON.stringify(source.sourceUrl) : "\"\"",
         source_path: source.sourcePath ? JSON.stringify(source.sourcePath) : "\"\"",
+        raw_path: JSON.stringify(rawPath),
+        content_hash: JSON.stringify(hashText(sourceRawMarkdown(source))),
         tags: `[${source.tags.map((tag) => `"${tag}"`).join(", ")}]`,
         status: "active",
       }),
@@ -1094,7 +1167,8 @@ function sourcePages() {
       "- [[Compound Horizon Memory]]",
       "",
     ].join("\n"),
-  }));
+    };
+  });
 }
 
 function dashboardMarkdown(db) {
@@ -1198,6 +1272,20 @@ export function lintWiki(db) {
     .filter((page) => !links.some((link) => link.from_path === page.path && graphTopicTitles.has(link.to_title)))
     .map((page) => ({ path: page.path, title: page.title }))
     .slice(0, 20);
+  const readablePages = pages
+    .map((page) => {
+      const abs = resolve(root, page.path);
+      if (!existsSync(abs)) return null;
+      return { page, content: readFileSync(abs, "utf8") };
+    })
+    .filter(Boolean);
+  const frontmatterGaps = readablePages
+    .map(({ page, content }) => frontmatterGapsFor(page, content))
+    .filter(Boolean)
+    .slice(0, 20);
+  const emptySections = readablePages
+    .flatMap(({ page, content }) => emptySectionsFor(page, content))
+    .slice(0, 20);
   const unresolvedContradictions = [];
   const contradictionPath = resolve(root, "wiki", "meta", "contradictions.md");
   if (existsSync(contradictionPath)) {
@@ -1246,6 +1334,21 @@ export function lintWiki(db) {
       target: item.line,
       action: "Resolve or supersede this contradiction in the affected entity/domain page while preserving the raw evidence.",
     })),
+    ...frontmatterGaps.map((item, index) => ({
+      id: `frontmatter-gap:${index + 1}`,
+      type: "frontmatter-gap",
+      severity: item.missing.includes("frontmatter") ? "high" : "medium",
+      target: item.path,
+      missing: item.missing,
+      action: `Add missing frontmatter fields to ${item.path}: ${item.missing.join(", ")}.`,
+    })),
+    ...emptySections.map((item, index) => ({
+      id: `empty-section:${index + 1}`,
+      type: "empty-section",
+      severity: "low",
+      target: `${item.path}#${item.heading}`,
+      action: `Fill or remove the empty "${item.heading}" section in ${item.path}.`,
+    })),
   ];
   return {
     pages: pages.length,
@@ -1255,8 +1358,10 @@ export function lintWiki(db) {
     orphanPages,
     sourcePagesWithoutEntityLinks,
     unresolvedContradictions,
+    frontmatterGaps,
+    emptySections,
     repairs,
-    ok: missingLinks.length === 0 && missingFiles.length === 0,
+    ok: missingLinks.length === 0 && missingFiles.length === 0 && frontmatterGaps.length === 0,
     needsAttention: repairs.length > 0,
   };
 }
@@ -1298,6 +1403,8 @@ function lintLogEntry(result) {
     `- Repairs: ${result.repairs.length}`,
     `- Missing links: ${result.missingLinks.length}`,
     `- Orphans: ${result.orphanPages.length}`,
+    `- Frontmatter gaps: ${result.frontmatterGaps.length}`,
+    `- Empty sections: ${result.emptySections.length}`,
     `- Report: \`wiki/meta/Wiki Repair Plan.md\``,
     "",
   ].join("\n");
@@ -1565,6 +1672,8 @@ function repairPlanMarkdown(result) {
     `- Orphan pages: ${result.orphanPages.length}`,
     `- Source pages without entity links: ${result.sourcePagesWithoutEntityLinks.length}`,
     `- Unresolved contradictions: ${result.unresolvedContradictions.length}`,
+    `- Frontmatter gaps: ${result.frontmatterGaps.length}`,
+    `- Empty sections: ${result.emptySections.length}`,
     "",
     "| Severity | Type | Target | Action |",
     "| --- | --- | --- | --- |",

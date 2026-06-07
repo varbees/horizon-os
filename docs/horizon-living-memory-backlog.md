@@ -55,9 +55,36 @@ The goal is not a prettier notes dashboard. The goal is a local agent memory arc
    - Add the turbovec adapter only after chunk volume and query failures justify semantic search.
    - `wiki_chunks` now carry page/kind/summary prefixes and `searchWiki()` uses BM25-lite chunk scoring before any vector adapter.
 
+10. **Operator Health And Context Budget**
+   - Borrowed the missed ccode/OpenClaw pattern: show context pressure before an agent run, and expose a doctor contract for operator health.
+   - Added `scripts/context-budget.mjs` for pure preflight size estimates.
+   - Added `scripts/doctor.mjs`, `npm run horizon:doctor`, and `GET /api/doctor` for loop/wiki/source/outbox checks.
+   - Preflight packets now include an estimated context budget section before deploy/Jules handoff.
+   - Wiki lint now catches frontmatter/schema gaps and empty sections, not only graph/link defects.
+
 ## Build Next
 
 The base living-memory backbone is complete enough to use daily. Next work should be driven by observed retrieval failures, dispatch failures, or buyer/outcome evidence rather than speculative memory features.
+
+1. **Wiki query modes and gap capture**
+   - Add quick/standard/deep query packets, modeled on `claude-obsidian`.
+   - File explicit knowledge gaps into `wiki/questions/` or `wiki/meta/gaps.md`.
+
+2. **Log folding / memory compaction**
+   - Add deterministic fold pages under `wiki/folds/`.
+   - Keep `wiki/log.md` parseable and short while preserving extractive rollups.
+
+3. **Doctor UI**
+   - Surface `/api/doctor` in the Command Center or Vault as an operator strip.
+   - Keep the backend read-only; UI should only display status and next repair command.
+
+4. **Dispatch queue policy**
+   - Apply OpenClaw's lane/session queue lesson to Horizon dispatches if concurrent external runs start colliding.
+   - Keep per-action idempotency as the current guard until real collisions appear.
+
+5. **Turbovec adapter**
+   - Add only after BM25-lite misses concrete queries.
+   - Preserve stable IDs with `wiki_chunks.id`; use SQL/BM25 candidate allowlists for local semantic rerank.
 
 ## Refuse For Now
 
@@ -74,3 +101,4 @@ Every memory feature must answer at least one of these:
 - Does Horizon make a better next-money decision?
 - Does dispatch become safer or more verifiable?
 - Does a useful answer become durable instead of disappearing?
+- Does the agent know when its context packet is too large before it spends a run?

@@ -44,6 +44,8 @@ test("preflight context attaches wiki, dispatch, trust, and is redacted in specs
     assert.match(markdown, /PhotoSelect/);
     assert.match(markdown, /session-1/);
     assert.match(markdown, /loopOk/);
+    assert.match(markdown, /Context budget/);
+    assert.ok(packet.contextBudget.totalTokens > 0);
 
     const spec = buildRunnableSpec(action, {
       stamp: "2026-06-07T00:00:00.000Z",
