@@ -115,4 +115,32 @@ test.describe("Horizon OS command center", () => {
     await page.getByRole("button", { name: /LiquiLogic POS Archive/ }).click();
     await expect(page.getByText("Point-of-sale and inventory flows are real")).toBeVisible();
   });
+
+  test("does not create horizontal document overflow on core mobile routes", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    for (const route of ["/projects", "/project/photoselect", "/project/rateguard", "/journey", "/capital"]) {
+      await page.goto(route);
+      await page.waitForLoadState("networkidle");
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow, `${route} overflow`).toBeLessThanOrEqual(2);
+    }
+  });
+
+  test("keeps mobile primary navigation touch targets reachable", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+
+    const targets = await page.locator('nav[aria-label="Mobile primary"] a').evaluateAll((links) =>
+      links.map((link) => {
+        const box = link.getBoundingClientRect();
+        return { label: link.textContent?.trim(), width: box.width, height: box.height };
+      }),
+    );
+    expect(targets.length).toBeGreaterThan(8);
+    for (const target of targets) {
+      expect(target.width, `${target.label} width`).toBeGreaterThanOrEqual(44);
+      expect(target.height, `${target.label} height`).toBeGreaterThanOrEqual(44);
+    }
+  });
 });

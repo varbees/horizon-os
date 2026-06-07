@@ -120,7 +120,7 @@ export default function ProjectDetail() {
             <p className="mt-4 text-sm text-paper/56">Not a git repository.</p>
           ) : (
             <>
-              <div className="mt-4 grid grid-cols-3 gap-3">
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
                 <Stat label="Branch" value={git.branch || "—"} />
                 <Stat label="Ahead / behind" value={`${git.ahead} / ${git.behind}`} highlight={git.ahead > 0 || git.behind > 0} />
                 <Stat label="Dirty files" value={git.dirtyCount} highlight={git.dirtyCount > 0} />
@@ -222,7 +222,7 @@ function Field({ label, value, highlight = false }) {
   return (
     <div>
       <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/42">{label}</p>
-      <p className={`mt-1 text-sm leading-6 ${highlight ? "font-bold text-paper/82" : "text-paper/64"}`}>{value}</p>
+      <p className={`mt-1 break-words text-sm leading-6 ${highlight ? "font-bold text-paper/82" : "text-paper/64"}`}>{value}</p>
     </div>
   );
 }

@@ -98,10 +98,10 @@ export default function Projects() {
         }
       />
 
-      <section className="mb-5 grid gap-3 lg:grid-cols-[1fr_1.2fr]">
+      <section className="mb-5 grid min-w-0 gap-3 lg:grid-cols-[1fr_1.2fr]">
         <Panel className="p-4">
           <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">Live sweep overlay</p>
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mt-3 grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-4">
             <MiniStat label="Indexed" value={projectData.sweep?.summary?.projects ?? 0} />
             <MiniStat label="Git repos" value={projectData.sweep?.summary?.git_repos ?? 0} />
             <MiniStat label="Dirty" value={projectData.sweep?.summary?.dirty_repos ?? 0} warn={dirtyProjects.length > 0} />
@@ -174,7 +174,7 @@ export default function Projects() {
         </Panel>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
+      <section className="grid min-w-0 gap-4 xl:grid-cols-[1.25fr_0.75fr]">
         <Panel className="p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -224,7 +224,7 @@ export default function Projects() {
         </Panel>
       </section>
 
-      <section className="mt-5 grid gap-4 xl:grid-cols-[0.88fr_1.12fr]">
+      <section className="mt-5 grid min-w-0 gap-4 xl:grid-cols-[0.88fr_1.12fr]">
         <Panel className="p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -300,7 +300,7 @@ export default function Projects() {
             ))}
           </div>
 
-          <div className="mt-5 max-h-[38rem] space-y-2 overflow-auto pr-1">
+          <div className="mt-5 max-h-[38rem] min-w-0 space-y-2 overflow-auto pr-1">
             {filteredProjects.map((project) => (
               <ProjectRegistryButton
                 key={project.id}
@@ -314,7 +314,7 @@ export default function Projects() {
         </Panel>
       </section>
 
-      <section className="mt-5 grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+      <section className="mt-5 grid min-w-0 gap-4 lg:grid-cols-[0.8fr_1.2fr]">
         <Panel className="p-5">
           <p className="font-mono text-[11px] uppercase tracking-[0.26em] text-brass">Resurrection shortlist</p>
           <h2 className="mt-2 font-display text-3xl font-bold">Worth revisiting, with constraints</h2>
@@ -445,11 +445,11 @@ function Score({ score, large = false }) {
 
 function DossierRow({ label, value, mono = false, highlight = false }) {
   return (
-    <div className="rounded-md border border-outlineVariant bg-surfaceVariant p-4">
+    <div className="min-w-0 rounded-md border border-outlineVariant bg-surfaceVariant p-4">
       <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-paper/42">{label}</p>
       <p
         className={`mt-2 text-sm leading-6 ${highlight ? "font-bold text-signal" : "text-paper/64"} ${
-          mono ? "font-mono text-xs" : ""
+          mono ? "break-all font-mono text-xs" : "break-words"
         }`}
       >
         {value}

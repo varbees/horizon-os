@@ -172,7 +172,7 @@ export default function Shell({ children }) {
         className="fixed bottom-0 left-0 right-0 z-50 border-t border-outlineVariant bg-surface/94 px-2 pb-2 pt-2 backdrop-blur-xl lg:hidden"
         aria-label="Mobile primary"
       >
-        <div className="mx-auto grid max-w-2xl grid-cols-[repeat(12,minmax(0,1fr))] gap-1">
+        <div className="mx-auto flex max-w-2xl gap-1 overflow-x-auto pb-1">
           {mobileNavItems.map((item) => (
             <MobileNavItem key={item.to} item={item} />
           ))}
@@ -217,7 +217,7 @@ function MobileNavItem({ item }) {
       end={item.to === "/"}
       className={({ isActive }) =>
         [
-          "flex min-w-0 flex-col items-center gap-1 rounded-xl px-1.5 py-2 text-[10px] font-bold",
+          "flex min-h-12 min-w-16 shrink-0 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[10px] font-bold",
           isActive ? "bg-primaryContainer text-onPrimaryContainer" : "text-paper/56",
         ].join(" ")
       }
