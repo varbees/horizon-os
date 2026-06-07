@@ -86,12 +86,17 @@ The goal is not a prettier notes dashboard. The goal is a local agent memory arc
    - Blocks unreconciled collisions for the same action, same project, or same lane/agent.
    - Keeps the existing outbox/idempotency guard, but prevents avoidable overlapping external write sessions before they start.
 
+15. **Retrieval Eval Gate**
+   - Added deterministic wiki retrieval checks before activating a vector adapter.
+   - `evaluateWikiRetrieval()` runs expected-path queries over the current BM25-lite search path.
+   - `npm run wiki:evaluate` reports whether misses justify the future turbovec rerank adapter.
+
 ## Build Next
 
 The base living-memory backbone is complete enough to use daily. Next work should be driven by observed retrieval failures, dispatch failures, or buyer/outcome evidence rather than speculative memory features.
 
 1. **Turbovec adapter**
-   - Add only after BM25-lite misses concrete queries.
+   - Add only after `npm run wiki:evaluate` shows concrete BM25-lite misses.
    - Preserve stable IDs with `wiki_chunks.id`; use SQL/BM25 candidate allowlists for local semantic rerank.
 
 ## Refuse For Now

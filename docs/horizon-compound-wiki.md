@@ -67,6 +67,7 @@ From `~/Desktop/bolting/_external/threedotslabs/wild-workouts-go-ddd-example`:
 - `evaluateDispatchPolicy(db, action, { agent })` gates external dispatches before outbox/session creation.
 - `wikiStatus(db)` reports source/page/chunk counts, latest sync, graph health, and retrieval ladder state.
 - `searchWiki(db, query)` searches contextual `wiki_chunks` with BM25-lite scoring and returns note paths that can be opened in Horizon.
+- `evaluateWikiRetrieval(db, cases)` runs expected-path checks so turbovec is activated only after concrete BM25-lite misses.
 - `lintWiki(db)` reports missing wikilinks, missing files, orphans, source/entity gaps, unresolved contradictions, frontmatter gaps, empty sections, and repair actions.
 
 The autonomous loop calls `syncHorizonWiki(db)` after sweep, generate, enrich, readiness, and dispatch reconciliation. That means every loop cycle compiles live state into the vault.
@@ -127,6 +128,7 @@ npm run wiki:sync
 npm run wiki:search -- turbovec local vector
 npm run wiki:query -- --mode=deep --capture-gap "What does Horizon know about this?"
 npm run wiki:fold -- --dry-run --keep=20 --batch=40
+npm run wiki:evaluate
 npm run wiki:ingest -- /absolute/path/to/source.md
 npm run wiki:coverage
 npm run wiki:capture -- "What should Horizon remember?" "The answer to preserve."
