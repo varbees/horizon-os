@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Brain, Database, FileText, FolderGit2, Loader2, RefreshCw, Search, X } from "lucide-react";
+import { Brain, Database, FileText, FolderGit2, Loader2, RefreshCw, Save, Search, X } from "lucide-react";
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
-import { fetchVault, ingestWikiSource, readVaultNote, runWikiCoverage, searchWiki, syncVault, syncWiki } from "../lib/vaultApi.js";
+import { captureWikiAnswer, fetchVault, ingestWikiSource, readVaultNote, runWikiCoverage, searchWiki, syncVault, syncWiki } from "../lib/vaultApi.js";
 
 function relativeTime(ms) {
   if (!ms) return "";
@@ -22,7 +22,10 @@ export default function Vault() {
   const [wikiSearching, setWikiSearching] = useState(false);
   const [wikiIngesting, setWikiIngesting] = useState(false);
   const [wikiCovering, setWikiCovering] = useState(false);
+  const [wikiCapturing, setWikiCapturing] = useState(false);
   const [wikiQuery, setWikiQuery] = useState("money action memory");
+  const [captureTitle, setCaptureTitle] = useState("");
+  const [captureAnswer, setCaptureAnswer] = useState("");
   const [ingestPath, setIngestPath] = useState("");
   const [wikiResults, setWikiResults] = useState([]);
   const [note, setNote] = useState(null);
@@ -132,6 +135,33 @@ export default function Vault() {
       setMsg("Source coverage failed.");
     } finally {
       setWikiCovering(false);
+    }
+  }
+
+  async function doWikiCapture(event) {
+    event.preventDefault();
+    if (!wikiQuery.trim() || !captureAnswer.trim()) return;
+    if (!live) {
+      setMsg("Start npm run dev:full to capture a wiki answer.");
+      return;
+    }
+    setWikiCapturing(true);
+    try {
+      const res = await captureWikiAnswer({
+        question: wikiQuery.trim(),
+        answer: captureAnswer.trim(),
+        title: captureTitle.trim() || undefined,
+        links: wikiResults.slice(0, 6).map((result) => ({ path: result.path, title: result.title })),
+      });
+      setMsg(`Captured answer: ${res.title}.`);
+      setCaptureTitle("");
+      setCaptureAnswer("");
+      setWikiResults([{ path: res.path, title: res.title, kind: "question", summary: res.question, snippet: "Captured into durable wiki memory." }]);
+      await load();
+    } catch {
+      setMsg("Wiki answer capture failed.");
+    } finally {
+      setWikiCapturing(false);
     }
   }
 
@@ -356,6 +386,33 @@ export default function Vault() {
               >
                 {wikiIngesting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <FileText className="h-4 w-4" aria-hidden="true" />}
                 Ingest
+              </button>
+            </div>
+          </form>
+
+          <form onSubmit={doWikiCapture} className="mt-3 rounded-md border border-outlineVariant bg-surfaceContainer p-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-brass">Capture answer</p>
+            <div className="mt-3 grid gap-2">
+              <input
+                value={captureTitle}
+                onChange={(event) => setCaptureTitle(event.target.value)}
+                className="rounded-md border border-outlineVariant bg-surface px-3 py-2 text-sm font-bold text-paper outline-none transition placeholder:text-paper/32 focus:border-primary"
+                placeholder="Optional page title"
+              />
+              <textarea
+                value={captureAnswer}
+                onChange={(event) => setCaptureAnswer(event.target.value)}
+                rows={5}
+                className="min-h-28 resize-y rounded-md border border-outlineVariant bg-surface px-3 py-2 text-sm leading-6 text-paper outline-none transition placeholder:text-paper/32 focus:border-primary"
+                placeholder="Write the answer worth remembering..."
+              />
+              <button
+                type="submit"
+                disabled={wikiCapturing || !wikiQuery.trim() || !captureAnswer.trim()}
+                className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-black text-onPrimary transition hover:bg-primary/90 disabled:opacity-50"
+              >
+                {wikiCapturing ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
+                {wikiCapturing ? "Capturing..." : "File Answer"}
               </button>
             </div>
           </form>

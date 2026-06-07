@@ -54,3 +54,13 @@ export async function runWikiCoverage(options = {}) {
   if (!response.ok) throw new Error(`wiki coverage failed: ${response.status}`);
   return response.json();
 }
+
+export async function captureWikiAnswer(payload) {
+  const response = await fetch("/api/wiki/capture", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error(`wiki capture failed: ${response.status}`);
+  return response.json();
+}

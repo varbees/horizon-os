@@ -170,3 +170,47 @@ test("source coverage ingests a curated source list and writes a coverage report
     db.close();
   }
 });
+
+test("query capture writes a durable question page and indexes it for search", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "horizon-wiki-capture-"));
+  process.env.HORIZON_DB_PATH = join(dir, "horizon.sqlite");
+  process.env.HORIZON_VAULT_PATH = join(dir, "vault");
+
+  const nonce = Date.now();
+  const { openHorizonDb } = await import(`../scripts/horizon-db.mjs?capture=${nonce}`);
+  const { captureWikiAnswer, searchWiki, syncHorizonWiki } = await import(`../scripts/wiki.mjs?capture=${nonce}`);
+
+  const db = openHorizonDb();
+  try {
+    syncHorizonWiki(db);
+    const result = captureWikiAnswer(db, {
+      question: "What should Horizon remember about PhotoSelect payment proof?",
+      answer: "PhotoSelect payment proof is the next revenue-engine evidence step. Keep rateguard separate as the fast-cash lane.",
+      title: "PhotoSelect Payment Proof Memory",
+      links: [{ path: "wiki/entities/PhotoSelect.md", title: "PhotoSelect" }],
+    });
+
+    assert.equal(result.title, "PhotoSelect Payment Proof Memory");
+    assert.equal(result.path, "wiki/questions/PhotoSelect Payment Proof Memory.md");
+    assert.ok(result.files.includes("wiki/questions/PhotoSelect Payment Proof Memory.md"));
+    assert.ok(result.files.includes("wiki/index.md"));
+    assert.ok(result.files.includes("wiki/hot.md"));
+    assert.ok(result.files.includes("wiki/log.md"));
+
+    const page = readFileSync(join(process.env.HORIZON_VAULT_PATH, result.path), "utf8");
+    assert.match(page, /PhotoSelect payment proof is the next revenue-engine evidence step/);
+    assert.match(page, /\[\[PhotoSelect\]\]/);
+
+    const hits = searchWiki(db, "payment proof revenue engine evidence", { limit: 5 });
+    assert.ok(hits.some((row) => row.path === result.path));
+
+    const log = readFileSync(join(process.env.HORIZON_VAULT_PATH, "wiki/log.md"), "utf8");
+    assert.match(log, /query \| PhotoSelect Payment Proof Memory/);
+
+    const latestRun = db.prepare("SELECT kind, summary FROM wiki_runs ORDER BY created_at DESC LIMIT 1").get();
+    assert.equal(latestRun.kind, "query-capture");
+    assert.match(latestRun.summary, /PhotoSelect Payment Proof Memory/);
+  } finally {
+    db.close();
+  }
+});

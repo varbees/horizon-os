@@ -81,7 +81,7 @@ const MEMORY_BACKLOG = [
   {
     id: "query-to-page-capture",
     title: "Query-To-Page Capture",
-    status: "next",
+    status: "shipped",
     summary: "Save useful answers under wiki/questions so synthesis compounds instead of disappearing into chat.",
     done: "A question and answer can be filed back into memory with index, hot cache, log, and chunks updated.",
   },
@@ -577,12 +577,21 @@ function hotMarkdown(db) {
   const state = currentState(db);
   const next = state.ranked[0];
   const latestIngest = safeGet(db, "SELECT * FROM wiki_runs WHERE kind = 'ingest' ORDER BY created_at DESC LIMIT 1");
+  const latestCapture = safeGet(db, "SELECT * FROM wiki_runs WHERE kind = 'query-capture' ORDER BY created_at DESC LIMIT 1");
   let ingestPayload = null;
+  let capturePayload = null;
   if (latestIngest?.payload_json) {
     try {
       ingestPayload = JSON.parse(latestIngest.payload_json);
     } catch {
       ingestPayload = null;
+    }
+  }
+  if (latestCapture?.payload_json) {
+    try {
+      capturePayload = JSON.parse(latestCapture.payload_json);
+    } catch {
+      capturePayload = null;
     }
   }
   return [
@@ -605,6 +614,9 @@ function hotMarkdown(db) {
     ingestPayload
       ? `- Latest ingest: [[${ingestPayload.title}]] from \`${ingestPayload.rawPath}\`.`
       : "- No operator-ingested source has been compiled yet.",
+    capturePayload
+      ? `- Latest captured answer: [[${capturePayload.title}]] for "${capturePayload.question}".`
+      : "- No operator answer has been captured into `wiki/questions/` yet.",
     "",
     "## Current Next Move",
     next
@@ -1087,6 +1099,7 @@ function memoryBacklogMarkdown() {
     "- [[Compound Horizon Memory]] base: schema, vault sync, hot cache, index, log, graph, chunks, API, CLI, and loop sync.",
     "- Deterministic source ingest: raw evidence copy, source synthesis page, manifest skip, wikilinks, contradiction marker extraction.",
     "- Source Coverage Pack: curated high-signal docs ingest, coverage report, CLI/API/UI trigger.",
+    "- Query-To-Page Capture: useful answers filed under `wiki/questions/` with index, hot cache, log, and chunks updated.",
     "",
     ...rows,
     "## Refuse for now",
@@ -1140,6 +1153,16 @@ function ingestLogEntry(result) {
     `- Summary: [[${result.title}]]`,
     `- Pages updated: ${result.files.map((file) => `\`${file}\``).join(", ")}`,
     `- Key insight: ${result.summary || "Source compiled into Horizon memory."}`,
+    "",
+  ].join("\n");
+}
+
+function questionLogEntry(result) {
+  return [
+    `## [${day()}] query | ${result.title}`,
+    `- Question page: \`${result.path}\``,
+    `- Related pages: ${result.related.map((page) => `[[${wikiLinkTitle(page.title)}]]`).join(", ") || "none"}`,
+    `- Summary: ${result.question}`,
     "",
   ].join("\n");
 }
@@ -1261,6 +1284,87 @@ function coverageReportMarkdown(result) {
     ...rows,
     "",
     "Related: [[Living Memory Backlog]], [[Compound Horizon Memory]], [[Money Lanes]], [[Action Memory]].",
+    "",
+  ].join("\n");
+}
+
+function wikiLinkTitle(title) {
+  return String(title ?? "")
+    .replace(/[\[\]\n\r]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function uniqueBy(items, keyFn) {
+  const seen = new Set();
+  const out = [];
+  for (const item of items) {
+    const key = keyFn(item);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
+function relatedPagesForCapture(db, question, links = []) {
+  const pages = safeAll(db, "SELECT path, title, kind, summary FROM wiki_pages");
+  const byPath = new Map(pages.map((page) => [page.path, page]));
+  const byTitle = new Map(pages.map((page) => [page.title, page]));
+  const explicit = [];
+  for (const link of links ?? []) {
+    const path = typeof link === "string" ? link : link?.path;
+    const title = typeof link === "string" ? "" : link?.title;
+    const found = (path && byPath.get(path)) || (title && byTitle.get(title));
+    if (found) explicit.push(found);
+  }
+  if (explicit.length) return uniqueBy(explicit, (page) => page.path).slice(0, 8);
+  return searchWiki(db, question, { limit: 6 }).map((result) => ({
+    path: result.path,
+    title: result.title,
+    kind: result.kind,
+    summary: result.summary,
+  }));
+}
+
+function questionMarkdown({ title, question, answer, related, inferredLinks, tags }) {
+  const relatedRows = related.length
+    ? related.map((page) => {
+        const linkTitle = wikiLinkTitle(page.title);
+        const summary = page.summary ? ` - ${page.summary}` : "";
+        return `- [[${linkTitle}]] (\`${page.path}\`)${summary}`;
+      })
+    : ["- No related wiki pages were found at capture time."];
+  const relatedTitles = new Set(related.map((page) => page.title));
+  const inferredRows = inferredLinks.filter((link) => !relatedTitles.has(link)).map((link) => `- [[${wikiLinkTitle(link)}]]`);
+  const inferredSection = inferredRows.length ? ["## Inferred Links", "", ...inferredRows, ""] : [];
+  return [
+    frontmatter({
+      type: "question",
+      title: JSON.stringify(title),
+      updated: isoNow(),
+      tags: `[${tags.map((tag) => `"${tag}"`).join(", ")}]`,
+      status: "active",
+    }),
+    `# ${title}`,
+    "",
+    "## Question",
+    "",
+    `> ${question.replace(/\n+/g, "\n> ")}`,
+    "",
+    "## Answer",
+    "",
+    answer,
+    "",
+    "## Related Memory",
+    "",
+    ...relatedRows,
+    "",
+    ...inferredSection,
+    "## Maintenance",
+    "",
+    "- Treat this as compiled synthesis, not raw evidence.",
+    "- If a newer source contradicts this answer, preserve the page and add contradiction status instead of deleting it.",
     "",
   ].join("\n");
 }
@@ -1543,6 +1647,69 @@ export function runWikiSourceCoverage(db, { sources = DEFAULT_COVERAGE_SOURCES, 
   return result;
 }
 
+export function captureWikiAnswer(db, { question, answer, title, links = [], tags = [] } = {}) {
+  ensureDirs();
+  const cleanQuestion = String(question ?? "").trim();
+  const cleanAnswer = String(answer ?? "").trim();
+  if (!cleanQuestion) throw new Error("question is required");
+  if (!cleanAnswer) throw new Error("answer is required");
+
+  const resolvedTitle = fileTitle(title || cleanQuestion);
+  const path = `wiki/questions/${resolvedTitle}.md`;
+  const related = relatedPagesForCapture(db, cleanQuestion, links);
+  const inferredLinks = inferLinks(db, `${cleanQuestion}\n${cleanAnswer}`, resolvedTitle);
+  const normalizedTags = [...new Set(["horizon-query", "compiled-answer", ...tags].map((tag) => String(tag).trim()).filter(Boolean))];
+  const content = questionMarkdown({
+    title: resolvedTitle,
+    question: cleanQuestion,
+    answer: cleanAnswer,
+    related,
+    inferredLinks,
+    tags: normalizedTags,
+  });
+
+  const result = {
+    id: randomUUID(),
+    title: resolvedTitle,
+    question: cleanQuestion,
+    path,
+    related,
+    files: [],
+    capturedAt: isoNow(),
+  };
+
+  result.files.push(writeIndexedPage(db, path, content, { kind: "question", status: "active", sourceCount: related.length }));
+
+  const pages = safeAll(db, "SELECT * FROM wiki_pages ORDER BY kind, title");
+  result.files.push(writeIndexedPage(db, "wiki/index.md", indexMarkdown(db, pages), { kind: "meta", status: "active" }));
+  result.files.push(writeIndexedPage(db, "wiki/hot.md", hotMarkdown(db), { kind: "meta", status: "active" }));
+
+  const log = [
+    frontmatter({
+      type: "meta",
+      title: "\"Wiki Log\"",
+      updated: isoNow(),
+      tags: "[horizon, log]",
+      status: "active",
+    }),
+    "# Wiki Log",
+    "",
+    questionLogEntry(result),
+    existingLog().replace(/^---[\s\S]*?---\s*# Wiki Log\s*/m, "").trim(),
+    "",
+  ].filter(Boolean).join("\n");
+  result.files.push(writeIndexedPage(db, "wiki/log.md", log, { kind: "meta", status: "active" }));
+
+  db.prepare("INSERT INTO wiki_runs (id, kind, summary, payload_json, created_at) VALUES (?, 'query-capture', ?, ?, ?)").run(
+    result.id,
+    `Captured answer: ${resolvedTitle}`,
+    JSON.stringify(result),
+    result.capturedAt,
+  );
+
+  return result;
+}
+
 function walkMarkdown(dir, root, out = []) {
   if (!existsSync(dir)) return out;
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -1640,6 +1807,15 @@ if (isCli) {
       console.log(JSON.stringify(syncHorizonWiki(db), null, 2));
     } else if (cmd === "coverage") {
       console.log(JSON.stringify(runWikiSourceCoverage(db, { force: process.argv.includes("--force") }), null, 2));
+    } else if (cmd === "capture") {
+      const question = process.argv[3];
+      const answer = process.argv.slice(4).join(" ");
+      if (!question || !answer) {
+        console.error("usage: node scripts/wiki.mjs capture <question> <answer>");
+        process.exitCode = 2;
+      } else {
+        console.log(JSON.stringify(captureWikiAnswer(db, { question, answer }), null, 2));
+      }
     } else if (cmd === "ingest") {
       const sourcePath = process.argv[3];
       if (!sourcePath) {

@@ -53,6 +53,7 @@ The same sync also compiles the compound wiki:
 - `GET /api/wiki/search?q=` - search generated wiki pages.
 - `POST /api/wiki/ingest` - compile a local source file into `.raw/horizon-ingest/` and `wiki/sources/`.
 - `POST /api/wiki/coverage` - run the curated high-signal source coverage pack and write `wiki/meta/Source Coverage Report.md`.
+- `POST /api/wiki/capture` - file a useful question and answer under `wiki/questions/`.
 
 Path traversal is blocked: every path resolves inside the vault root or is rejected.
 
@@ -64,6 +65,7 @@ Path traversal is blocked: every path resolves inside the vault root or is rejec
 4. Search the compound wiki from `/vault` to inspect what Horizon remembers.
 5. Paste a local Markdown/text source path into **Ingest source** when you want Horizon to compile a new piece of evidence.
 6. Click **Run Coverage** when you want Horizon to refresh the curated high-signal source pack.
+7. Use **Capture answer** to save a useful answer back into `wiki/questions/` with related memory links.
 
 A scheduled auto-sync and writing edits back from Horizon into arbitrary notes are natural follow-ups.
 The autonomous loop already refreshes the compound wiki after each cycle.

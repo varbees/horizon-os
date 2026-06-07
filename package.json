@@ -20,6 +20,7 @@
     "wiki:search": "node scripts/wiki.mjs search",
     "wiki:ingest": "node scripts/wiki.mjs ingest",
     "wiki:coverage": "node scripts/wiki.mjs coverage",
+    "wiki:capture": "node scripts/wiki.mjs capture",
     "build": "vite build",
     "test:e2e": "playwright test",
     "preview": "vite preview --host 127.0.0.1"

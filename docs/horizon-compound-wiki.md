@@ -37,6 +37,7 @@ From `~/Desktop/bolting/_external/turbovec`:
 - `syncHorizonWiki(db)` writes schema, raw source notes, generated pages, index, hot cache, log, and dashboard.
 - `ingestWikiSource(db, { sourcePath })` copies a local source into `.raw/horizon-ingest/`, creates a linked `wiki/sources/*` synthesis page, updates `wiki/index.md`, `wiki/hot.md`, `wiki/log.md`, and records a manifest entry so unchanged sources are skipped.
 - `runWikiSourceCoverage(db)` ingests or skips the curated high-signal source list and writes `wiki/meta/Source Coverage Report.md`.
+- `captureWikiAnswer(db, { question, answer, links })` saves useful answers under `wiki/questions/` and updates index, hot cache, log, and chunks.
 - `wikiStatus(db)` reports source/page/chunk counts, latest sync, graph health, and retrieval ladder state.
 - `searchWiki(db, query)` searches generated wiki markdown and returns note paths that can be opened in Horizon.
 - `lintWiki(db)` reports missing wikilinks and orphan generated pages.
@@ -79,6 +80,7 @@ These pages intentionally serve the money OS: action quality, buyer evidence, di
 - `GET /api/wiki/search?q=...` searches generated wiki pages.
 - `POST /api/wiki/ingest` compiles a local source file into raw evidence plus generated wiki synthesis.
 - `POST /api/wiki/coverage` runs the curated source coverage pack.
+- `POST /api/wiki/capture` files a question and answer back into `wiki/questions/`.
 - `POST /api/vault/sync` now writes both the old `Horizon/` snapshots and the compound wiki.
 
 ## CLI
@@ -89,6 +91,7 @@ npm run wiki:sync
 npm run wiki:search -- turbovec local vector
 npm run wiki:ingest -- /absolute/path/to/source.md
 npm run wiki:coverage
+npm run wiki:capture -- "What should Horizon remember?" "The answer to preserve."
 ```
 
 ## Readiness Bar
@@ -99,6 +102,7 @@ This slice is ready when:
 - Sync creates the schema, raw-source, hot-cache, index, log, source, concept, entity, and domain pages.
 - Ingest copies a local file into `.raw/horizon-ingest/`, creates a source page with inferred wikilinks, logs the run, skips unchanged sources, and surfaces contradiction markers.
 - Coverage ingests or skips registered high-signal sources and writes `wiki/meta/Source Coverage Report.md`.
+- Query capture writes useful answers under `wiki/questions/` with related memory links and searchable chunks.
 - Search retrieves the generated pages.
 - The loop compiles wiki state automatically.
 - Obsidian can render the graph from wikilinks.
