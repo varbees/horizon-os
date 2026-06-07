@@ -72,6 +72,7 @@ The live operating pages are:
 - `wiki/domains/Action Memory.md`
 - `wiki/domains/Dispatch Memory.md`
 - `wiki/domains/Work Event Ledger.md`
+- `wiki/domains/Outcome Learning.md`
 - `wiki/entities/PhotoSelect.md`
 - `wiki/entities/rateguard.md`
 
@@ -111,6 +112,7 @@ This slice is ready when:
 - Query capture writes useful answers under `wiki/questions/` with related memory links and searchable chunks.
 - Lint writes `wiki/meta/Wiki Repair Plan.md` and returns machine-readable repair actions.
 - Deploy/Jules specs include the memory preflight packet after redaction.
+- Sync writes `wiki/domains/Outcome Learning.md` from closed actions, outcomes, and work events.
 - Search retrieves the generated pages.
 - The loop compiles wiki state automatically.
 - Obsidian can render the graph from wikilinks.

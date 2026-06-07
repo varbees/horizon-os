@@ -39,7 +39,7 @@ The same sync also compiles the compound wiki:
 - `wiki/hot.md` - current context before any agent acts.
 - `wiki/index.md` - content map for generated pages.
 - `wiki/log.md` - chronological wiki maintenance log.
-- `wiki/domains/*` - live money lanes, action memory, dispatch memory, and work-event ledger.
+- `wiki/domains/*` - live money lanes, action memory, dispatch memory, work-event ledger, and outcome learning.
 - `wiki/entities/*` and `wiki/concepts/*` - graph nodes for projects, tools, and memory architecture.
 
 ## API

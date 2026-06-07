@@ -102,7 +102,7 @@ const MEMORY_BACKLOG = [
   {
     id: "outcome-learning-loop",
     title: "Outcome Learning Loop",
-    status: "next",
+    status: "shipped",
     summary: "Compile action completion, dispatch reconciliation, buyer signal, and money outcomes into project memory.",
     done: "Closed actions update wiki pages with what worked, failed, or changed.",
   },
@@ -885,6 +885,14 @@ function liveEntityPages(db) {
 
 function liveOperatingPages(db) {
   const state = currentState(db);
+  const closedActions = safeAll(
+    db,
+    `SELECT id, title, project_id, lane, state, status, outcome_code, verified_at, updated_at, summary
+     FROM action_queue
+     WHERE status IN ('done', 'closed') OR state IN ('closed', 'verified') OR verified_at != '' OR outcome_code != ''
+     ORDER BY coalesce(NULLIF(verified_at, ''), updated_at, created_at) DESC
+     LIMIT 24`,
+  );
   const sourceRows = state.sources.length
     ? state.sources.map((source) => `| ${source.id} | ${source.lane || "other"} | ${source.weight ?? 0} | ${source.root || ""} |`)
     : ["| none | other | 0 | |"];
@@ -895,11 +903,27 @@ function liveOperatingPages(db) {
     ? state.dispatches.map((dispatch) => `- ${dispatch.agent || "agent"} ${dispatch.external_state || "unknown"} - action ${dispatch.action_id || "unknown"} (${dispatch.external_id || "no external id"})`)
     : ["- No open dispatches."];
   const eventRows = state.events.length
-    ? state.events.map((event) => `- ${event.recorded_at || event.occurred_at || "undated"} - **${event.kind || "event"}** ${event.project_id || ""}`)
+    ? state.events.map((event) => {
+        let payload = {};
+        try {
+          payload = JSON.parse(event.payload_json || "{}");
+        } catch {
+          payload = {};
+        }
+        const detail = payload.summary || payload.title || payload.resultUrl || payload.actionId || "";
+        return `- ${event.recorded_at || event.occurred_at || "undated"} - **${event.kind || "event"}** ${event.project_id || ""}${detail ? ` - ${detail}` : ""}`;
+      })
     : ["- No work events recorded yet."];
   const outcomeRows = state.outcomes.length
     ? state.outcomes.map((outcome) => `- ${outcome.occurred_at || outcome.recorded_at || "undated"} - **${outcome.kind || "outcome"}** ${outcome.project_id || ""} ${outcome.amount_cents ? `${outcome.amount_cents} ${outcome.currency}` : ""}`)
     : ["- No outcomes recorded yet."];
+  const closedRows = closedActions.length
+    ? closedActions.map((action) => {
+        const project = /photo/i.test(action.project_id) ? "[[PhotoSelect]]" : /rate|varbee/i.test(action.project_id) ? "[[rateguard]]" : action.project_id || "unknown";
+        const outcome = action.outcome_code ? ` outcome=${action.outcome_code}` : "";
+        return `- ${action.verified_at || action.updated_at || "undated"} - ${project} **${action.title}** (${action.state || action.status || "closed"}${outcome}) - ${action.summary || "No summary captured."}`;
+      })
+    : ["- No closed actions have been recorded yet."];
 
   return [
     {
@@ -1006,6 +1030,34 @@ function liveOperatingPages(db) {
         "",
       ].join("\n"),
     },
+    {
+      path: "wiki/domains/Outcome Learning.md",
+      kind: "domain",
+      content: [
+        frontmatter({
+          type: "domain",
+          title: "\"Outcome Learning\"",
+          updated: isoNow(),
+          tags: "[horizon, outcomes, learning]",
+          status: "active",
+        }),
+        "# Outcome Learning",
+        "",
+        "Outcome Learning compiles closed actions, money outcomes, and dispatch/work events into durable memory. Future agents should read this before reopening old queue history.",
+        "",
+        "## Closed action learning",
+        ...closedRows,
+        "",
+        "## Money outcomes",
+        ...outcomeRows,
+        "",
+        "## Recent work events",
+        ...eventRows,
+        "",
+        "Related: [[Action Memory]], [[Dispatch Memory]], [[Work Event Ledger]], [[PhotoSelect]], [[rateguard]].",
+        "",
+      ].join("\n"),
+    },
   ];
 }
 
@@ -1103,6 +1155,7 @@ function memoryBacklogMarkdown() {
     "- Query-To-Page Capture: useful answers filed under `wiki/questions/` with index, hot cache, log, and chunks updated.",
     "- Wiki Lint And Repair Plan: machine-readable repairs plus `wiki/meta/Wiki Repair Plan.md`.",
     "- Agent Preflight Context Pack: deploy/Jules specs include wiki hot/index/search hits, action row, dispatch history, and trust state after redaction.",
+    "- Outcome Learning Loop: sync writes `wiki/domains/Outcome Learning.md` from closed actions, outcomes, and work events.",
     "",
     ...rows,
     "## Refuse for now",

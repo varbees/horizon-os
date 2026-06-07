@@ -249,3 +249,59 @@ test("wiki lint writes a repair plan with machine-readable fixes", async () => {
     db.close();
   }
 });
+
+test("outcome learning compiles closed actions, outcomes, and work events", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "horizon-wiki-outcomes-"));
+  process.env.HORIZON_DB_PATH = join(dir, "horizon.sqlite");
+  process.env.HORIZON_VAULT_PATH = join(dir, "vault");
+
+  const nonce = Date.now();
+  const { openHorizonDb } = await import(`../scripts/horizon-db.mjs?outcomes=${nonce}`);
+  const { searchWiki, syncHorizonWiki } = await import(`../scripts/wiki.mjs?outcomes=${nonce}`);
+
+  const db = openHorizonDb();
+  try {
+    db.prepare(`
+      INSERT INTO action_queue (
+        id, title, summary, project_id, agent, status, state, lane,
+        priority_score, verified_at, outcome_code, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "closed-payment-proof",
+      "Verify payment proof",
+      "Studio payment proof shipped and browser smoke passed.",
+      "photoselect",
+      "codex",
+      "done",
+      "closed",
+      "revenue-engine",
+      90,
+      "2026-06-07T00:00:00Z",
+      "proof-shipped",
+      "2026-06-07T00:00:00Z",
+    );
+    db.prepare(`
+      INSERT INTO outcomes (project_id, kind, amount_cents, currency, source, occurred_at)
+      VALUES ('photoselect', 'proof', 10000, 'INR', 'payment-proof', '2026-06-07T00:00:00Z')
+    `).run();
+    db.prepare(`
+      INSERT INTO work_events (project_id, kind, payload_json, occurred_at)
+      VALUES ('photoselect', 'dispatch_reconciled', ?, '2026-06-07T00:00:00Z')
+    `).run(JSON.stringify({ summary: "Dispatch produced a reviewable proof PR." }));
+
+    const result = syncHorizonWiki(db);
+    assert.ok(result.files.includes("wiki/domains/Outcome Learning.md"));
+
+    const page = readFileSync(join(process.env.HORIZON_VAULT_PATH, "wiki/domains/Outcome Learning.md"), "utf8");
+    assert.match(page, /Verify payment proof/);
+    assert.match(page, /proof-shipped/);
+    assert.match(page, /10000 INR/);
+    assert.match(page, /Dispatch produced a reviewable proof PR/);
+
+    const hits = searchWiki(db, "proof-shipped reviewable proof PR", { limit: 5 });
+    assert.ok(hits.some((row) => row.path === "wiki/domains/Outcome Learning.md"));
+  } finally {
+    db.close();
+  }
+});
