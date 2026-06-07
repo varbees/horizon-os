@@ -95,7 +95,7 @@ const MEMORY_BACKLOG = [
   {
     id: "agent-preflight-context-pack",
     title: "Agent Preflight Context Pack",
-    status: "next",
+    status: "shipped",
     summary: "Attach relevant hot/index/search/action/dispatch/trust memory to runnable specs before external handoff.",
     done: "Every deploy/Jules spec includes relevant memory links and source paths after redaction.",
   },
@@ -1102,6 +1102,7 @@ function memoryBacklogMarkdown() {
     "- Source Coverage Pack: curated high-signal docs ingest, coverage report, CLI/API/UI trigger.",
     "- Query-To-Page Capture: useful answers filed under `wiki/questions/` with index, hot cache, log, and chunks updated.",
     "- Wiki Lint And Repair Plan: machine-readable repairs plus `wiki/meta/Wiki Repair Plan.md`.",
+    "- Agent Preflight Context Pack: deploy/Jules specs include wiki hot/index/search hits, action row, dispatch history, and trust state after redaction.",
     "",
     ...rows,
     "## Refuse for now",

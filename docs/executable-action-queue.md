@@ -28,6 +28,8 @@ Beyond title/summary/prompt, each `action_queue` row has executable fields (adde
 4. **Deploy** (`PATCH /api/action-queue/:id/deploy`) — `scripts/action-spec.mjs` writes a self-contained
    runnable Markdown spec (context, goal, constraints, done checklist, tools, prompt, report format) to
    `.horizon/queue/<id>.md` and mirrors it into the Obsidian vault at `Horizon/Actions/<id>.md`.
+   Before writing, Horizon syncs the compound wiki and appends a redacted memory preflight packet:
+   `wiki/hot.md`, `wiki/index.md`, relevant search hits, the action row, dispatch history, and trust state.
 5. **Run** — execute the spec in the project with the named agent (`claude` / `codex` / Jules).
 
 ## Metric

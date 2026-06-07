@@ -35,24 +35,24 @@ The goal is not a prettier notes dashboard. The goal is a local agent memory arc
    - Check missing links, orphan pages, stale generated pages, contradiction pages without resolution, and source pages without entity links.
    - `npm run wiki:lint` and `/api/wiki/lint` return machine-readable repair actions and write `wiki/meta/Wiki Repair Plan.md`.
 
-## Build Next
-
-1. **Agent Preflight Context Pack**
+6. **Agent Preflight Context Pack**
    - Before deploy/Jules dispatch, build a context packet from `wiki/hot.md`, `wiki/index.md`, search hits, action row, dispatch history, and trust state.
    - Apply existing redaction before any external handoff.
-   - Done when every runnable action spec includes the relevant memory links and source paths.
+   - Deploy and Jules specs now include the relevant memory links and source paths after redaction.
 
-2. **Outcome Learning Loop**
+## Build Next
+
+1. **Outcome Learning Loop**
    - Convert action completion, dispatch reconciliation, buyer signal, and money outcomes into wiki updates.
    - Improve `Action Memory`, `Dispatch Memory`, and project entity pages from outcomes rather than just queue state.
    - Done when closed actions update the wiki with what worked, failed, or changed.
 
-3. **Contradiction Resolution Workflow**
+2. **Contradiction Resolution Workflow**
    - Keep contradiction markers as evidence, but add status: open, resolved, superseded.
    - Link each contradiction to the pages it affects.
    - Done when old claims are corrected without deleting the raw source trail.
 
-4. **Retrieval Ladder Upgrade**
+3. **Retrieval Ladder Upgrade**
    - Improve chunk search before adding vectors: contextual prefixes, BM25-style scoring, and source filters.
    - Add the turbovec adapter only after chunk volume and query failures justify semantic search.
    - Done when retrieval quality improves measurably without adding hosted vector infrastructure.

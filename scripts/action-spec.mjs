@@ -12,7 +12,7 @@ function bullets(text) {
     .filter(Boolean);
 }
 
-export function buildRunnableSpec(action, { stamp = new Date().toISOString() } = {}) {
+export function buildRunnableSpec(action, { stamp = new Date().toISOString(), memoryContext = "" } = {}) {
   const cwd = action.cwd || action.project_path || "";
   const constraints = bullets(action.constraints);
   const done = bullets(action.done_criteria);
@@ -52,6 +52,7 @@ export function buildRunnableSpec(action, { stamp = new Date().toISOString() } =
     "End with: what shipped, the path/URL, what's left, and the single highest-leverage next action.",
     "",
   ];
+  if (memoryContext) lines.push(memoryContext, "");
   // Scrub any secret that leaked into goal/prompt/constraints before the spec is written to
   // .horizon/queue, mirrored to Obsidian, or handed to an agent.
   return redactForSpec(lines.join("\n"));

@@ -15,6 +15,7 @@ import { portfolioProjects } from "../src/data/portfolio.js";
 import { frontmatter, listNotes, readNote, vaultInfo, writeNote } from "./vault.mjs";
 import { callTool, connectServer, connectionState, disconnectServer, finishAuth, listTools } from "./mcp-client.mjs";
 import { buildRunnableSpec } from "./action-spec.mjs";
+import { buildPreflightContext, formatPreflightContext } from "./preflight-context.mjs";
 import { enrichAction, geminiAvailable } from "./gemini.mjs";
 import { autoEnrich } from "./auto-enrich.mjs";
 import { runCycle as runHorizonCycle, loopStatus } from "./horizon-loop.mjs";
@@ -928,7 +929,9 @@ const server = createServer(async (req, res) => {
         .run(action.id, idempotencyKey);
       const dispatchId = dispatchRow.lastInsertRowid;
       try {
-        const prompt = buildRunnableSpec(action);
+        syncHorizonWiki(db);
+        const memoryContext = formatPreflightContext(buildPreflightContext(db, action));
+        const prompt = buildRunnableSpec(action, { memoryContext });
         const session = await julesCreateSession({
           prompt,
           source: body.source,
@@ -989,7 +992,9 @@ const server = createServer(async (req, res) => {
       const stamp = new Date().toISOString();
       const filename = `${id}.md`;
       const filePath = resolve(queueDir, filename);
-      const contents = buildRunnableSpec(action, { stamp });
+      syncHorizonWiki(db);
+      const memoryContext = formatPreflightContext(buildPreflightContext(db, action));
+      const contents = buildRunnableSpec(action, { stamp, memoryContext });
       writeFileSync(filePath, contents, "utf8");
       // mirror into the Obsidian vault as durable memory (control surface -> memory)
       let vaultPath = "";

@@ -9,6 +9,8 @@ Horizon now has a local-first compounding memory layer modeled on the LLM Wiki p
 
 This is not a second dashboard. It is the memory substrate behind Horizon's action loop. The goal is that Codex, Claude, Gemini, Jules handoffs, or any local agent can read the same durable context before acting.
 
+Deploy and Jules dispatch now call the same preflight builder before generating a runnable action spec. The spec remains redacted by `redactForSpec()` after the memory packet is appended.
+
 ## What Was Borrowed
 
 From Karpathy's LLM Wiki pattern:
@@ -39,6 +41,7 @@ From `~/Desktop/bolting/_external/turbovec`:
 - `runWikiSourceCoverage(db)` ingests or skips the curated high-signal source list and writes `wiki/meta/Source Coverage Report.md`.
 - `captureWikiAnswer(db, { question, answer, links })` saves useful answers under `wiki/questions/` and updates index, hot cache, log, and chunks.
 - `runWikiLint(db)` writes `wiki/meta/Wiki Repair Plan.md` and returns a machine-readable repair plan.
+- `buildPreflightContext(db, action)` and `formatPreflightContext(packet)` attach wiki hot/index/search hits, action row, dispatch history, and trust state to deployed specs.
 - `wikiStatus(db)` reports source/page/chunk counts, latest sync, graph health, and retrieval ladder state.
 - `searchWiki(db, query)` searches generated wiki markdown and returns note paths that can be opened in Horizon.
 - `lintWiki(db)` reports missing wikilinks, missing files, orphans, source/entity gaps, unresolved contradictions, and repair actions.
@@ -107,6 +110,7 @@ This slice is ready when:
 - Coverage ingests or skips registered high-signal sources and writes `wiki/meta/Source Coverage Report.md`.
 - Query capture writes useful answers under `wiki/questions/` with related memory links and searchable chunks.
 - Lint writes `wiki/meta/Wiki Repair Plan.md` and returns machine-readable repair actions.
+- Deploy/Jules specs include the memory preflight packet after redaction.
 - Search retrieves the generated pages.
 - The loop compiles wiki state automatically.
 - Obsidian can render the graph from wikilinks.

@@ -23,7 +23,8 @@ loaded via `scripts/env.mjs`. Browser code never receives them.
   - `POST /api/action-queue/:id/jules` — dispatch a Horizon action to a Jules session. Body:
     `{ source, branch?, requirePlanApproval?, automationMode? }`. The action's runnable spec becomes the
     Jules prompt; `requirePlanApproval` defaults to **true** (nothing changes in the repo without a
-    reviewed plan). Without `source`, the endpoint returns the available sources so you can pick.
+    reviewed plan). The prompt includes the same redacted Horizon memory preflight packet used by local
+    deploy specs. Without `source`, the endpoint returns the available sources so you can pick.
   - `GET /api/jules/sessions/:id` — session status + activities timeline.
 - Status: verified — `GET /api/jules/sources` returns `200`. Connected source confirmed:
   `sources/github/antharmaya/The-Layers-of-Computation`.
