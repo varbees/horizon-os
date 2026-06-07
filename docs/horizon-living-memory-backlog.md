@@ -81,15 +81,16 @@ The goal is not a prettier notes dashboard. The goal is a local agent memory arc
    - Shows loop status, wiki root/graph/retrieval, source registry, dispatch outbox, and Horizon self-WIP from the backend contract.
    - Keeps repair guidance display-only; mutations stay in explicit loop/wiki commands.
 
+14. **Dispatch Queue Policy**
+   - Added a pure dispatch policy gate before Jules sessions are created.
+   - Blocks unreconciled collisions for the same action, same project, or same lane/agent.
+   - Keeps the existing outbox/idempotency guard, but prevents avoidable overlapping external write sessions before they start.
+
 ## Build Next
 
 The base living-memory backbone is complete enough to use daily. Next work should be driven by observed retrieval failures, dispatch failures, or buyer/outcome evidence rather than speculative memory features.
 
-1. **Dispatch queue policy**
-   - Apply OpenClaw's lane/session queue lesson to Horizon dispatches if concurrent external runs start colliding.
-   - Keep per-action idempotency as the current guard until real collisions appear.
-
-2. **Turbovec adapter**
+1. **Turbovec adapter**
    - Add only after BM25-lite misses concrete queries.
    - Preserve stable IDs with `wiki_chunks.id`; use SQL/BM25 candidate allowlists for local semantic rerank.
 

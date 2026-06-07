@@ -41,8 +41,8 @@ From `~/Desktop/bolting/_external/ccode/claude-code-main`:
 From `~/Desktop/bolting/_external/openclaw/openclaw`:
 
 - The missed patterns are doctor checks, queue discipline, retry/failover policy, session pruning, and durable memory flushes before compaction.
-- Horizon has now adopted the first slice: `horizonDoctor(db)` and `/api/doctor` report loop, wiki, retrieval, source registry, dispatch outbox, and self-WIP health.
-- Queue/retry/failover should be added only if real external dispatch collisions or provider failures appear.
+- Horizon has now adopted the safe slices: `horizonDoctor(db)` and `/api/doctor` report loop, wiki, retrieval, source registry, dispatch outbox, and self-WIP health; `evaluateDispatchPolicy(db, action)` blocks same-action/project/lane collisions before external sessions start.
+- Retry/failover should be added only if real provider failures appear.
 
 From `~/Desktop/bolting/_external/threedotslabs/wild-workouts-go-ddd-example`:
 
@@ -64,6 +64,7 @@ From `~/Desktop/bolting/_external/threedotslabs/wild-workouts-go-ddd-example`:
 - `buildPreflightContext(db, action)` and `formatPreflightContext(packet)` attach wiki hot/index/search hits, action row, dispatch history, and trust state to deployed specs.
 - `summarizeContextBudget(packet)` estimates preflight context size by category and records top contributors/recommendations before dispatch.
 - `horizonDoctor(db)` returns a read-only operator health contract for loop, wiki graph, retrieval, source registry, outbox, and Horizon-self WIP.
+- `evaluateDispatchPolicy(db, action, { agent })` gates external dispatches before outbox/session creation.
 - `wikiStatus(db)` reports source/page/chunk counts, latest sync, graph health, and retrieval ladder state.
 - `searchWiki(db, query)` searches contextual `wiki_chunks` with BM25-lite scoring and returns note paths that can be opened in Horizon.
 - `lintWiki(db)` reports missing wikilinks, missing files, orphans, source/entity gaps, unresolved contradictions, frontmatter gaps, empty sections, and repair actions.

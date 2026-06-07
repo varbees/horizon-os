@@ -22,6 +22,7 @@ import { autoEnrich } from "./auto-enrich.mjs";
 import { runCycle as runHorizonCycle, loopStatus } from "./horizon-loop.mjs";
 import { gitDetail } from "./git-detail.mjs";
 import { horizonDoctor } from "./doctor.mjs";
+import { evaluateDispatchPolicy } from "./dispatch-policy.mjs";
 import { trustSummary } from "./trust.mjs";
 import { rankActions } from "./ranking.mjs";
 import { loadSources, priorityFor } from "./sources.mjs";
@@ -961,12 +962,15 @@ const server = createServer(async (req, res) => {
           return json(res, 409, { ok: false, error: "source_required", sourcesError: String(error.message ?? error) });
         }
       }
-      // Double-dispatch guard: one open Jules dispatch per action at a time.
-      const openDispatch = db
-        .prepare("SELECT id, external_id FROM agent_dispatches WHERE action_id = ? AND agent = 'jules' AND reconciled_at = ''")
-        .get(action.id);
-      if (openDispatch) {
-        return json(res, 409, { ok: false, error: "already_dispatched", dispatchId: openDispatch.id, sessionId: openDispatch.external_id });
+      const policy = evaluateDispatchPolicy(db, action, { agent: "jules" });
+      if (!policy.ok) {
+        return json(res, 409, {
+          ok: false,
+          error: policy.reason,
+          policy,
+          dispatchId: policy.conflict?.dispatchId,
+          sessionId: policy.conflict?.sessionId,
+        });
       }
       // Outbox row written BEFORE the call (idempotency key persisted first).
       const priorCount = db.prepare("SELECT COUNT(*) AS n FROM agent_dispatches WHERE action_id = ?").get(action.id).n;
