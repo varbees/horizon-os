@@ -44,3 +44,13 @@ export async function ingestWikiSource(sourcePath, options = {}) {
   if (!response.ok) throw new Error(`wiki ingest failed: ${response.status}`);
   return response.json();
 }
+
+export async function runWikiCoverage(options = {}) {
+  const response = await fetch("/api/wiki/coverage", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(options),
+  });
+  if (!response.ok) throw new Error(`wiki coverage failed: ${response.status}`);
+  return response.json();
+}

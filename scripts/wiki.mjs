@@ -74,7 +74,7 @@ const MEMORY_BACKLOG = [
   {
     id: "source-coverage-pack",
     title: "Source Coverage Pack",
-    status: "next",
+    status: "shipped",
     summary: "Curated ingest manifest for Horizon's highest-signal docs and project launch files.",
     done: "One command ingests or skips all registered sources and writes a coverage report.",
   },
@@ -119,6 +119,63 @@ const MEMORY_BACKLOG = [
     status: "later",
     summary: "Improve chunk retrieval with contextual prefixes and BM25-style scoring before a turbovec adapter.",
     done: "Retrieval quality improves measurably without hosted vector infrastructure.",
+  },
+];
+
+const DEFAULT_COVERAGE_SOURCES = [
+  {
+    id: "command-center",
+    path: "COMMAND_CENTER.md",
+    title: "Horizon Command Center Doctrine",
+    tags: ["coverage", "horizon", "doctrine"],
+  },
+  {
+    id: "horizon-v2-build-plan",
+    path: "docs/horizon-v2-build-plan.md",
+    title: "Horizon V2 Build Plan",
+    tags: ["coverage", "horizon", "architecture"],
+  },
+  {
+    id: "portfolio-monetization-map",
+    path: "docs/portfolio-monetization-map.md",
+    title: "Portfolio Monetization Map",
+    tags: ["coverage", "portfolio", "money"],
+  },
+  {
+    id: "photoselect-go-live",
+    path: "docs/photoselect-go-live.md",
+    title: "PhotoSelect Go Live",
+    tags: ["coverage", "photoselect", "revenue-engine"],
+  },
+  {
+    id: "revenue-engine-reset",
+    path: "docs/revenue-engine-reset.md",
+    title: "Revenue Engine Reset",
+    tags: ["coverage", "money", "operating-model"],
+  },
+  {
+    id: "living-memory-backlog",
+    path: "docs/horizon-living-memory-backlog.md",
+    title: "Horizon Living Memory Backlog",
+    tags: ["coverage", "horizon", "memory"],
+  },
+  {
+    id: "compound-wiki",
+    path: "docs/horizon-compound-wiki.md",
+    title: "Horizon Compound Wiki",
+    tags: ["coverage", "horizon", "memory"],
+  },
+  {
+    id: "photoselect-roadmap",
+    path: "/home/driftr/Desktop/bolting/01-revenue/photoselect/agent_docs/roadmap.md",
+    title: "PhotoSelect Roadmap",
+    tags: ["coverage", "photoselect", "roadmap"],
+  },
+  {
+    id: "rateguard-sdk-audit",
+    path: "/home/driftr/Desktop/bolting/02-fast-cash/rateguard/README.md",
+    title: "RateGuard SDK Readme",
+    tags: ["coverage", "rateguard", "fast-cash"],
   },
 ];
 
@@ -559,7 +616,7 @@ function hotMarkdown(db) {
     "- When wiki volume is high enough, install/build the turbovec adapter and embed `wiki_chunks`.",
     "",
     "## Living Memory Backlog",
-    ...MEMORY_BACKLOG.slice(0, 4).map((item) => `- [[Living Memory Backlog]]: ${item.title} - ${item.summary}`),
+    ...MEMORY_BACKLOG.filter((item) => item.status !== "shipped").slice(0, 4).map((item) => `- [[Living Memory Backlog]]: ${item.title} - ${item.summary}`),
     "",
   ].join("\n");
 }
@@ -1029,6 +1086,7 @@ function memoryBacklogMarkdown() {
     "",
     "- [[Compound Horizon Memory]] base: schema, vault sync, hot cache, index, log, graph, chunks, API, CLI, and loop sync.",
     "- Deterministic source ingest: raw evidence copy, source synthesis page, manifest skip, wikilinks, contradiction marker extraction.",
+    "- Source Coverage Pack: curated high-signal docs ingest, coverage report, CLI/API/UI trigger.",
     "",
     ...rows,
     "## Refuse for now",
@@ -1163,6 +1221,46 @@ function contradictionsMarkdown(db, latest = null) {
     "Contradiction markers found during deterministic source ingest. Resolve by updating the relevant entity/domain pages, not by deleting the raw evidence.",
     "",
     ...(rows.length ? rows : ["- No contradiction markers have been ingested yet."]),
+    "",
+  ].join("\n");
+}
+
+function resolveCoveragePath(sourcePath) {
+  const raw = String(sourcePath ?? "").trim();
+  if (!raw) return "";
+  if (raw.startsWith("~")) return resolve(process.env.HOME ?? "", raw.slice(2));
+  if (raw.startsWith("/")) return raw;
+  return resolve(repoRoot, raw);
+}
+
+function coverageReportMarkdown(result) {
+  const rows = result.items.map((item) => {
+    const status = item.status === "missing" ? "missing" : item.skipped ? "skipped" : "ingested";
+    return `| ${item.title} | ${status} | ${item.path} | ${item.rawPath || ""} |`;
+  });
+  return [
+    frontmatter({
+      type: "meta",
+      title: "\"Source Coverage Report\"",
+      updated: isoNow(),
+      tags: "[horizon, memory, coverage]",
+      status: result.missing ? "needs-review" : "active",
+    }),
+    "# Source Coverage Report",
+    "",
+    "Curated high-signal source coverage for Horizon's living memory. Missing rows are explicit so the ingest cycle is honest instead of silently incomplete.",
+    "",
+    `- Total registered: ${result.total}`,
+    `- Available: ${result.available}`,
+    `- Ingested: ${result.ingested}`,
+    `- Skipped unchanged: ${result.skipped}`,
+    `- Missing: ${result.missing}`,
+    "",
+    "| Source | Status | Path | Raw copy |",
+    "| --- | --- | --- | --- |",
+    ...rows,
+    "",
+    "Related: [[Living Memory Backlog]], [[Compound Horizon Memory]], [[Money Lanes]], [[Action Memory]].",
     "",
   ].join("\n");
 }
@@ -1377,6 +1475,74 @@ export function ingestWikiSource(db, { sourcePath, title, kind = "operator-sourc
   return result;
 }
 
+export function runWikiSourceCoverage(db, { sources = DEFAULT_COVERAGE_SOURCES, force = false } = {}) {
+  ensureDirs();
+  const result = {
+    id: randomUUID(),
+    total: sources.length,
+    available: 0,
+    ingested: 0,
+    skipped: 0,
+    missing: 0,
+    items: [],
+    files: [],
+    ranAt: isoNow(),
+  };
+
+  for (const source of sources) {
+    const abs = resolveCoveragePath(source.path);
+    if (!abs || !existsSync(abs)) {
+      result.missing += 1;
+      result.items.push({
+        id: source.id,
+        title: source.title ?? fileTitle(source.path),
+        path: abs || source.path,
+        status: "missing",
+      });
+      continue;
+    }
+    result.available += 1;
+    const ingest = ingestWikiSource(db, {
+      sourcePath: abs,
+      title: source.title,
+      kind: "coverage-source",
+      tags: ["coverage", ...(source.tags ?? [])],
+      force,
+    });
+    if (ingest.skipped) result.skipped += 1;
+    else result.ingested += 1;
+    result.files.push(...(ingest.files ?? []));
+    result.items.push({
+      id: source.id,
+      title: ingest.title,
+      path: abs,
+      status: ingest.skipped ? "skipped" : "ingested",
+      skipped: Boolean(ingest.skipped),
+      rawPath: ingest.rawPath,
+      files: ingest.files ?? [],
+    });
+  }
+
+  result.files.push(
+    writeIndexedPage(db, "wiki/meta/Source Coverage Report.md", coverageReportMarkdown(result), {
+      kind: "meta",
+      status: result.missing ? "needs-review" : "active",
+    }),
+  );
+
+  const pages = safeAll(db, "SELECT * FROM wiki_pages ORDER BY kind, title");
+  result.files.push(writeIndexedPage(db, "wiki/index.md", indexMarkdown(db, pages), { kind: "meta", status: "active" }));
+
+  db.prepare("INSERT INTO wiki_runs (id, kind, summary, payload_json, created_at) VALUES (?, 'coverage', ?, ?, ?)").run(
+    result.id,
+    `Coverage: ${result.available}/${result.total} available, ${result.ingested} ingested, ${result.skipped} skipped, ${result.missing} missing`,
+    JSON.stringify(result),
+    result.ranAt,
+  );
+
+  return result;
+}
+
 function walkMarkdown(dir, root, out = []) {
   if (!existsSync(dir)) return out;
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -1472,6 +1638,8 @@ if (isCli) {
     const cmd = process.argv[2] ?? "status";
     if (cmd === "sync") {
       console.log(JSON.stringify(syncHorizonWiki(db), null, 2));
+    } else if (cmd === "coverage") {
+      console.log(JSON.stringify(runWikiSourceCoverage(db, { force: process.argv.includes("--force") }), null, 2));
     } else if (cmd === "ingest") {
       const sourcePath = process.argv[3];
       if (!sourcePath) {

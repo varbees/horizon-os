@@ -35,6 +35,7 @@ npm run wiki:sync
 npm run wiki:status
 npm run wiki:search -- money action memory
 npm run wiki:ingest -- /absolute/path/to/source.md
+npm run wiki:coverage
 ```
 
 ## Build

@@ -121,3 +121,52 @@ test("source ingest compiles a file into raw evidence, wikilinks, log, and searc
     db.close();
   }
 });
+
+test("source coverage ingests a curated source list and writes a coverage report", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "horizon-wiki-coverage-"));
+  process.env.HORIZON_DB_PATH = join(dir, "horizon.sqlite");
+  process.env.HORIZON_VAULT_PATH = join(dir, "vault");
+
+  const first = join(dir, "coverage-one.md");
+  const second = join(dir, "coverage-two.md");
+  const missing = join(dir, "missing.md");
+  writeFileSync(first, "# Coverage One\n\nPhotoSelect payment proof and buyer evidence should be remembered.\n", "utf8");
+  writeFileSync(second, "# Coverage Two\n\nrateguard launch notes and hosted dashboard gating should be remembered.\n", "utf8");
+
+  const nonce = Date.now();
+  const { openHorizonDb } = await import(`../scripts/horizon-db.mjs?coverage=${nonce}`);
+  const { runWikiSourceCoverage, searchWiki, syncHorizonWiki } = await import(`../scripts/wiki.mjs?coverage=${nonce}`);
+
+  const db = openHorizonDb();
+  try {
+    syncHorizonWiki(db);
+    const sources = [
+      { id: "coverage-one", path: first, title: "Coverage One", tags: ["coverage-test"] },
+      { id: "coverage-two", path: second, title: "Coverage Two", tags: ["coverage-test"] },
+      { id: "coverage-missing", path: missing, title: "Coverage Missing", tags: ["coverage-test"] },
+    ];
+    const result = runWikiSourceCoverage(db, { sources });
+
+    assert.equal(result.total, 3);
+    assert.equal(result.available, 2);
+    assert.equal(result.missing, 1);
+    assert.equal(result.ingested, 2);
+    assert.equal(result.skipped, 0);
+    assert.ok(result.files.includes("wiki/meta/Source Coverage Report.md"));
+
+    const report = readFileSync(join(process.env.HORIZON_VAULT_PATH, "wiki/meta/Source Coverage Report.md"), "utf8");
+    assert.match(report, /Coverage One/);
+    assert.match(report, /Coverage Two/);
+    assert.match(report, /Coverage Missing/);
+    assert.match(report, /missing/);
+
+    const hits = searchWiki(db, "hosted dashboard gating", { limit: 5 });
+    assert.ok(hits.some((row) => row.path === "wiki/sources/Coverage Two.md"));
+
+    const rerun = runWikiSourceCoverage(db, { sources });
+    assert.equal(rerun.ingested, 0);
+    assert.equal(rerun.skipped, 2);
+  } finally {
+    db.close();
+  }
+});

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Brain, Database, FileText, FolderGit2, Loader2, RefreshCw, Search, X } from "lucide-react";
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
-import { fetchVault, ingestWikiSource, readVaultNote, searchWiki, syncVault, syncWiki } from "../lib/vaultApi.js";
+import { fetchVault, ingestWikiSource, readVaultNote, runWikiCoverage, searchWiki, syncVault, syncWiki } from "../lib/vaultApi.js";
 
 function relativeTime(ms) {
   if (!ms) return "";
@@ -21,6 +21,7 @@ export default function Vault() {
   const [wikiSyncing, setWikiSyncing] = useState(false);
   const [wikiSearching, setWikiSearching] = useState(false);
   const [wikiIngesting, setWikiIngesting] = useState(false);
+  const [wikiCovering, setWikiCovering] = useState(false);
   const [wikiQuery, setWikiQuery] = useState("money action memory");
   const [ingestPath, setIngestPath] = useState("");
   const [wikiResults, setWikiResults] = useState([]);
@@ -113,6 +114,24 @@ export default function Vault() {
       setMsg("Source ingest failed.");
     } finally {
       setWikiIngesting(false);
+    }
+  }
+
+  async function doWikiCoverage() {
+    if (!live) {
+      setMsg("Start npm run dev:full to run source coverage.");
+      return;
+    }
+    setWikiCovering(true);
+    try {
+      const res = await runWikiCoverage();
+      setMsg(`Coverage: ${res.available}/${res.total} available, ${res.ingested} ingested, ${res.skipped} skipped, ${res.missing} missing.`);
+      setWikiQuery("Source Coverage Report");
+      await load();
+    } catch {
+      setMsg("Source coverage failed.");
+    } finally {
+      setWikiCovering(false);
     }
   }
 
@@ -218,15 +237,26 @@ export default function Vault() {
                 Raw sources, generated synthesis, hot cache, page graph, and chunks for the next retrieval layer.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={doWikiSync}
-              disabled={wikiSyncing}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-outlineVariant bg-surfaceContainer px-3 py-2 text-sm font-black text-paper transition hover:border-outline disabled:opacity-60"
-            >
-              {wikiSyncing ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="h-4 w-4" aria-hidden="true" />}
-              {wikiSyncing ? "Syncing..." : "Sync Wiki"}
-            </button>
+            <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={doWikiSync}
+                disabled={wikiSyncing}
+                className="inline-flex items-center justify-center gap-2 rounded-md border border-outlineVariant bg-surfaceContainer px-3 py-2 text-sm font-black text-paper transition hover:border-outline disabled:opacity-60"
+              >
+                {wikiSyncing ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="h-4 w-4" aria-hidden="true" />}
+                {wikiSyncing ? "Syncing..." : "Sync Wiki"}
+              </button>
+              <button
+                type="button"
+                onClick={doWikiCoverage}
+                disabled={wikiCovering}
+                className="inline-flex items-center justify-center gap-2 rounded-md border border-outlineVariant bg-surfaceContainer px-3 py-2 text-sm font-black text-paper transition hover:border-outline disabled:opacity-60"
+              >
+                {wikiCovering ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Database className="h-4 w-4" aria-hidden="true" />}
+                {wikiCovering ? "Checking..." : "Run Coverage"}
+              </button>
+            </div>
           </div>
 
           <div className="mt-5 grid grid-cols-3 gap-3">
