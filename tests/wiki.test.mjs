@@ -41,8 +41,12 @@ test("compound wiki sync writes vault files, tracks pages, and supports search",
     assert.equal(status.rawSourceCount, 3);
     assert.ok(status.wikiPageCount >= 11);
     assert.ok(status.chunkCount >= status.wikiPageCount);
-    assert.equal(status.retrieval.current, "hot-index-markdown-fts");
+    assert.equal(status.retrieval.current, "hot-index-chunk-bm25-lite");
     assert.equal(status.retrieval.vectorCandidate, "turbovec");
+
+    const chunk = db.prepare("SELECT body FROM wiki_chunks WHERE page_path = 'wiki/entities/PhotoSelect.md' LIMIT 1").get();
+    assert.match(chunk.body, /page: PhotoSelect/);
+    assert.match(chunk.body, /kind: entity/);
 
     const results = searchWiki(db, "turbovec local vector", { limit: 5 });
     assert.ok(results.length > 0);

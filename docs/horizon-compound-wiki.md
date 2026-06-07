@@ -30,7 +30,7 @@ From `~/Desktop/bolting/_external/turbovec`:
 
 - Future local vector adapter candidate.
 - Stable IDs via `IdMapIndex` fit `wiki_chunks.id`.
-- The current slice does not import turbovec into the Node daemon; it prepares `wiki_chunks` and keeps vector search behind a future adapter.
+- The current slice does not import turbovec into the Node daemon; it uses contextual `wiki_chunks` plus BM25-lite scoring and keeps vector search behind a future adapter.
 
 ## Runtime Behavior
 
@@ -44,7 +44,7 @@ From `~/Desktop/bolting/_external/turbovec`:
 - `updateContradictionStatus(db, { id, status, note })` marks contradiction rows open, resolved, or superseded without deleting evidence.
 - `buildPreflightContext(db, action)` and `formatPreflightContext(packet)` attach wiki hot/index/search hits, action row, dispatch history, and trust state to deployed specs.
 - `wikiStatus(db)` reports source/page/chunk counts, latest sync, graph health, and retrieval ladder state.
-- `searchWiki(db, query)` searches generated wiki markdown and returns note paths that can be opened in Horizon.
+- `searchWiki(db, query)` searches contextual `wiki_chunks` with BM25-lite scoring and returns note paths that can be opened in Horizon.
 - `lintWiki(db)` reports missing wikilinks, missing files, orphans, source/entity gaps, unresolved contradictions, and repair actions.
 
 The autonomous loop calls `syncHorizonWiki(db)` after sweep, generate, enrich, readiness, and dispatch reconciliation. That means every loop cycle compiles live state into the vault.
@@ -116,6 +116,7 @@ This slice is ready when:
 - Deploy/Jules specs include the memory preflight packet after redaction.
 - Sync writes `wiki/domains/Outcome Learning.md` from closed actions, outcomes, and work events.
 - Contradictions carry stable IDs and status values: open, resolved, or superseded.
+- Retrieval uses contextual chunk prefixes and BM25-lite scoring before any vector adapter.
 - Search retrieves the generated pages.
 - The loop compiles wiki state automatically.
 - Obsidian can render the graph from wikilinks.

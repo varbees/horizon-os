@@ -50,12 +50,14 @@ The goal is not a prettier notes dashboard. The goal is a local agent memory arc
    - Link each contradiction to the pages it affects.
    - `npm run wiki:contradiction` updates stable contradiction IDs without deleting the raw source trail.
 
-## Build Next
-
-1. **Retrieval Ladder Upgrade**
+9. **Retrieval Ladder Upgrade**
    - Improve chunk search before adding vectors: contextual prefixes, BM25-style scoring, and source filters.
    - Add the turbovec adapter only after chunk volume and query failures justify semantic search.
-   - Done when retrieval quality improves measurably without adding hosted vector infrastructure.
+   - `wiki_chunks` now carry page/kind/summary prefixes and `searchWiki()` uses BM25-lite chunk scoring before any vector adapter.
+
+## Build Next
+
+The base living-memory backbone is complete enough to use daily. Next work should be driven by observed retrieval failures, dispatch failures, or buyer/outcome evidence rather than speculative memory features.
 
 ## Refuse For Now
 

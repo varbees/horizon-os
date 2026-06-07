@@ -116,7 +116,7 @@ const MEMORY_BACKLOG = [
   {
     id: "retrieval-ladder-upgrade",
     title: "Retrieval Ladder Upgrade",
-    status: "later",
+    status: "shipped",
     summary: "Improve chunk retrieval with contextual prefixes and BM25-style scoring before a turbovec adapter.",
     done: "Retrieval quality improves measurably without hosted vector infrastructure.",
   },
@@ -420,8 +420,10 @@ function indexPage(db, relPath, content, kind = "page", status = "seed", sourceC
     INSERT INTO wiki_chunks (id, page_path, chunk_index, body, updated_at)
     VALUES (?, ?, ?, ?, ?)
   `);
+  const summary = extractSummary(content);
+  const chunkPrefix = [`page: ${pageTitle(relPath)}`, `kind: ${kind}`, summary ? `summary: ${summary}` : ""].filter(Boolean).join("\n");
   chunksFor(content).forEach((chunk, index) => {
-    insertChunk.run(`wiki:${relPath}:${index}`, relPath, index, chunk, isoNow());
+    insertChunk.run(`wiki:${relPath}:${index}`, relPath, index, `${chunkPrefix}\n\n${chunk}`, isoNow());
   });
 
   // Put generated wiki pages into Horizon's existing FTS surface too.
@@ -1157,6 +1159,7 @@ function memoryBacklogMarkdown() {
     "- Agent Preflight Context Pack: deploy/Jules specs include wiki hot/index/search hits, action row, dispatch history, and trust state after redaction.",
     "- Outcome Learning Loop: sync writes `wiki/domains/Outcome Learning.md` from closed actions, outcomes, and work events.",
     "- Contradiction Resolution Workflow: stable contradiction IDs carry open/resolved/superseded status and notes.",
+    "- Retrieval Ladder Upgrade: `wiki_chunks` carry contextual prefixes and search uses BM25-lite scoring before any vector adapter.",
     "",
     ...rows,
     "## Refuse for now",
@@ -2031,7 +2034,7 @@ export function wikiStatus(db) {
     latestRun,
     graph,
     retrieval: {
-      current: "hot-index-markdown-fts",
+      current: "hot-index-chunk-bm25-lite",
       vectorCandidate: "turbovec",
       vectorState: "planned-adapter",
     },
@@ -2053,9 +2056,67 @@ function snippetFor(content, terms) {
   return content.slice(start, start + 240).replace(/\s+/g, " ").trim();
 }
 
+function termFrequency(text, term) {
+  const hay = String(text ?? "").toLowerCase();
+  let count = 0;
+  let index = hay.indexOf(term);
+  while (index >= 0) {
+    count += 1;
+    index = hay.indexOf(term, index + term.length);
+  }
+  return count;
+}
+
+function searchWikiChunks(db, queryTerms, { limit }) {
+  const rows = safeAll(
+    db,
+    `SELECT c.page_path, c.chunk_index, c.body, p.title, p.kind, p.summary, p.updated_at
+     FROM wiki_chunks c
+     LEFT JOIN wiki_pages p ON p.path = c.page_path`,
+  );
+  if (!rows.length) return [];
+
+  const docFreq = new Map();
+  for (const term of queryTerms) {
+    docFreq.set(term, rows.filter((row) => String(row.body ?? "").toLowerCase().includes(term)).length || 1);
+  }
+
+  const byPage = new Map();
+  for (const row of rows) {
+    const title = row.title ?? pageTitle(row.page_path);
+    const summary = row.summary ?? "";
+    const titleLower = title.toLowerCase();
+    const summaryLower = summary.toLowerCase();
+    const body = String(row.body ?? "");
+    let score = 0;
+    for (const term of queryTerms) {
+      const idf = Math.log(1 + rows.length / (docFreq.get(term) || 1));
+      score += termFrequency(body, term) * idf;
+      if (titleLower.includes(term)) score += 8 * idf;
+      if (summaryLower.includes(term)) score += 3 * idf;
+    }
+    if (score <= 0) continue;
+    const existing = byPage.get(row.page_path);
+    const candidate = {
+      path: row.page_path,
+      title,
+      kind: row.kind ?? "page",
+      summary,
+      snippet: snippetFor(body, queryTerms),
+      score,
+      mtime: Date.parse(row.updated_at ?? "") || 0,
+      chunk: row.chunk_index,
+    };
+    if (!existing || candidate.score > existing.score) byPage.set(row.page_path, candidate);
+  }
+  return [...byPage.values()].sort((a, b) => b.score - a.score || b.mtime - a.mtime).slice(0, limit);
+}
+
 export function searchWiki(db, query, { limit = 10 } = {}) {
   const terms = tokens(query);
   if (terms.length === 0) return [];
+  const chunkResults = searchWikiChunks(db, terms, { limit });
+  if (chunkResults.length) return chunkResults;
   const root = vaultRoot();
   const pages = walkMarkdown(resolve(root, "wiki"), root);
   const dbPages = new Map(safeAll(db, "SELECT * FROM wiki_pages").map((page) => [page.path, page]));
