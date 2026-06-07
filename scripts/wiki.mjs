@@ -34,6 +34,7 @@ const REQUIRED_DIRS = [
   "wiki/domains",
   "wiki/comparisons",
   "wiki/questions",
+  "wiki/folds",
   "wiki/meta",
 ];
 
@@ -133,6 +134,13 @@ const MEMORY_BACKLOG = [
     status: "shipped",
     summary: "Add quick/standard/deep wiki query packets and persist explicit unknowns instead of pretending sparse memory can answer.",
     done: "queryWiki(), /api/wiki/query, npm run wiki:query, and Vault packet controls now build query context and capture gaps to wiki/meta/gaps.md.",
+  },
+  {
+    id: "log-folding-compaction",
+    title: "Log Folding And Memory Compaction",
+    status: "shipped",
+    summary: "Fold older wiki log entries into deterministic extractive rollup pages so the hot log stays small.",
+    done: "runWikiFold(), /api/wiki/fold, and npm run wiki:fold support dry-run and commit modes with idempotent fold pages.",
   },
 ];
 
@@ -409,6 +417,7 @@ function emptySectionsFor(page, content) {
       .replace(/<!--[\s\S]*?-->/g, "")
       .replace(/^\s*> \[!(?:note|todo|contradiction)\].*$/gim, "")
       .trim();
+    if (!contentAfterHeading && current.heading === "Folded Entries" && next?.heading?.startsWith("[")) continue;
     if (!contentAfterHeading) {
       sections.push({ path: page.path, title: page.title, heading: current.heading, level: current.level });
     }
@@ -1697,6 +1706,169 @@ function existingLog() {
   return readFileSync(path, "utf8");
 }
 
+function normalizeLogBody(body) {
+  const foldRows = existingFoldRows(body);
+  const withoutFoldSections = String(body ?? "")
+    .replace(/^## Folded History\s*\n(?:-\s+.*\n?)*\s*/gm, "")
+    .trim();
+  return [
+    foldRows.length ? ["## Folded History", ...uniqueBy(foldRows, (row) => row)].join("\n") : "",
+    withoutFoldSections,
+  ].filter(Boolean).join("\n\n");
+}
+
+function existingLogBody() {
+  return normalizeLogBody(existingLog().replace(/^---[\s\S]*?---\s*# Wiki Log\s*/m, "").trim());
+}
+
+function parseLogEntries(content) {
+  const body = stripFrontmatter(content).replace(/^# Wiki Log\s*/m, "");
+  const matches = [...body.matchAll(/^## \[(\d{4}-\d{2}-\d{2})\]\s+(.+)$/gm)];
+  return matches.map((match, index) => {
+    const next = matches[index + 1];
+    return {
+      date: match[1],
+      title: match[2].trim(),
+      raw: body.slice(match.index, next ? next.index : body.length).trim(),
+    };
+  }).filter((entry) => entry.raw);
+}
+
+function existingFoldRows(content) {
+  return String(content ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .map((line) => {
+      const oldLink = line.match(/^-\s+\[\[(Log Fold .+?)\]\]\s+\(`(wiki\/folds\/.+?\.md)`\)(.*)$/);
+      if (oldLink) return `- ${oldLink[1]} (\`${oldLink[2]}\`)${oldLink[3]}`;
+      return line;
+    })
+    .filter((line) => /^-\s+Log Fold .+?\s+\(`wiki\/folds\/.+?\.md`\)/.test(line));
+}
+
+function foldTitleFor(entries) {
+  const dates = entries.map((entry) => entry.date).sort();
+  const first = dates[0] ?? day();
+  const last = dates.at(-1) ?? first;
+  return first === last ? `Log Fold ${first}` : `Log Fold ${first} to ${last}`;
+}
+
+function foldPathFor(title, entries) {
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const hash = hashText(entries.map((entry) => entry.raw).join("\n\n")).slice(0, 12);
+  return `wiki/folds/${slug}-${hash}.md`;
+}
+
+function foldMarkdown({ title, entries, sourcePath }) {
+  const extractedRows = entries.map((entry) => {
+    const firstSignal = entry.raw
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find((line) => /^-\s+/.test(line));
+    return `- ${entry.date}: ${entry.title}${firstSignal ? ` - ${firstSignal.replace(/^-\s+/, "")}` : ""}`;
+  });
+  return [
+    frontmatter({
+      type: "fold",
+      title: JSON.stringify(title),
+      updated: isoNow(),
+      source_path: JSON.stringify(sourcePath),
+      tags: "[horizon, log-fold, memory-compaction]",
+      status: "active",
+    }),
+    `# ${title}`,
+    "",
+    "Extractive fold of older `wiki/log.md` entries. This page preserves copied log text; it does not invent new facts.",
+    "",
+    "## Extracted Signals",
+    ...(extractedRows.length ? extractedRows : ["- No entries folded."]),
+    "",
+    "## Folded Entries",
+    entries.map((entry) => entry.raw).join("\n\n"),
+    "",
+  ].join("\n");
+}
+
+function foldedLogMarkdown({ keptEntries, foldRows }) {
+  return [
+    frontmatter({
+      type: "meta",
+      title: "\"Wiki Log\"",
+      updated: isoNow(),
+      tags: "[horizon, log]",
+      status: "active",
+    }),
+    "# Wiki Log",
+    "",
+    "## Folded History",
+    ...(foldRows.length ? foldRows : ["- No folded history yet."]),
+    "",
+    keptEntries.map((entry) => entry.raw).join("\n\n"),
+    "",
+  ].join("\n");
+}
+
+export function runWikiFold(db, { keepEntries = 20, batchSize = 40, dryRun = false } = {}) {
+  ensureDirs();
+  const logPath = "wiki/log.md";
+  const logAbs = resolve(vaultRoot(), logPath);
+  const content = existsSync(logAbs) ? readFileSync(logAbs, "utf8") : "";
+  const entries = parseLogEntries(content);
+  const keep = Math.max(0, Number(keepEntries ?? 20));
+  const batch = Math.max(1, Number(batchSize ?? 40));
+  const foldEntries = entries.slice(keep, keep + batch);
+  if (!foldEntries.length) {
+    return {
+      id: randomUUID(),
+      dryRun: Boolean(dryRun),
+      totalEntries: entries.length,
+      keptEntries: Math.min(entries.length, keep),
+      foldedEntries: 0,
+      foldPath: "",
+      foldTitle: "",
+      files: [],
+      foldedAt: isoNow(),
+    };
+  }
+
+  const foldTitle = foldTitleFor(foldEntries);
+  const foldPath = foldPathFor(foldTitle, foldEntries);
+  const existingRows = existingFoldRows(content);
+  const foldRow = `- ${foldTitle} (\`${foldPath}\`) - ${foldEntries.length} entries.`;
+  const result = {
+    id: randomUUID(),
+    dryRun: Boolean(dryRun),
+    totalEntries: entries.length,
+    keptEntries: Math.min(entries.length, keep),
+    foldedEntries: foldEntries.length,
+    foldPath,
+    foldTitle,
+    files: [],
+    foldedAt: isoNow(),
+  };
+
+  if (dryRun) return result;
+
+  const foldContent = foldMarkdown({ title: foldTitle, entries: foldEntries, sourcePath: logPath });
+  result.files.push(writeIndexedPage(db, foldPath, foldContent, { kind: "fold", status: "active" }));
+
+  const keptEntries = entries.slice(0, keep);
+  const foldRows = uniqueBy([foldRow, ...existingRows], (row) => row);
+  result.files.push(writeIndexedPage(db, logPath, foldedLogMarkdown({ keptEntries, foldRows }), { kind: "meta", status: "active" }));
+
+  const pages = safeAll(db, "SELECT * FROM wiki_pages ORDER BY kind, title");
+  result.files.push(writeIndexedPage(db, "wiki/index.md", indexMarkdown(db, pages), { kind: "meta", status: "active" }));
+
+  db.prepare("INSERT INTO wiki_runs (id, kind, summary, payload_json, created_at) VALUES (?, 'log-fold', ?, ?, ?)").run(
+    result.id,
+    `Folded ${result.foldedEntries} wiki log entries into ${foldPath}`,
+    JSON.stringify(result),
+    result.foldedAt,
+  );
+
+  return result;
+}
+
 export function syncHorizonWiki(db) {
   ensureDirs();
 
@@ -1748,7 +1920,7 @@ export function syncHorizonWiki(db) {
     "# Wiki Log",
     "",
     logEntry(result),
-    existingLog().replace(/^---[\s\S]*?---\s*# Wiki Log\s*/m, "").trim(),
+    existingLogBody(),
     "",
   ].filter(Boolean).join("\n");
   files.push(writeIndexedPage(db, "wiki/log.md", log, { kind: "meta", status: "active" }));
@@ -1884,7 +2056,7 @@ export function ingestWikiSource(db, { sourcePath, title, kind = "operator-sourc
     "# Wiki Log",
     "",
     ingestLogEntry(result),
-    existingLog().replace(/^---[\s\S]*?---\s*# Wiki Log\s*/m, "").trim(),
+    existingLogBody(),
     "",
   ].filter(Boolean).join("\n");
   result.files.push(writeIndexedPage(db, "wiki/log.md", log, { kind: "meta", status: "active" }));
@@ -2017,7 +2189,7 @@ export function captureWikiAnswer(db, { question, answer, title, links = [], tag
     "# Wiki Log",
     "",
     questionLogEntry(result),
-    existingLog().replace(/^---[\s\S]*?---\s*# Wiki Log\s*/m, "").trim(),
+    existingLogBody(),
     "",
   ].filter(Boolean).join("\n");
   result.files.push(writeIndexedPage(db, "wiki/log.md", log, { kind: "meta", status: "active" }));
@@ -2061,7 +2233,7 @@ export function runWikiLint(db) {
     "# Wiki Log",
     "",
     lintLogEntry(result),
-    existingLog().replace(/^---[\s\S]*?---\s*# Wiki Log\s*/m, "").trim(),
+    existingLogBody(),
     "",
   ].filter(Boolean).join("\n");
   result.files.push(writeIndexedPage(db, "wiki/log.md", log, { kind: "meta", status: "active" }));
@@ -2460,6 +2632,14 @@ if (isCli) {
       const captureGap = process.argv.includes("--capture-gap");
       const question = process.argv.slice(3).filter((arg) => !arg.startsWith("--mode=") && arg !== "--capture-gap").join(" ");
       console.log(JSON.stringify(queryWiki(db, { question, mode, captureGap }), null, 2));
+    } else if (cmd === "fold") {
+      const keepArg = process.argv.find((arg) => arg.startsWith("--keep="));
+      const batchArg = process.argv.find((arg) => arg.startsWith("--batch="));
+      console.log(JSON.stringify(runWikiFold(db, {
+        keepEntries: keepArg ? Number(keepArg.slice("--keep=".length)) : undefined,
+        batchSize: batchArg ? Number(batchArg.slice("--batch=".length)) : undefined,
+        dryRun: process.argv.includes("--dry-run"),
+      }), null, 2));
     } else {
       console.log(JSON.stringify(wikiStatus(db), null, 2));
     }

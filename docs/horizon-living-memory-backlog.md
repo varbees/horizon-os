@@ -69,23 +69,26 @@ The goal is not a prettier notes dashboard. The goal is a local agent memory arc
    - Added Vault controls to build a query packet and optionally capture gaps.
    - Unknowns are now written to `wiki/meta/gaps.md` as explicit memory-health work instead of being silently answered from weak context.
 
+12. **Log Folding And Memory Compaction**
+   - Borrowed the `claude-obsidian` fold idea: old logs become deterministic extractive fold pages instead of bloating `wiki/log.md`.
+   - Added `runWikiFold(db, { keepEntries, batchSize, dryRun })`.
+   - Added `POST /api/wiki/fold`, `npm run wiki:fold`, and a Vault “Fold Log” control.
+   - Fold pages live under `wiki/folds/`, preserve copied log entries, and are indexed/searchable.
+   - Dry-run previews the fold path/count without writing files.
+
 ## Build Next
 
 The base living-memory backbone is complete enough to use daily. Next work should be driven by observed retrieval failures, dispatch failures, or buyer/outcome evidence rather than speculative memory features.
 
-1. **Log folding / memory compaction**
-   - Add deterministic fold pages under `wiki/folds/`.
-   - Keep `wiki/log.md` parseable and short while preserving extractive rollups.
-
-2. **Doctor UI**
+1. **Doctor UI**
    - Surface `/api/doctor` in the Command Center or Vault as an operator strip.
    - Keep the backend read-only; UI should only display status and next repair command.
 
-3. **Dispatch queue policy**
+2. **Dispatch queue policy**
    - Apply OpenClaw's lane/session queue lesson to Horizon dispatches if concurrent external runs start colliding.
    - Keep per-action idempotency as the current guard until real collisions appear.
 
-4. **Turbovec adapter**
+3. **Turbovec adapter**
    - Add only after BM25-lite misses concrete queries.
    - Preserve stable IDs with `wiki_chunks.id`; use SQL/BM25 candidate allowlists for local semantic rerank.
 

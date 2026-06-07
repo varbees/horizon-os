@@ -45,6 +45,16 @@ export async function queryWiki(payload) {
   return response.json();
 }
 
+export async function foldWikiLog(options = {}) {
+  const response = await fetch("/api/wiki/fold", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(options),
+  });
+  if (!response.ok) throw new Error(`wiki fold failed: ${response.status}`);
+  return response.json();
+}
+
 export async function ingestWikiSource(sourcePath, options = {}) {
   const response = await fetch("/api/wiki/ingest", {
     method: "POST",

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Brain, Database, FileText, FolderGit2, Loader2, RefreshCw, Save, Search, Wrench, X } from "lucide-react";
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
-import { captureWikiAnswer, fetchVault, ingestWikiSource, queryWiki, readVaultNote, runWikiCoverage, runWikiLint, searchWiki, syncVault, syncWiki } from "../lib/vaultApi.js";
+import { captureWikiAnswer, fetchVault, foldWikiLog, ingestWikiSource, queryWiki, readVaultNote, runWikiCoverage, runWikiLint, searchWiki, syncVault, syncWiki } from "../lib/vaultApi.js";
 
 function relativeTime(ms) {
   if (!ms) return "";
@@ -25,6 +25,7 @@ export default function Vault() {
   const [wikiCapturing, setWikiCapturing] = useState(false);
   const [wikiLinting, setWikiLinting] = useState(false);
   const [wikiQuerying, setWikiQuerying] = useState(false);
+  const [wikiFolding, setWikiFolding] = useState(false);
   const [wikiQuery, setWikiQuery] = useState("money action memory");
   const [wikiQueryMode, setWikiQueryMode] = useState("standard");
   const [captureGaps, setCaptureGaps] = useState(false);
@@ -211,6 +212,23 @@ export default function Vault() {
     }
   }
 
+  async function doWikiFold() {
+    if (!live) {
+      setMsg("Start npm run dev:full to fold the wiki log.");
+      return;
+    }
+    setWikiFolding(true);
+    try {
+      const res = await foldWikiLog({ keepEntries: 20, batchSize: 40 });
+      setMsg(res.foldedEntries ? `Folded ${res.foldedEntries} log entries into ${res.foldPath}.` : "Wiki log is already compact.");
+      await load();
+    } catch {
+      setMsg("Wiki log fold failed.");
+    } finally {
+      setWikiFolding(false);
+    }
+  }
+
   async function openNote(path) {
     try {
       const res = await readVaultNote(path);
@@ -340,6 +358,15 @@ export default function Vault() {
               >
                 {wikiLinting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Wrench className="h-4 w-4" aria-hidden="true" />}
                 {wikiLinting ? "Linting..." : "Lint Wiki"}
+              </button>
+              <button
+                type="button"
+                onClick={doWikiFold}
+                disabled={wikiFolding}
+                className="inline-flex items-center justify-center gap-2 rounded-md border border-outlineVariant bg-surfaceContainer px-3 py-2 text-sm font-black text-paper transition hover:border-outline disabled:opacity-60"
+              >
+                {wikiFolding ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <FileText className="h-4 w-4" aria-hidden="true" />}
+                {wikiFolding ? "Folding..." : "Fold Log"}
               </button>
             </div>
           </div>

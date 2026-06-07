@@ -25,7 +25,7 @@ import { horizonDoctor } from "./doctor.mjs";
 import { trustSummary } from "./trust.mjs";
 import { rankActions } from "./ranking.mjs";
 import { loadSources, priorityFor } from "./sources.mjs";
-import { captureWikiAnswer, ingestWikiSource, queryWiki, runWikiLint, runWikiSourceCoverage, searchWiki, syncHorizonWiki, wikiStatus } from "./wiki.mjs";
+import { captureWikiAnswer, ingestWikiSource, queryWiki, runWikiFold, runWikiLint, runWikiSourceCoverage, searchWiki, syncHorizonWiki, wikiStatus } from "./wiki.mjs";
 import {
   createSession as julesCreateSession,
   getSession as julesGetSession,
@@ -607,6 +607,20 @@ const server = createServer(async (req, res) => {
           question: body.question ?? body.query,
           mode: body.mode,
           captureGap: Boolean(body.captureGap),
+        });
+        return json(res, 200, { ok: true, ...result, wiki: wikiStatus(db) });
+      } catch (error) {
+        return json(res, 400, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/wiki/fold") {
+      try {
+        const body = await readJson(req);
+        const result = runWikiFold(db, {
+          keepEntries: body.keepEntries ?? body.keep,
+          batchSize: body.batchSize ?? body.batch,
+          dryRun: Boolean(body.dryRun),
         });
         return json(res, 200, { ok: true, ...result, wiki: wikiStatus(db) });
       } catch (error) {
