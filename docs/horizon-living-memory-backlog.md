@@ -45,14 +45,14 @@ The goal is not a prettier notes dashboard. The goal is a local agent memory arc
    - Improve `Action Memory`, `Dispatch Memory`, and project entity pages from outcomes rather than just queue state.
    - Sync now writes `wiki/domains/Outcome Learning.md` from closed actions, outcomes, and work events.
 
-## Build Next
-
-1. **Contradiction Resolution Workflow**
+8. **Contradiction Resolution Workflow**
    - Keep contradiction markers as evidence, but add status: open, resolved, superseded.
    - Link each contradiction to the pages it affects.
-   - Done when old claims are corrected without deleting the raw source trail.
+   - `npm run wiki:contradiction` updates stable contradiction IDs without deleting the raw source trail.
 
-2. **Retrieval Ladder Upgrade**
+## Build Next
+
+1. **Retrieval Ladder Upgrade**
    - Improve chunk search before adding vectors: contextual prefixes, BM25-style scoring, and source filters.
    - Add the turbovec adapter only after chunk volume and query failures justify semantic search.
    - Done when retrieval quality improves measurably without adding hosted vector infrastructure.

@@ -109,7 +109,7 @@ const MEMORY_BACKLOG = [
   {
     id: "contradiction-resolution-workflow",
     title: "Contradiction Resolution Workflow",
-    status: "next",
+    status: "shipped",
     summary: "Track contradiction status as open, resolved, or superseded without deleting the raw evidence trail.",
     done: "Contradictions link to affected pages and carry resolution state.",
   },
@@ -1156,6 +1156,7 @@ function memoryBacklogMarkdown() {
     "- Wiki Lint And Repair Plan: machine-readable repairs plus `wiki/meta/Wiki Repair Plan.md`.",
     "- Agent Preflight Context Pack: deploy/Jules specs include wiki hot/index/search hits, action row, dispatch history, and trust state after redaction.",
     "- Outcome Learning Loop: sync writes `wiki/domains/Outcome Learning.md` from closed actions, outcomes, and work events.",
+    "- Contradiction Resolution Workflow: stable contradiction IDs carry open/resolved/superseded status and notes.",
     "",
     ...rows,
     "## Refuse for now",
@@ -1349,20 +1350,54 @@ function sourcePageMarkdown({ title, sourcePath, rawPath, contentHash, summary, 
   ].join("\n");
 }
 
-function contradictionsMarkdown(db, latest = null) {
+function contradictionStatusPath() {
+  return resolve(vaultRoot(), ".vault-meta", "contradictions.json");
+}
+
+function contradictionId(title, line) {
+  return `c-${hashText(`${title}\n${line}`).slice(0, 10)}`;
+}
+
+function readContradictionStatuses() {
+  const path = contradictionStatusPath();
+  if (!existsSync(path)) return { items: {} };
+  try {
+    const parsed = JSON.parse(readFileSync(path, "utf8"));
+    return parsed && typeof parsed.items === "object" ? parsed : { items: {} };
+  } catch {
+    return { items: {} };
+  }
+}
+
+function writeContradictionStatuses(statuses) {
+  return writeVaultFile(".vault-meta/contradictions.json", JSON.stringify(statuses, null, 2) + "\n");
+}
+
+function contradictionItems(db, latest = null) {
   const root = vaultRoot();
   const existing = safeAll(db, "SELECT path, title FROM wiki_pages WHERE path LIKE 'wiki/sources/%' ORDER BY updated_at DESC LIMIT 120");
-  const latestRows = latest?.contradictions?.length
-    ? latest.contradictions.map((line) => `- [[${latest.title}]]: ${line}`)
-    : [];
+  const latestRows = latest?.contradictions?.length ? latest.contradictions.map((line) => ({ title: latest.title, line })) : [];
   const sourceRows = existing
     .flatMap((page) => {
       const abs = resolve(root, page.path);
       if (!existsSync(abs)) return [];
-      return sourceContradictions(readFileSync(abs, "utf8")).map((line) => `- [[${page.title}]]: ${line}`);
+      return sourceContradictions(readFileSync(abs, "utf8")).map((line) => ({ title: page.title, line }));
     })
-    .filter((row, index, rows) => rows.indexOf(row) === index);
-  const rows = [...latestRows, ...sourceRows].filter((row, index, all) => all.indexOf(row) === index);
+    .filter((row, index, rows) => rows.findIndex((candidate) => candidate.title === row.title && candidate.line === row.line) === index);
+  return [...latestRows, ...sourceRows]
+    .map((item) => ({ id: contradictionId(item.title, item.line), ...item }))
+    .filter((row, index, all) => all.findIndex((candidate) => candidate.id === row.id) === index);
+}
+
+function contradictionsMarkdown(db, latest = null) {
+  const statuses = readContradictionStatuses();
+  const rows = contradictionItems(db, latest);
+  const tableRows = rows.map((row) => {
+    const saved = statuses.items[row.id] ?? {};
+    const status = saved.status || "open";
+    const note = saved.note || "";
+    return `| ${row.id} | ${status} | [[${wikiLinkTitle(row.title)}]] | ${row.line.replace(/\|/g, "\\|")} | ${note.replace(/\|/g, "\\|")} |`;
+  });
   return [
     frontmatter({
       type: "meta",
@@ -1373,9 +1408,11 @@ function contradictionsMarkdown(db, latest = null) {
     }),
     "# Contradictions",
     "",
-    "Contradiction markers found during deterministic source ingest. Resolve by updating the relevant entity/domain pages, not by deleting the raw evidence.",
+    "Contradiction markers found during deterministic source ingest. Resolve by updating the relevant entity/domain pages, then mark the row resolved or superseded without deleting raw evidence.",
     "",
-    ...(rows.length ? rows : ["- No contradiction markers have been ingested yet."]),
+    "| ID | Status | Source | Claim | Resolution note |",
+    "| --- | --- | --- | --- | --- |",
+    ...(tableRows.length ? tableRows : ["| none | open | none | No contradiction markers have been ingested yet. | |"]),
     "",
   ].join("\n");
 }
@@ -1920,6 +1957,46 @@ export function runWikiLint(db) {
   return result;
 }
 
+export function updateContradictionStatus(db, { id, status = "open", note = "" } = {}) {
+  ensureDirs();
+  const cleanId = String(id ?? "").trim();
+  const cleanStatus = String(status ?? "open").trim().toLowerCase();
+  if (!cleanId) throw new Error("contradiction id is required");
+  if (!["open", "resolved", "superseded"].includes(cleanStatus)) throw new Error("status must be open, resolved, or superseded");
+  const items = contradictionItems(db);
+  const item = items.find((row) => row.id === cleanId);
+  if (!item) throw new Error(`contradiction not found: ${cleanId}`);
+
+  const statuses = readContradictionStatuses();
+  statuses.items[cleanId] = {
+    status: cleanStatus,
+    note: String(note ?? "").trim(),
+    source: item.title,
+    claim: item.line,
+    updatedAt: isoNow(),
+  };
+
+  const result = {
+    id: randomUUID(),
+    contradictionId: cleanId,
+    status: cleanStatus,
+    note: statuses.items[cleanId].note,
+    files: [],
+    updatedAt: statuses.items[cleanId].updatedAt,
+  };
+  result.files.push(writeContradictionStatuses(statuses));
+  result.files.push(writeIndexedPage(db, "wiki/meta/contradictions.md", contradictionsMarkdown(db), { kind: "meta", status: "active" }));
+
+  db.prepare("INSERT INTO wiki_runs (id, kind, summary, payload_json, created_at) VALUES (?, 'contradiction-status', ?, ?, ?)").run(
+    result.id,
+    `Contradiction ${cleanId}: ${cleanStatus}`,
+    JSON.stringify(result),
+    result.updatedAt,
+  );
+
+  return result;
+}
+
 function walkMarkdown(dir, root, out = []) {
   if (!existsSync(dir)) return out;
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -2017,6 +2094,16 @@ if (isCli) {
       console.log(JSON.stringify(syncHorizonWiki(db), null, 2));
     } else if (cmd === "lint") {
       console.log(JSON.stringify(runWikiLint(db), null, 2));
+    } else if (cmd === "contradiction") {
+      const id = process.argv[3];
+      const status = process.argv[4];
+      const note = process.argv.slice(5).join(" ");
+      if (!id || !status) {
+        console.error("usage: node scripts/wiki.mjs contradiction <id> <open|resolved|superseded> [note]");
+        process.exitCode = 2;
+      } else {
+        console.log(JSON.stringify(updateContradictionStatus(db, { id, status, note }), null, 2));
+      }
     } else if (cmd === "coverage") {
       console.log(JSON.stringify(runWikiSourceCoverage(db, { force: process.argv.includes("--force") }), null, 2));
     } else if (cmd === "capture") {

@@ -305,3 +305,49 @@ test("outcome learning compiles closed actions, outcomes, and work events", asyn
     db.close();
   }
 });
+
+test("contradictions carry stable resolution status", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "horizon-wiki-contradictions-"));
+  process.env.HORIZON_DB_PATH = join(dir, "horizon.sqlite");
+  process.env.HORIZON_VAULT_PATH = join(dir, "vault");
+
+  const sourcePath = join(dir, "contradiction-source.md");
+  writeFileSync(
+    sourcePath,
+    [
+      "# Contradiction Source",
+      "",
+      "Contradiction: older plan says PhotoSelect has no buyer proof, but current evidence says payment proof exists.",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const nonce = Date.now();
+  const { openHorizonDb } = await import(`../scripts/horizon-db.mjs?contradiction=${nonce}`);
+  const { ingestWikiSource, syncHorizonWiki, updateContradictionStatus } = await import(`../scripts/wiki.mjs?contradiction=${nonce}`);
+
+  const db = openHorizonDb();
+  try {
+    syncHorizonWiki(db);
+    ingestWikiSource(db, { sourcePath });
+    const pagePath = join(process.env.HORIZON_VAULT_PATH, "wiki/meta/contradictions.md");
+    const page = readFileSync(pagePath, "utf8");
+    const id = page.match(/\|\s+(c-[a-f0-9]+)\s+\|\s+open\s+\|/)?.[1];
+    assert.ok(id, "expected stable contradiction id");
+
+    const result = updateContradictionStatus(db, { id, status: "resolved", note: "Payment proof evidence superseded the older claim." });
+    assert.equal(result.status, "resolved");
+    assert.ok(result.files.includes(".vault-meta/contradictions.json"));
+    assert.ok(result.files.includes("wiki/meta/contradictions.md"));
+
+    const updated = readFileSync(pagePath, "utf8");
+    assert.match(updated, new RegExp(`\\| ${id} \\| resolved \\|`));
+    assert.match(updated, /Payment proof evidence superseded the older claim/);
+
+    const statusFile = readFileSync(join(process.env.HORIZON_VAULT_PATH, ".vault-meta/contradictions.json"), "utf8");
+    assert.match(statusFile, /"status": "resolved"/);
+  } finally {
+    db.close();
+  }
+});

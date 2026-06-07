@@ -22,6 +22,7 @@
     "wiki:coverage": "node scripts/wiki.mjs coverage",
     "wiki:capture": "node scripts/wiki.mjs capture",
     "wiki:lint": "node scripts/wiki.mjs lint",
+    "wiki:contradiction": "node scripts/wiki.mjs contradiction",
     "build": "vite build",
     "test:e2e": "playwright test",
     "preview": "vite preview --host 127.0.0.1"

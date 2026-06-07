@@ -41,6 +41,7 @@ From `~/Desktop/bolting/_external/turbovec`:
 - `runWikiSourceCoverage(db)` ingests or skips the curated high-signal source list and writes `wiki/meta/Source Coverage Report.md`.
 - `captureWikiAnswer(db, { question, answer, links })` saves useful answers under `wiki/questions/` and updates index, hot cache, log, and chunks.
 - `runWikiLint(db)` writes `wiki/meta/Wiki Repair Plan.md` and returns a machine-readable repair plan.
+- `updateContradictionStatus(db, { id, status, note })` marks contradiction rows open, resolved, or superseded without deleting evidence.
 - `buildPreflightContext(db, action)` and `formatPreflightContext(packet)` attach wiki hot/index/search hits, action row, dispatch history, and trust state to deployed specs.
 - `wikiStatus(db)` reports source/page/chunk counts, latest sync, graph health, and retrieval ladder state.
 - `searchWiki(db, query)` searches generated wiki markdown and returns note paths that can be opened in Horizon.
@@ -99,6 +100,7 @@ npm run wiki:ingest -- /absolute/path/to/source.md
 npm run wiki:coverage
 npm run wiki:capture -- "What should Horizon remember?" "The answer to preserve."
 npm run wiki:lint
+npm run wiki:contradiction -- c-1234567890 resolved "Resolution note"
 ```
 
 ## Readiness Bar
@@ -113,6 +115,7 @@ This slice is ready when:
 - Lint writes `wiki/meta/Wiki Repair Plan.md` and returns machine-readable repair actions.
 - Deploy/Jules specs include the memory preflight packet after redaction.
 - Sync writes `wiki/domains/Outcome Learning.md` from closed actions, outcomes, and work events.
+- Contradictions carry stable IDs and status values: open, resolved, or superseded.
 - Search retrieves the generated pages.
 - The loop compiles wiki state automatically.
 - Obsidian can render the graph from wikilinks.
