@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Brain, Database, FileText, FolderGit2, Loader2, RefreshCw, Search, X } from "lucide-react";
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
-import { fetchVault, readVaultNote, searchWiki, syncVault, syncWiki } from "../lib/vaultApi.js";
+import { fetchVault, ingestWikiSource, readVaultNote, searchWiki, syncVault, syncWiki } from "../lib/vaultApi.js";
 
 function relativeTime(ms) {
   if (!ms) return "";
@@ -20,7 +20,9 @@ export default function Vault() {
   const [syncing, setSyncing] = useState(false);
   const [wikiSyncing, setWikiSyncing] = useState(false);
   const [wikiSearching, setWikiSearching] = useState(false);
+  const [wikiIngesting, setWikiIngesting] = useState(false);
   const [wikiQuery, setWikiQuery] = useState("money action memory");
+  const [ingestPath, setIngestPath] = useState("");
   const [wikiResults, setWikiResults] = useState([]);
   const [note, setNote] = useState(null);
   const [msg, setMsg] = useState(null);
@@ -90,6 +92,27 @@ export default function Vault() {
       setMsg("Compound wiki search failed.");
     } finally {
       setWikiSearching(false);
+    }
+  }
+
+  async function doWikiIngest(event) {
+    event.preventDefault();
+    if (!ingestPath.trim()) return;
+    if (!live) {
+      setMsg("Start npm run dev:full to ingest a source.");
+      return;
+    }
+    setWikiIngesting(true);
+    try {
+      const res = await ingestWikiSource(ingestPath.trim());
+      setMsg(res.skipped ? `Already ingested: ${res.title}.` : `Ingested ${res.title} into the compound wiki.`);
+      setWikiQuery(res.title || wikiQuery);
+      setIngestPath("");
+      await load();
+    } catch {
+      setMsg("Source ingest failed.");
+    } finally {
+      setWikiIngesting(false);
     }
   }
 
@@ -286,6 +309,26 @@ export default function Vault() {
               <p className="text-sm text-paper/48">Sync the wiki, then search for project memory, external references, actions, and retrieval decisions.</p>
             )}
           </div>
+
+          <form onSubmit={doWikiIngest} className="mt-5 rounded-md border border-outlineVariant bg-surfaceContainer p-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-brass">Ingest source</p>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <input
+                value={ingestPath}
+                onChange={(event) => setIngestPath(event.target.value)}
+                className="min-w-0 flex-1 rounded-md border border-outlineVariant bg-surface px-3 py-2 font-mono text-xs text-paper outline-none transition placeholder:text-paper/32 focus:border-primary"
+                placeholder="/absolute/path/to/source.md"
+              />
+              <button
+                type="submit"
+                disabled={wikiIngesting || !ingestPath.trim()}
+                className="inline-flex items-center justify-center gap-2 rounded-md border border-outlineVariant bg-surface px-4 py-2 text-sm font-black text-paper transition hover:border-outline disabled:opacity-50"
+              >
+                {wikiIngesting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <FileText className="h-4 w-4" aria-hidden="true" />}
+                Ingest
+              </button>
+            </div>
+          </form>
         </Panel>
       </section>
 

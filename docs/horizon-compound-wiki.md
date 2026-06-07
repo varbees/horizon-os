@@ -35,6 +35,7 @@ From `~/Desktop/bolting/_external/turbovec`:
 `scripts/wiki.mjs` owns the compound wiki:
 
 - `syncHorizonWiki(db)` writes schema, raw source notes, generated pages, index, hot cache, log, and dashboard.
+- `ingestWikiSource(db, { sourcePath })` copies a local source into `.raw/horizon-ingest/`, creates a linked `wiki/sources/*` synthesis page, updates `wiki/index.md`, `wiki/hot.md`, `wiki/log.md`, and records a manifest entry so unchanged sources are skipped.
 - `wikiStatus(db)` reports source/page/chunk counts, latest sync, graph health, and retrieval ladder state.
 - `searchWiki(db, query)` searches generated wiki markdown and returns note paths that can be opened in Horizon.
 - `lintWiki(db)` reports missing wikilinks and orphan generated pages.
@@ -74,6 +75,7 @@ These pages intentionally serve the money OS: action quality, buyer evidence, di
 - `GET /api/wiki` returns wiki status and graph health.
 - `POST /api/wiki/sync` compiles the wiki immediately.
 - `GET /api/wiki/search?q=...` searches generated wiki pages.
+- `POST /api/wiki/ingest` compiles a local source file into raw evidence plus generated wiki synthesis.
 - `POST /api/vault/sync` now writes both the old `Horizon/` snapshots and the compound wiki.
 
 ## CLI
@@ -82,6 +84,7 @@ These pages intentionally serve the money OS: action quality, buyer evidence, di
 npm run wiki:status
 npm run wiki:sync
 npm run wiki:search -- turbovec local vector
+npm run wiki:ingest -- /absolute/path/to/source.md
 ```
 
 ## Readiness Bar
@@ -90,6 +93,7 @@ This slice is ready when:
 
 - Migrations create the wiki tables idempotently.
 - Sync creates the schema, raw-source, hot-cache, index, log, source, concept, entity, and domain pages.
+- Ingest copies a local file into `.raw/horizon-ingest/`, creates a source page with inferred wikilinks, logs the run, skips unchanged sources, and surfaces contradiction markers.
 - Search retrieves the generated pages.
 - The loop compiles wiki state automatically.
 - Obsidian can render the graph from wikilinks.

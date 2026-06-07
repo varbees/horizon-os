@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { createHash, randomUUID } from "node:crypto";
-import { dirname, extname, join, relative, resolve } from "node:path";
+import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openHorizonDb } from "./horizon-db.mjs";
 import { frontmatter, vaultRoot, writeNote } from "./vault.mjs";
@@ -22,6 +22,7 @@ const externalRoot = resolve(boltingRoot, "_external");
 
 const REQUIRED_DIRS = [
   ".raw/horizon-intelligence",
+  ".raw/horizon-ingest",
   ".raw/assets",
   ".vault-meta",
   "_attachments",
@@ -114,6 +115,109 @@ function writeVaultFile(relPath, content) {
 
 function pageTitle(path) {
   return path.split("/").pop().replace(/\.md$/i, "");
+}
+
+function fileTitle(title) {
+  return String(title ?? "Untitled Source")
+    .replace(/[\\/:*?"<>|#\[\]\n\r\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 96) || "Untitled Source";
+}
+
+function stripFrontmatter(content) {
+  return String(content ?? "").replace(/^---[\s\S]*?---\s*/m, "");
+}
+
+function titleFromSource(content, sourcePath, explicitTitle) {
+  if (explicitTitle?.trim()) return fileTitle(explicitTitle);
+  const body = stripFrontmatter(content);
+  const heading = body.match(/^#\s+(.+)$/m)?.[1]?.trim();
+  if (heading) return fileTitle(heading);
+  return fileTitle(basename(sourcePath, extname(sourcePath)).replace(/[-_]+/g, " "));
+}
+
+function pathHash(sourcePath) {
+  return hashText(resolve(sourcePath)).slice(0, 16);
+}
+
+function sourceSummary(content) {
+  const body = stripFrontmatter(content)
+    .replace(/^#\s+.+$/m, "")
+    .trim();
+  const paragraph = body
+    .split(/\n\n+/)
+    .map((part) => part.trim())
+    .find((part) => part && !part.startsWith("#") && !part.startsWith("|"));
+  return (paragraph ?? "").replace(/\s+/g, " ").slice(0, 300);
+}
+
+function sourceHeadings(content) {
+  const headings = [];
+  const re = /^#{1,3}\s+(.+)$/gm;
+  let match;
+  while ((match = re.exec(stripFrontmatter(content)))) headings.push(match[1].trim());
+  return headings.slice(0, 12);
+}
+
+function sourceSignals(content) {
+  const lines = stripFrontmatter(content)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return lines
+    .filter((line) =>
+      /^(?:[-*]\s+|\d+\.\s+)?(?:next|todo|decision|blocker|risk|contradiction|conflicts?|supersedes|proof|buyer|revenue|action|deploy)\b/i.test(line),
+    )
+    .slice(0, 12);
+}
+
+function sourceContradictions(content) {
+  const lines = stripFrontmatter(content)
+    .split(/\r?\n/)
+    .map((line) => line.trim().replace(/^[-*]\s+/, ""));
+  const found = [];
+  const clean = (line) => line.trim().replace(/^>\s*/, "").trim();
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = clean(lines[index]);
+    if (!line) continue;
+    if (/^\[!contradiction\]/i.test(line)) {
+      const next = clean(lines.slice(index + 1).find((candidate) => clean(candidate) && !/^\[!/.test(clean(candidate))) ?? "");
+      if (next) found.push(next);
+      continue;
+    }
+    if (/^(?:contradiction\s*:|conflicts?\s+with\b|supersedes\b|older note said\b)/i.test(line)) {
+      found.push(line);
+    }
+  }
+  return found.filter((line, index, all) => all.indexOf(line) === index).slice(0, 8);
+}
+
+function inferLinks(db, content, title) {
+  const hay = `${title}\n${content}`.toLowerCase();
+  const pages = safeAll(db, "SELECT title, path, kind FROM wiki_pages ORDER BY length(title) DESC");
+  const links = [];
+  for (const page of pages) {
+    if (!page.title || page.title === title || page.title.length < 3) continue;
+    if (hay.includes(page.title.toLowerCase()) && !links.includes(page.title)) links.push(page.title);
+  }
+  return links.slice(0, 16);
+}
+
+function readManifest() {
+  const path = resolve(vaultRoot(), ".raw", ".manifest.json");
+  if (!existsSync(path)) return { sources: {} };
+  try {
+    const parsed = JSON.parse(readFileSync(path, "utf8"));
+    if (!parsed.sources || typeof parsed.sources !== "object") return { sources: {} };
+    return parsed;
+  } catch {
+    return { sources: {} };
+  }
+}
+
+function writeManifest(manifest) {
+  return writeVaultFile(".raw/.manifest.json", JSON.stringify(manifest, null, 2) + "\n");
 }
 
 function extractSummary(content) {
@@ -363,6 +467,15 @@ function overviewMarkdown(db) {
 function hotMarkdown(db) {
   const state = currentState(db);
   const next = state.ranked[0];
+  const latestIngest = safeGet(db, "SELECT * FROM wiki_runs WHERE kind = 'ingest' ORDER BY created_at DESC LIMIT 1");
+  let ingestPayload = null;
+  if (latestIngest?.payload_json) {
+    try {
+      ingestPayload = JSON.parse(latestIngest.payload_json);
+    } catch {
+      ingestPayload = null;
+    }
+  }
   return [
     frontmatter({
       type: "meta",
@@ -380,6 +493,9 @@ function hotMarkdown(db) {
     "- Horizon now has a persistent wiki layer: `.raw/`, `wiki/`, schema files, SQLite page/source/link/chunk tracking.",
     "- The wiki is model-agnostic. Claude, Codex, Gemini, Jules handoffs, or any local agent can read the same schema.",
     "- Retrieval starts with hot/index/markdown search and can later route `wiki_chunks` through turbovec.",
+    ingestPayload
+      ? `- Latest ingest: [[${ingestPayload.title}]] from \`${ingestPayload.rawPath}\`.`
+      : "- No operator-ingested source has been compiled yet.",
     "",
     "## Current Next Move",
     next
@@ -865,6 +981,98 @@ function logEntry(result) {
   ].join("\n");
 }
 
+function ingestLogEntry(result) {
+  return [
+    `## [${day()}] ingest | ${result.title}`,
+    `- Source: \`${result.rawPath}\``,
+    `- Summary: [[${result.title}]]`,
+    `- Pages updated: ${result.files.map((file) => `\`${file}\``).join(", ")}`,
+    `- Key insight: ${result.summary || "Source compiled into Horizon memory."}`,
+    "",
+  ].join("\n");
+}
+
+function sourcePageMarkdown({ title, sourcePath, rawPath, contentHash, summary, links, headings, signals, contradictions, tags }) {
+  const linkRows = links.length ? links.map((link) => `- [[${link}]]`) : ["- No existing wiki entities mentioned yet."];
+  const headingRows = headings.length ? headings.map((heading) => `- ${heading}`) : ["- No headings found."];
+  const signalRows = signals.length ? signals.map((signal) => `- ${signal}`) : ["- No explicit action/decision/risk signals found."];
+  const contradictionRows = contradictions.length
+    ? contradictions.map((line) => `> [!contradiction]\n> ${line}`)
+    : ["> [!note]\n> No contradiction marker found in this source."];
+  return [
+    frontmatter({
+      type: "source",
+      title: JSON.stringify(title),
+      updated: isoNow(),
+      source_path: JSON.stringify(sourcePath),
+      raw_path: JSON.stringify(rawPath),
+      content_hash: JSON.stringify(contentHash),
+      tags: `[${tags.map((tag) => `"${tag}"`).join(", ")}]`,
+      status: "ingested",
+    }),
+    `# ${title}`,
+    "",
+    summary || "No summary paragraph found.",
+    "",
+    "## Horizon synthesis",
+    "",
+    "This source has been compiled into Horizon's persistent wiki. Future agents should read this page before reopening the raw file unless they need exact wording.",
+    "",
+    "## Inferred links",
+    "",
+    ...linkRows,
+    "",
+    "## Source structure",
+    "",
+    ...headingRows,
+    "",
+    "## Extracted signals",
+    "",
+    ...signalRows,
+    "",
+    "## Contradictions",
+    "",
+    ...contradictionRows,
+    "",
+    "## Raw evidence",
+    "",
+    `- Raw copy: \`${rawPath}\``,
+    `- Original path: \`${sourcePath}\``,
+    "",
+  ].join("\n");
+}
+
+function contradictionsMarkdown(db, latest = null) {
+  const root = vaultRoot();
+  const existing = safeAll(db, "SELECT path, title FROM wiki_pages WHERE path LIKE 'wiki/sources/%' ORDER BY updated_at DESC LIMIT 120");
+  const latestRows = latest?.contradictions?.length
+    ? latest.contradictions.map((line) => `- [[${latest.title}]]: ${line}`)
+    : [];
+  const sourceRows = existing
+    .flatMap((page) => {
+      const abs = resolve(root, page.path);
+      if (!existsSync(abs)) return [];
+      return sourceContradictions(readFileSync(abs, "utf8")).map((line) => `- [[${page.title}]]: ${line}`);
+    })
+    .filter((row, index, rows) => rows.indexOf(row) === index);
+  const rows = [...latestRows, ...sourceRows].filter((row, index, all) => all.indexOf(row) === index);
+  return [
+    frontmatter({
+      type: "meta",
+      title: "\"Contradictions\"",
+      updated: isoNow(),
+      tags: "[horizon, contradictions, memory-health]",
+      status: "active",
+    }),
+    "# Contradictions",
+    "",
+    "Contradiction markers found during deterministic source ingest. Resolve by updating the relevant entity/domain pages, not by deleting the raw evidence.",
+    "",
+    ...(rows.length ? rows : ["- No contradiction markers have been ingested yet."]),
+    "",
+  ].join("\n");
+}
+
 function existingLog() {
   const path = resolve(vaultRoot(), "wiki", "log.md");
   if (!existsSync(path)) return "";
@@ -932,6 +1140,144 @@ export function syncHorizonWiki(db) {
     JSON.stringify(result),
     result.syncedAt,
   );
+
+  return result;
+}
+
+export function ingestWikiSource(db, { sourcePath, title, kind = "operator-source", tags = [], force = false } = {}) {
+  if (!sourcePath) throw new Error("sourcePath is required");
+  ensureDirs();
+
+  const absSourcePath = resolve(sourcePath);
+  if (!existsSync(absSourcePath)) throw new Error(`source not found: ${sourcePath}`);
+  const content = readFileSync(absSourcePath, "utf8");
+  const contentHash = hashText(content);
+  const manifest = readManifest();
+  const manifestKey = absSourcePath;
+  const prior = manifest.sources[manifestKey];
+  if (!force && prior?.hash === contentHash) {
+    return {
+      skipped: true,
+      reason: "unchanged",
+      title: prior.title,
+      rawPath: prior.raw_path,
+      files: prior.pages_updated ?? [],
+      contentHash,
+    };
+  }
+
+  const resolvedTitle = titleFromSource(content, absSourcePath, title);
+  const safeTitle = fileTitle(resolvedTitle);
+  const sourceId = `ingest:${pathHash(absSourcePath)}`;
+  const rawPath = `.raw/horizon-ingest/${safeTitle}-${contentHash.slice(0, 8)}.md`;
+  const summary = sourceSummary(content);
+  const headings = sourceHeadings(content);
+  const signals = sourceSignals(content);
+  const contradictions = sourceContradictions(content);
+  const links = inferLinks(db, content, safeTitle);
+  const normalizedTags = [...new Set(["horizon-ingest", ...tags].map((tag) => String(tag).trim()).filter(Boolean))];
+
+  const raw = [
+    frontmatter({
+      type: "raw-source",
+      title: JSON.stringify(safeTitle),
+      original_path: JSON.stringify(absSourcePath),
+      content_hash: JSON.stringify(contentHash),
+      ingested_at: isoNow(),
+      tags: `[${normalizedTags.map((tag) => `"${tag}"`).join(", ")}]`,
+    }),
+    content,
+    "",
+  ].join("\n");
+  writeVaultFile(rawPath, raw);
+
+  const sourcePagePath = `wiki/sources/${safeTitle}.md`;
+  const sourcePage = sourcePageMarkdown({
+    title: safeTitle,
+    sourcePath: absSourcePath,
+    rawPath,
+    contentHash,
+    summary,
+    links,
+    headings,
+    signals,
+    contradictions,
+    tags: normalizedTags,
+  });
+
+  const files = [rawPath];
+  files.push(writeIndexedPage(db, sourcePagePath, sourcePage, { kind: "source", status: "ingested", sourceCount: 1 }));
+
+  upsertSource(
+    db,
+    {
+      id: sourceId,
+      title: safeTitle,
+      kind,
+      sourcePath: absSourcePath,
+      sourceUrl: "",
+      summary,
+      tags: normalizedTags,
+    },
+    rawPath,
+    raw,
+  );
+
+  const result = {
+    id: randomUUID(),
+    skipped: false,
+    title: safeTitle,
+    sourcePath: absSourcePath,
+    rawPath,
+    files: [],
+    summary,
+    links,
+    headings,
+    signals,
+    contradictions,
+    contentHash,
+    ingestedAt: isoNow(),
+  };
+
+  files.push(writeIndexedPage(db, "wiki/meta/contradictions.md", contradictionsMarkdown(db, result), { kind: "meta", status: "active" }));
+
+  result.files = files;
+
+  db.prepare("INSERT INTO wiki_runs (id, kind, summary, payload_json, created_at) VALUES (?, 'ingest', ?, ?, ?)").run(
+    result.id,
+    `Ingested ${safeTitle}`,
+    JSON.stringify(result),
+    result.ingestedAt,
+  );
+
+  const pages = safeAll(db, "SELECT * FROM wiki_pages ORDER BY kind, title");
+  result.files.push(writeIndexedPage(db, "wiki/index.md", indexMarkdown(db, pages), { kind: "meta", status: "active" }));
+  result.files.push(writeIndexedPage(db, "wiki/hot.md", hotMarkdown(db), { kind: "meta", status: "active" }));
+
+  const log = [
+    frontmatter({
+      type: "meta",
+      title: "\"Wiki Log\"",
+      updated: isoNow(),
+      tags: "[horizon, log]",
+      status: "active",
+    }),
+    "# Wiki Log",
+    "",
+    ingestLogEntry(result),
+    existingLog().replace(/^---[\s\S]*?---\s*# Wiki Log\s*/m, "").trim(),
+    "",
+  ].filter(Boolean).join("\n");
+  result.files.push(writeIndexedPage(db, "wiki/log.md", log, { kind: "meta", status: "active" }));
+
+  manifest.sources[manifestKey] = {
+    hash: contentHash,
+    title: safeTitle,
+    raw_path: rawPath,
+    ingested_at: result.ingestedAt,
+    pages_updated: result.files,
+  };
+  result.files.push(writeManifest(manifest));
 
   return result;
 }
@@ -1031,6 +1377,14 @@ if (isCli) {
     const cmd = process.argv[2] ?? "status";
     if (cmd === "sync") {
       console.log(JSON.stringify(syncHorizonWiki(db), null, 2));
+    } else if (cmd === "ingest") {
+      const sourcePath = process.argv[3];
+      if (!sourcePath) {
+        console.error("usage: node scripts/wiki.mjs ingest <source-path> [title]");
+        process.exitCode = 2;
+      } else {
+        console.log(JSON.stringify(ingestWikiSource(db, { sourcePath, title: process.argv.slice(4).join(" ") }), null, 2));
+      }
     } else if (cmd === "search") {
       console.log(JSON.stringify(searchWiki(db, process.argv.slice(3).join(" ")), null, 2));
     } else {

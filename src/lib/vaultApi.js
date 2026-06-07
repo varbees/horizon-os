@@ -34,3 +34,13 @@ export async function searchWiki(query, limit = 8) {
   if (!response.ok) throw new Error(`wiki search failed: ${response.status}`);
   return response.json();
 }
+
+export async function ingestWikiSource(sourcePath, options = {}) {
+  const response = await fetch("/api/wiki/ingest", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ sourcePath, ...options }),
+  });
+  if (!response.ok) throw new Error(`wiki ingest failed: ${response.status}`);
+  return response.json();
+}

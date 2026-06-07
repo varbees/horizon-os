@@ -22,7 +22,7 @@ import { gitDetail } from "./git-detail.mjs";
 import { trustSummary } from "./trust.mjs";
 import { rankActions } from "./ranking.mjs";
 import { loadSources, priorityFor } from "./sources.mjs";
-import { searchWiki, syncHorizonWiki, wikiStatus } from "./wiki.mjs";
+import { ingestWikiSource, searchWiki, syncHorizonWiki, wikiStatus } from "./wiki.mjs";
 import {
   createSession as julesCreateSession,
   getSession as julesGetSession,
@@ -577,6 +577,22 @@ const server = createServer(async (req, res) => {
         return json(res, 200, { ok: true, query, results: searchWiki(db, query, { limit }) });
       } catch (error) {
         return json(res, 500, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/wiki/ingest") {
+      try {
+        const body = await readJson(req);
+        const result = ingestWikiSource(db, {
+          sourcePath: body.sourcePath ?? body.path,
+          title: body.title,
+          kind: body.kind,
+          tags: Array.isArray(body.tags) ? body.tags : [],
+          force: Boolean(body.force),
+        });
+        return json(res, 200, { ok: true, ...result, wiki: wikiStatus(db) });
+      } catch (error) {
+        return json(res, 400, { ok: false, error: String(error.message ?? error) });
       }
     }
 

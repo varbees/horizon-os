@@ -51,6 +51,7 @@ The same sync also compiles the compound wiki:
 - `GET /api/wiki` - compound wiki status, latest sync, graph health, and retrieval ladder.
 - `POST /api/wiki/sync` - compile the compound wiki without regenerating the `Horizon/` snapshots.
 - `GET /api/wiki/search?q=` - search generated wiki pages.
+- `POST /api/wiki/ingest` - compile a local source file into `.raw/horizon-ingest/` and `wiki/sources/`.
 
 Path traversal is blocked: every path resolves inside the vault root or is rejected.
 
@@ -60,6 +61,7 @@ Path traversal is blocked: every path resolves inside the vault root or is rejec
 2. Open the vault in Obsidian; the `Horizon/` folder holds snapshots and `wiki/` holds generated synthesis.
 3. Browse any vault note from the Horizon UI; click a note to read it.
 4. Search the compound wiki from `/vault` to inspect what Horizon remembers.
+5. Paste a local Markdown/text source path into **Ingest source** when you want Horizon to compile a new piece of evidence.
 
 A scheduled auto-sync and writing edits back from Horizon into arbitrary notes are natural follow-ups.
 The autonomous loop already refreshes the compound wiki after each cycle.
