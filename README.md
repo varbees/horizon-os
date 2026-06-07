@@ -37,6 +37,7 @@ npm run wiki:search -- money action memory
 npm run wiki:ingest -- /absolute/path/to/source.md
 npm run wiki:coverage
 npm run wiki:capture -- "What changed?" "Answer worth filing into the wiki."
+npm run wiki:lint
 ```
 
 ## Build

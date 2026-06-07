@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Brain, Database, FileText, FolderGit2, Loader2, RefreshCw, Save, Search, X } from "lucide-react";
+import { Brain, Database, FileText, FolderGit2, Loader2, RefreshCw, Save, Search, Wrench, X } from "lucide-react";
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
-import { captureWikiAnswer, fetchVault, ingestWikiSource, readVaultNote, runWikiCoverage, searchWiki, syncVault, syncWiki } from "../lib/vaultApi.js";
+import { captureWikiAnswer, fetchVault, ingestWikiSource, readVaultNote, runWikiCoverage, runWikiLint, searchWiki, syncVault, syncWiki } from "../lib/vaultApi.js";
 
 function relativeTime(ms) {
   if (!ms) return "";
@@ -23,6 +23,7 @@ export default function Vault() {
   const [wikiIngesting, setWikiIngesting] = useState(false);
   const [wikiCovering, setWikiCovering] = useState(false);
   const [wikiCapturing, setWikiCapturing] = useState(false);
+  const [wikiLinting, setWikiLinting] = useState(false);
   const [wikiQuery, setWikiQuery] = useState("money action memory");
   const [captureTitle, setCaptureTitle] = useState("");
   const [captureAnswer, setCaptureAnswer] = useState("");
@@ -165,6 +166,24 @@ export default function Vault() {
     }
   }
 
+  async function doWikiLint() {
+    if (!live) {
+      setMsg("Start npm run dev:full to lint the compound wiki.");
+      return;
+    }
+    setWikiLinting(true);
+    try {
+      const res = await runWikiLint();
+      setMsg(`Lint: ${res.repairs.length} repairs, ${res.missingLinks.length} missing links, ${res.orphanPages.length} orphans.`);
+      setWikiQuery("Wiki Repair Plan");
+      await load();
+    } catch {
+      setMsg("Wiki lint failed.");
+    } finally {
+      setWikiLinting(false);
+    }
+  }
+
   async function openNote(path) {
     try {
       const res = await readVaultNote(path);
@@ -285,6 +304,15 @@ export default function Vault() {
               >
                 {wikiCovering ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Database className="h-4 w-4" aria-hidden="true" />}
                 {wikiCovering ? "Checking..." : "Run Coverage"}
+              </button>
+              <button
+                type="button"
+                onClick={doWikiLint}
+                disabled={wikiLinting}
+                className="inline-flex items-center justify-center gap-2 rounded-md border border-outlineVariant bg-surfaceContainer px-3 py-2 text-sm font-black text-paper transition hover:border-outline disabled:opacity-60"
+              >
+                {wikiLinting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Wrench className="h-4 w-4" aria-hidden="true" />}
+                {wikiLinting ? "Linting..." : "Lint Wiki"}
               </button>
             </div>
           </div>

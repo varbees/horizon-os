@@ -214,3 +214,38 @@ test("query capture writes a durable question page and indexes it for search", a
     db.close();
   }
 });
+
+test("wiki lint writes a repair plan with machine-readable fixes", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "horizon-wiki-lint-"));
+  process.env.HORIZON_DB_PATH = join(dir, "horizon.sqlite");
+  process.env.HORIZON_VAULT_PATH = join(dir, "vault");
+
+  const nonce = Date.now();
+  const { openHorizonDb } = await import(`../scripts/horizon-db.mjs?lint=${nonce}`);
+  const { captureWikiAnswer, runWikiLint, syncHorizonWiki } = await import(`../scripts/wiki.mjs?lint=${nonce}`);
+
+  const db = openHorizonDb();
+  try {
+    syncHorizonWiki(db);
+    captureWikiAnswer(db, {
+      question: "Which missing page should lint detect?",
+      answer: "This answer intentionally references [[Unmade Memory Node]] so lint can produce a repair.",
+      title: "Lint Broken Link Fixture",
+    });
+
+    const result = runWikiLint(db);
+    assert.ok(result.files.includes("wiki/meta/Wiki Repair Plan.md"));
+    assert.ok(result.repairs.some((repair) => repair.type === "missing-link" && repair.target === "Unmade Memory Node"));
+    assert.ok(result.missingLinks.some((link) => link.to === "Unmade Memory Node"));
+
+    const report = readFileSync(join(process.env.HORIZON_VAULT_PATH, "wiki/meta/Wiki Repair Plan.md"), "utf8");
+    assert.match(report, /Unmade Memory Node/);
+    assert.match(report, /missing-link/);
+
+    const latestRun = db.prepare("SELECT kind, summary FROM wiki_runs ORDER BY created_at DESC LIMIT 1").get();
+    assert.equal(latestRun.kind, "lint");
+    assert.match(latestRun.summary, /Wiki lint:/);
+  } finally {
+    db.close();
+  }
+});

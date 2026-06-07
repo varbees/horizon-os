@@ -30,29 +30,29 @@ The goal is not a prettier notes dashboard. The goal is a local agent memory arc
    - Update index, hot cache, log, and chunks.
    - `npm run wiki:capture` and `/api/wiki/capture` file useful answers back into durable wiki memory.
 
-## Build Next
-
-1. **Wiki Lint And Repair Plan**
+5. **Wiki Lint And Repair Plan**
    - Extend `lintWiki(db)` from health counts into actionable repair suggestions.
    - Check missing links, orphan pages, stale generated pages, contradiction pages without resolution, and source pages without entity links.
-   - Done when `npm run wiki:lint` returns a machine-readable repair plan.
+   - `npm run wiki:lint` and `/api/wiki/lint` return machine-readable repair actions and write `wiki/meta/Wiki Repair Plan.md`.
 
-2. **Agent Preflight Context Pack**
+## Build Next
+
+1. **Agent Preflight Context Pack**
    - Before deploy/Jules dispatch, build a context packet from `wiki/hot.md`, `wiki/index.md`, search hits, action row, dispatch history, and trust state.
    - Apply existing redaction before any external handoff.
    - Done when every runnable action spec includes the relevant memory links and source paths.
 
-3. **Outcome Learning Loop**
+2. **Outcome Learning Loop**
    - Convert action completion, dispatch reconciliation, buyer signal, and money outcomes into wiki updates.
    - Improve `Action Memory`, `Dispatch Memory`, and project entity pages from outcomes rather than just queue state.
    - Done when closed actions update the wiki with what worked, failed, or changed.
 
-4. **Contradiction Resolution Workflow**
+3. **Contradiction Resolution Workflow**
    - Keep contradiction markers as evidence, but add status: open, resolved, superseded.
    - Link each contradiction to the pages it affects.
    - Done when old claims are corrected without deleting the raw source trail.
 
-5. **Retrieval Ladder Upgrade**
+4. **Retrieval Ladder Upgrade**
    - Improve chunk search before adding vectors: contextual prefixes, BM25-style scoring, and source filters.
    - Add the turbovec adapter only after chunk volume and query failures justify semantic search.
    - Done when retrieval quality improves measurably without adding hosted vector infrastructure.

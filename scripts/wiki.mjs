@@ -88,7 +88,7 @@ const MEMORY_BACKLOG = [
   {
     id: "wiki-lint-repair-plan",
     title: "Wiki Lint And Repair Plan",
-    status: "next",
+    status: "shipped",
     summary: "Turn graph health into actionable repairs for missing links, orphans, stale pages, and unresolved contradictions.",
     done: "npm run wiki:lint returns a machine-readable repair plan.",
   },
@@ -1063,6 +1063,7 @@ function dashboardMarkdown(db) {
     `- Chunks ready for future vector adapter: ${chunks}`,
     `- Missing wikilinks: ${health.missingLinks.length}`,
     `- Orphan pages: ${health.orphanPages.length}`,
+    `- Repair actions: ${health.repairs.length}`,
     "",
     "## Dataview",
     "",
@@ -1100,6 +1101,7 @@ function memoryBacklogMarkdown() {
     "- Deterministic source ingest: raw evidence copy, source synthesis page, manifest skip, wikilinks, contradiction marker extraction.",
     "- Source Coverage Pack: curated high-signal docs ingest, coverage report, CLI/API/UI trigger.",
     "- Query-To-Page Capture: useful answers filed under `wiki/questions/` with index, hot cache, log, and chunks updated.",
+    "- Wiki Lint And Repair Plan: machine-readable repairs plus `wiki/meta/Wiki Repair Plan.md`.",
     "",
     ...rows,
     "## Refuse for now",
@@ -1115,24 +1117,89 @@ function memoryBacklogMarkdown() {
 }
 
 export function lintWiki(db) {
-  const pages = safeAll(db, "SELECT path, title, kind FROM wiki_pages");
+  const root = vaultRoot();
+  const pages = safeAll(db, "SELECT path, title, kind, updated_at FROM wiki_pages");
   const links = safeAll(db, "SELECT from_path, to_title FROM wiki_links");
   const titles = new Set(pages.map((page) => page.title));
   const inbound = new Set(links.map((link) => link.to_title));
+  const graphTopicTitles = new Set(pages.filter((page) => ["entity", "concept", "domain"].includes(page.kind)).map((page) => page.title));
   const missingLinks = links
     .filter((link) => link.to_title && !titles.has(link.to_title))
     .map((link) => ({ from: link.from_path, to: link.to_title }))
+    .slice(0, 20);
+  const missingFiles = pages
+    .filter((page) => !existsSync(resolve(root, page.path)))
+    .map((page) => ({ path: page.path, title: page.title, kind: page.kind }))
     .slice(0, 20);
   const orphanPages = pages
     .filter((page) => !["meta", "overview", "source"].includes(page.kind) && !inbound.has(page.title))
     .map((page) => ({ path: page.path, title: page.title, kind: page.kind }))
     .slice(0, 20);
+  const sourcePagesWithoutEntityLinks = pages
+    .filter((page) => page.kind === "source" && page.path.startsWith("wiki/sources/"))
+    .filter((page) => !links.some((link) => link.from_path === page.path && graphTopicTitles.has(link.to_title)))
+    .map((page) => ({ path: page.path, title: page.title }))
+    .slice(0, 20);
+  const unresolvedContradictions = [];
+  const contradictionPath = resolve(root, "wiki", "meta", "contradictions.md");
+  if (existsSync(contradictionPath)) {
+    const lines = readFileSync(contradictionPath, "utf8").split(/\r?\n/);
+    for (const line of lines) {
+      if (!/^-\s+\[\[.+?\]\]:/.test(line)) continue;
+      if (/\b(status|resolved|superseded)\b/i.test(line)) continue;
+      unresolvedContradictions.push({ line: line.replace(/^-\s+/, "").trim() });
+      if (unresolvedContradictions.length >= 20) break;
+    }
+  }
+  const repairs = [
+    ...missingLinks.map((item, index) => ({
+      id: `missing-link:${index + 1}`,
+      type: "missing-link",
+      severity: "high",
+      target: item.to,
+      from: item.from,
+      action: `Create or rename a wiki page for \`${item.to}\`, or remove the stale link from ${item.from}.`,
+    })),
+    ...missingFiles.map((item, index) => ({
+      id: `missing-file:${index + 1}`,
+      type: "missing-file",
+      severity: "high",
+      target: item.path,
+      action: `Regenerate ${item.path} or remove the stale wiki_pages row by running wiki sync.`,
+    })),
+    ...orphanPages.map((item, index) => ({
+      id: `orphan-page:${index + 1}`,
+      type: "orphan-page",
+      severity: "medium",
+      target: item.path,
+      action: `Add an inbound wikilink to [[${item.title}]] from a relevant domain, entity, or question page.`,
+    })),
+    ...sourcePagesWithoutEntityLinks.map((item, index) => ({
+      id: `source-without-entity:${index + 1}`,
+      type: "source-without-entity",
+      severity: "medium",
+      target: item.path,
+      action: `Link ${item.path} to at least one entity, concept, or domain page so source evidence joins the operating graph.`,
+    })),
+    ...unresolvedContradictions.map((item, index) => ({
+      id: `unresolved-contradiction:${index + 1}`,
+      type: "unresolved-contradiction",
+      severity: "high",
+      target: item.line,
+      action: "Resolve or supersede this contradiction in the affected entity/domain page while preserving the raw evidence.",
+    })),
+  ];
   return {
     pages: pages.length,
     links: links.length,
     missingLinks,
+    missingFiles,
     orphanPages,
-    ok: missingLinks.length === 0,
+    sourcePagesWithoutEntityLinks,
+    unresolvedContradictions,
+    repairs,
+    ok: missingLinks.length === 0 && missingFiles.length === 0,
+    needsAttention: repairs.length > 0,
   };
 }
 
@@ -1163,6 +1230,17 @@ function questionLogEntry(result) {
     `- Question page: \`${result.path}\``,
     `- Related pages: ${result.related.map((page) => `[[${wikiLinkTitle(page.title)}]]`).join(", ") || "none"}`,
     `- Summary: ${result.question}`,
+    "",
+  ].join("\n");
+}
+
+function lintLogEntry(result) {
+  return [
+    `## [${day()}] lint | Wiki repair plan`,
+    `- Repairs: ${result.repairs.length}`,
+    `- Missing links: ${result.missingLinks.length}`,
+    `- Orphans: ${result.orphanPages.length}`,
+    `- Report: \`wiki/meta/Wiki Repair Plan.md\``,
     "",
   ].join("\n");
 }
@@ -1365,6 +1443,40 @@ function questionMarkdown({ title, question, answer, related, inferredLinks, tag
     "",
     "- Treat this as compiled synthesis, not raw evidence.",
     "- If a newer source contradicts this answer, preserve the page and add contradiction status instead of deleting it.",
+    "",
+  ].join("\n");
+}
+
+function repairPlanMarkdown(result) {
+  const repairRows = result.repairs.length
+    ? result.repairs.map((repair) => `| ${repair.severity} | ${repair.type} | ${repair.target} | ${repair.action} |`)
+    : ["| none | none | none | No repairs required. |"];
+  return [
+    frontmatter({
+      type: "meta",
+      title: "\"Wiki Repair Plan\"",
+      updated: isoNow(),
+      tags: "[horizon, memory-health, lint]",
+      status: result.repairs.length ? "needs-review" : "active",
+    }),
+    "# Wiki Repair Plan",
+    "",
+    "Machine-readable lint output is returned by `npm run wiki:lint`; this page is the Obsidian-readable repair queue.",
+    "",
+    `- Pages: ${result.pages}`,
+    `- Links: ${result.links}`,
+    `- Repairs: ${result.repairs.length}`,
+    `- Missing links: ${result.missingLinks.length}`,
+    `- Missing files: ${result.missingFiles.length}`,
+    `- Orphan pages: ${result.orphanPages.length}`,
+    `- Source pages without entity links: ${result.sourcePagesWithoutEntityLinks.length}`,
+    `- Unresolved contradictions: ${result.unresolvedContradictions.length}`,
+    "",
+    "| Severity | Type | Target | Action |",
+    "| --- | --- | --- | --- |",
+    ...repairRows,
+    "",
+    "Related: [[dashboard]], [[Living Memory Backlog]], [[Compound Horizon Memory]].",
     "",
   ].join("\n");
 }
@@ -1710,6 +1822,50 @@ export function captureWikiAnswer(db, { question, answer, title, links = [], tag
   return result;
 }
 
+export function runWikiLint(db) {
+  ensureDirs();
+  const health = lintWiki(db);
+  const result = {
+    id: randomUUID(),
+    ...health,
+    files: [],
+    lintedAt: isoNow(),
+  };
+
+  result.files.push(writeIndexedPage(db, "wiki/meta/Wiki Repair Plan.md", repairPlanMarkdown(result), {
+    kind: "meta",
+    status: result.repairs.length ? "needs-review" : "active",
+  }));
+
+  const pages = safeAll(db, "SELECT * FROM wiki_pages ORDER BY kind, title");
+  result.files.push(writeIndexedPage(db, "wiki/index.md", indexMarkdown(db, pages), { kind: "meta", status: "active" }));
+
+  const log = [
+    frontmatter({
+      type: "meta",
+      title: "\"Wiki Log\"",
+      updated: isoNow(),
+      tags: "[horizon, log]",
+      status: "active",
+    }),
+    "# Wiki Log",
+    "",
+    lintLogEntry(result),
+    existingLog().replace(/^---[\s\S]*?---\s*# Wiki Log\s*/m, "").trim(),
+    "",
+  ].filter(Boolean).join("\n");
+  result.files.push(writeIndexedPage(db, "wiki/log.md", log, { kind: "meta", status: "active" }));
+
+  db.prepare("INSERT INTO wiki_runs (id, kind, summary, payload_json, created_at) VALUES (?, 'lint', ?, ?, ?)").run(
+    result.id,
+    `Wiki lint: ${result.repairs.length} repairs`,
+    JSON.stringify(result),
+    result.lintedAt,
+  );
+
+  return result;
+}
+
 function walkMarkdown(dir, root, out = []) {
   if (!existsSync(dir)) return out;
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -1805,6 +1961,8 @@ if (isCli) {
     const cmd = process.argv[2] ?? "status";
     if (cmd === "sync") {
       console.log(JSON.stringify(syncHorizonWiki(db), null, 2));
+    } else if (cmd === "lint") {
+      console.log(JSON.stringify(runWikiLint(db), null, 2));
     } else if (cmd === "coverage") {
       console.log(JSON.stringify(runWikiSourceCoverage(db, { force: process.argv.includes("--force") }), null, 2));
     } else if (cmd === "capture") {

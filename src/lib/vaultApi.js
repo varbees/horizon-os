@@ -64,3 +64,9 @@ export async function captureWikiAnswer(payload) {
   if (!response.ok) throw new Error(`wiki capture failed: ${response.status}`);
   return response.json();
 }
+
+export async function runWikiLint() {
+  const response = await fetch("/api/wiki/lint", { method: "POST" });
+  if (!response.ok) throw new Error(`wiki lint failed: ${response.status}`);
+  return response.json();
+}
