@@ -21,15 +21,21 @@ test("compound wiki sync writes vault files, tracks pages, and supports search",
     assert.ok(result.files.includes("AGENTS.md"));
     assert.ok(result.files.includes("wiki/index.md"));
     assert.ok(result.files.includes("wiki/hot.md"));
+    assert.ok(result.files.includes("wiki/meta/Living Memory Backlog.md"));
     assert.ok(result.files.includes(".raw/horizon-intelligence/turbovec.md"));
 
-    for (const path of ["WIKI.md", "AGENTS.md", "wiki/index.md", "wiki/hot.md", "wiki/log.md"]) {
+    for (const path of ["WIKI.md", "AGENTS.md", "wiki/index.md", "wiki/hot.md", "wiki/log.md", "wiki/meta/Living Memory Backlog.md"]) {
       assert.ok(existsSync(join(process.env.HORIZON_VAULT_PATH, path)), `expected ${path}`);
     }
 
     const schema = readFileSync(join(process.env.HORIZON_VAULT_PATH, "WIKI.md"), "utf8");
     assert.match(schema, /immutable raw sources/i);
     assert.match(schema, /turbovec/i);
+
+    const backlog = readFileSync(join(process.env.HORIZON_VAULT_PATH, "wiki/meta/Living Memory Backlog.md"), "utf8");
+    assert.match(backlog, /Source Coverage Pack/);
+    assert.match(backlog, /Query-To-Page Capture/);
+    assert.match(backlog, /Agent Preflight Context Pack/);
 
     const status = wikiStatus(db);
     assert.equal(status.rawSourceCount, 3);

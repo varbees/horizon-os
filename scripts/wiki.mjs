@@ -70,6 +70,58 @@ const CORE_SOURCES = [
   },
 ];
 
+const MEMORY_BACKLOG = [
+  {
+    id: "source-coverage-pack",
+    title: "Source Coverage Pack",
+    status: "next",
+    summary: "Curated ingest manifest for Horizon's highest-signal docs and project launch files.",
+    done: "One command ingests or skips all registered sources and writes a coverage report.",
+  },
+  {
+    id: "query-to-page-capture",
+    title: "Query-To-Page Capture",
+    status: "next",
+    summary: "Save useful answers under wiki/questions so synthesis compounds instead of disappearing into chat.",
+    done: "A question and answer can be filed back into memory with index, hot cache, log, and chunks updated.",
+  },
+  {
+    id: "wiki-lint-repair-plan",
+    title: "Wiki Lint And Repair Plan",
+    status: "next",
+    summary: "Turn graph health into actionable repairs for missing links, orphans, stale pages, and unresolved contradictions.",
+    done: "npm run wiki:lint returns a machine-readable repair plan.",
+  },
+  {
+    id: "agent-preflight-context-pack",
+    title: "Agent Preflight Context Pack",
+    status: "next",
+    summary: "Attach relevant hot/index/search/action/dispatch/trust memory to runnable specs before external handoff.",
+    done: "Every deploy/Jules spec includes relevant memory links and source paths after redaction.",
+  },
+  {
+    id: "outcome-learning-loop",
+    title: "Outcome Learning Loop",
+    status: "next",
+    summary: "Compile action completion, dispatch reconciliation, buyer signal, and money outcomes into project memory.",
+    done: "Closed actions update wiki pages with what worked, failed, or changed.",
+  },
+  {
+    id: "contradiction-resolution-workflow",
+    title: "Contradiction Resolution Workflow",
+    status: "next",
+    summary: "Track contradiction status as open, resolved, or superseded without deleting the raw evidence trail.",
+    done: "Contradictions link to affected pages and carry resolution state.",
+  },
+  {
+    id: "retrieval-ladder-upgrade",
+    title: "Retrieval Ladder Upgrade",
+    status: "later",
+    summary: "Improve chunk retrieval with contextual prefixes and BM25-style scoring before a turbovec adapter.",
+    done: "Retrieval quality improves measurably without hosted vector infrastructure.",
+  },
+];
+
 function isoNow() {
   return new Date().toISOString();
 }
@@ -505,6 +557,9 @@ function hotMarkdown(db) {
     "## Open Questions",
     "- Which sources should be ingested first beyond Horizon docs, PhotoSelect go-live docs, and varbees/rateguard launch material?",
     "- When wiki volume is high enough, install/build the turbovec adapter and embed `wiki_chunks`.",
+    "",
+    "## Living Memory Backlog",
+    ...MEMORY_BACKLOG.slice(0, 4).map((item) => `- [[Living Memory Backlog]]: ${item.title} - ${item.summary}`),
     "",
   ].join("\n");
 }
@@ -949,6 +1004,45 @@ function dashboardMarkdown(db) {
   ].join("\n");
 }
 
+function memoryBacklogMarkdown() {
+  const rows = MEMORY_BACKLOG.map((item, index) => [
+    `## ${index + 1}. ${item.title}`,
+    "",
+    `- Status: ${item.status}`,
+    `- Summary: ${item.summary}`,
+    `- Done: ${item.done}`,
+    "",
+  ].join("\n"));
+  return [
+    frontmatter({
+      type: "meta",
+      title: "\"Living Memory Backlog\"",
+      updated: isoNow(),
+      tags: "[horizon, memory, backlog]",
+      status: "active",
+    }),
+    "# Living Memory Backlog",
+    "",
+    "Task list for the Horizon OS living-memory conversation. This is the path from the current compound wiki into an agent memory system that improves action quality over time.",
+    "",
+    "## Already shipped",
+    "",
+    "- [[Compound Horizon Memory]] base: schema, vault sync, hot cache, index, log, graph, chunks, API, CLI, and loop sync.",
+    "- Deterministic source ingest: raw evidence copy, source synthesis page, manifest skip, wikilinks, contradiction marker extraction.",
+    "",
+    ...rows,
+    "## Refuse for now",
+    "",
+    "- Remote vector database.",
+    "- Auto-dispatching repo writes without operator review.",
+    "- Dashboard-only features that do not improve memory, action quality, or money decisions.",
+    "- Blind ingest of every file in `~/Desktop/bolting`.",
+    "",
+    "Related: [[Compound Horizon Memory]], [[Agent Workflow Memory]], [[Retrieval Ladder]], [[Action Memory]].",
+    "",
+  ].join("\n");
+}
+
 export function lintWiki(db) {
   const pages = safeAll(db, "SELECT path, title, kind FROM wiki_pages");
   const links = safeAll(db, "SELECT from_path, to_title FROM wiki_links");
@@ -1096,6 +1190,7 @@ export function syncHorizonWiki(db) {
   const generated = [
     { path: "wiki/overview.md", kind: "overview", content: overviewMarkdown(db), status: "active" },
     { path: "wiki/hot.md", kind: "meta", content: hotMarkdown(db), status: "active" },
+    { path: "wiki/meta/Living Memory Backlog.md", kind: "meta", content: memoryBacklogMarkdown(), status: "active" },
     ...sourcePages(),
     ...conceptPages(),
     ...entityPages(),

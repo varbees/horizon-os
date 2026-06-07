@@ -85,6 +85,7 @@ npm run build
 - `docs/journey-log-system.md`
 - `docs/capital-goals-2027.md`
 - `docs/horizon-compound-wiki.md`
+- `docs/horizon-living-memory-backlog.md`
 
 ## Calendar
 

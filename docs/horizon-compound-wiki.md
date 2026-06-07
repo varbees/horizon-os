@@ -54,6 +54,7 @@ The base sync writes:
 - `wiki/index.md`
 - `wiki/log.md`
 - `wiki/meta/dashboard.md`
+- `wiki/meta/Living Memory Backlog.md`
 - `wiki/sources/*`
 - `wiki/concepts/*`
 - `wiki/entities/*`
@@ -99,3 +100,5 @@ This slice is ready when:
 - Obsidian can render the graph from wikilinks.
 
 Future slices should add source ingestion from selected project docs, richer contradiction tracking, and a turbovec adapter only after the generated wiki/chunk volume justifies semantic retrieval.
+
+The canonical task list for those slices is `docs/horizon-living-memory-backlog.md`, mirrored into the generated wiki as `wiki/meta/Living Memory Backlog.md`.
