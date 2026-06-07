@@ -22,6 +22,7 @@ import { gitDetail } from "./git-detail.mjs";
 import { trustSummary } from "./trust.mjs";
 import { rankActions } from "./ranking.mjs";
 import { loadSources, priorityFor } from "./sources.mjs";
+import { searchWiki, syncHorizonWiki, wikiStatus } from "./wiki.mjs";
 import {
   createSession as julesCreateSession,
   getSession as julesGetSession,
@@ -524,7 +525,7 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && url.pathname === "/api/vault") {
-      return json(res, 200, { ...vaultInfo(), notes: listNotes().slice(0, 80) });
+      return json(res, 200, { ...vaultInfo(), notes: listNotes().slice(0, 80), wiki: wikiStatus(db) });
     }
 
     if (req.method === "GET" && url.pathname === "/api/vault/note") {
@@ -538,8 +539,42 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST" && url.pathname === "/api/vault/sync") {
       try {
-        const result = syncVaultSnapshots();
-        return json(res, 200, { ok: true, ...result });
+        const snapshots = syncVaultSnapshots();
+        const wiki = syncHorizonWiki(db);
+        return json(res, 200, {
+          ok: true,
+          synced: snapshots.synced,
+          files: [...snapshots.files, ...wiki.files],
+          snapshots,
+          wiki,
+        });
+      } catch (error) {
+        return json(res, 500, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/wiki") {
+      try {
+        return json(res, 200, { ok: true, wiki: wikiStatus(db) });
+      } catch (error) {
+        return json(res, 500, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/wiki/sync") {
+      try {
+        const result = syncHorizonWiki(db);
+        return json(res, 200, { ok: true, ...result, wiki: wikiStatus(db) });
+      } catch (error) {
+        return json(res, 500, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/wiki/search") {
+      try {
+        const query = url.searchParams.get("q") ?? "";
+        const limit = Number(url.searchParams.get("limit") ?? 10);
+        return json(res, 200, { ok: true, query, results: searchWiki(db, query, { limit }) });
       } catch (error) {
         return json(res, 500, { ok: false, error: String(error.message ?? error) });
       }

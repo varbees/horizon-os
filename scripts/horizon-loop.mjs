@@ -28,6 +28,7 @@ import { generateRevenueActions } from "./revenue-actions.mjs";
 import { autoEnrich } from "./auto-enrich.mjs";
 import { geminiAvailable } from "./gemini.mjs";
 import { reconcileDispatches } from "./reconcile.mjs";
+import { syncHorizonWiki } from "./wiki.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const HORIZON_DIR = resolve(root, ".horizon");
@@ -40,7 +41,7 @@ function writeHeartbeat(cycle) {
   if (!existsSync(HORIZON_DIR)) mkdirSync(HORIZON_DIR, { recursive: true });
   writeFileSync(STATUS_PATH, JSON.stringify(cycle, null, 2));
   if (!existsSync(LOG_PATH)) {
-    appendFileSync(LOG_PATH, "started_at\tprojects\tdirty\tgenerated\tenriched\tready\tok\tnotes\n");
+    appendFileSync(LOG_PATH, "started_at\tprojects\tdirty\tgenerated\tenriched\tready\treconciled\twiki_files\tok\tnotes\n");
   }
   const s = cycle.stages;
   const row = [
@@ -50,6 +51,8 @@ function writeHeartbeat(cycle) {
     s.generate?.actions ?? "",
     s.enrich?.enriched ?? (s.enrich?.skipped ? "skip" : ""),
     s.ready?.enrichedActions ?? "",
+    s.reconcile?.reconciled ?? (s.reconcile?.skipped ? "skip" : ""),
+    s.wiki?.files ?? "",
     cycle.ok ? "ok" : "ERR",
     cycle.errors.join("; "),
   ].join("\t");
@@ -113,6 +116,14 @@ export async function runCycle({ db: providedDb, enrichLimit } = {}) {
     cycle.errors.push("reconcile: " + msg(e));
   }
 
+  // 6. compile live state into the persistent wiki memory layer
+  try {
+    const wiki = syncHorizonWiki(db);
+    cycle.stages.wiki = { files: wiki.files.length, sources: wiki.sources };
+  } catch (e) {
+    cycle.errors.push("wiki: " + msg(e));
+  }
+
   cycle.finishedAt = new Date().toISOString();
   cycle.ok = cycle.errors.length === 0;
   writeHeartbeat(cycle);
@@ -143,6 +154,7 @@ if (isCli) {
       `enrich:${s.enrich?.skipped ? "skip" : `${s.enrich?.enriched ?? 0}${s.enrich?.stoppedForQuota ? "(quota)" : ""}`}`,
       `ready:${s.ready?.enrichedActions ?? "-"}`,
       `reconcile:${s.reconcile?.skipped ? "skip" : `${s.reconcile?.reconciled ?? 0}/${s.reconcile?.polled ?? 0}`}`,
+      `wiki:${s.wiki?.files ?? "-"}`,
       cycle.ok ? "OK" : `ERR(${cycle.errors.length})`,
     ].join("  ");
     console.log(`[${cycle.startedAt}] ${line}`);

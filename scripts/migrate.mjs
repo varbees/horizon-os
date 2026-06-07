@@ -121,6 +121,71 @@ const MIGRATIONS = [
       );
     },
   },
+  {
+    version: 3,
+    name: "compound_wiki",
+    up(db) {
+      // Horizon's compounding memory layer: immutable source registry, generated
+      // wiki pages, page graph, chunks for future vector indexing, and sync runs.
+      db.exec(`CREATE TABLE IF NOT EXISTS wiki_sources (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL DEFAULT '',
+        kind TEXT NOT NULL DEFAULT 'source',
+        raw_path TEXT NOT NULL DEFAULT '',
+        source_path TEXT NOT NULL DEFAULT '',
+        source_url TEXT NOT NULL DEFAULT '',
+        content_hash TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'active',
+        summary TEXT NOT NULL DEFAULT '',
+        tags_json TEXT NOT NULL DEFAULT '[]',
+        ingested_at TEXT NOT NULL DEFAULT '',
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_wiki_sources_kind ON wiki_sources(kind)`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_wiki_sources_updated ON wiki_sources(updated_at)`);
+
+      db.exec(`CREATE TABLE IF NOT EXISTS wiki_pages (
+        path TEXT PRIMARY KEY,
+        title TEXT NOT NULL DEFAULT '',
+        kind TEXT NOT NULL DEFAULT 'page',
+        status TEXT NOT NULL DEFAULT 'seed',
+        summary TEXT NOT NULL DEFAULT '',
+        source_count INTEGER NOT NULL DEFAULT 0,
+        outbound_links_json TEXT NOT NULL DEFAULT '[]',
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_wiki_pages_kind ON wiki_pages(kind)`);
+
+      db.exec(`CREATE TABLE IF NOT EXISTS wiki_links (
+        from_path TEXT NOT NULL DEFAULT '',
+        to_title TEXT NOT NULL DEFAULT '',
+        to_path TEXT NOT NULL DEFAULT '',
+        kind TEXT NOT NULL DEFAULT 'wikilink',
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        PRIMARY KEY (from_path, to_title, kind)
+      )`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_wiki_links_to_title ON wiki_links(to_title)`);
+
+      db.exec(`CREATE TABLE IF NOT EXISTS wiki_chunks (
+        id TEXT PRIMARY KEY,
+        page_path TEXT NOT NULL DEFAULT '',
+        chunk_index INTEGER NOT NULL DEFAULT 0,
+        body TEXT NOT NULL DEFAULT '',
+        embedding_id TEXT NOT NULL DEFAULT '',
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_wiki_chunks_page ON wiki_chunks(page_path)`);
+
+      db.exec(`CREATE TABLE IF NOT EXISTS wiki_runs (
+        id TEXT PRIMARY KEY,
+        kind TEXT NOT NULL DEFAULT '',
+        summary TEXT NOT NULL DEFAULT '',
+        payload_json TEXT NOT NULL DEFAULT '{}',
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_wiki_runs_created ON wiki_runs(created_at)`);
+    },
+  },
 ];
 
 const LATEST = MIGRATIONS.reduce((m, x) => Math.max(m, x.version), 0);

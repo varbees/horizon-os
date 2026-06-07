@@ -3,6 +3,11 @@
 The `/vault` screen makes Horizon and your Obsidian vault one source of truth. Horizon mirrors its
 state into the vault as Markdown and can read any vault note back.
 
+The bridge now has two layers:
+
+- `Horizon/` snapshots: direct mirrors of command center, capital, journey, and saved signals.
+- Compound wiki: `.raw/`, `wiki/`, `WIKI.md`, `AGENTS.md`, index, hot cache, log, pages, links, chunks, and graph health.
+
 ## Vault location
 
 `scripts/vault.mjs` resolves the vault in this order:
@@ -26,24 +31,40 @@ the vault (your own notes stay untouched):
 Each note carries YAML frontmatter (`title`, `source: horizon-os`, `synced`, `tags: horizon/...`) so
 Obsidian can group and query them.
 
+The same sync also compiles the compound wiki:
+
+- `WIKI.md` - vault schema and maintenance rules for any LLM.
+- `AGENTS.md` - agent instructions for editing the vault.
+- `.raw/horizon-intelligence/*.md` - immutable reference-source notes.
+- `wiki/hot.md` - current context before any agent acts.
+- `wiki/index.md` - content map for generated pages.
+- `wiki/log.md` - chronological wiki maintenance log.
+- `wiki/domains/*` - live money lanes, action memory, dispatch memory, and work-event ledger.
+- `wiki/entities/*` and `wiki/concepts/*` - graph nodes for projects, tools, and memory architecture.
+
 ## API
 
 - `GET /api/vault` - vault path, existence, note count, recent notes.
-- `POST /api/vault/sync` - regenerate the Horizon snapshots.
+- `POST /api/vault/sync` - regenerate the Horizon snapshots and compound wiki.
 - `GET /api/vault/note?path=` - read a note (path confined to the vault).
 - `POST /api/vault/note` - write a note (path confined to the vault).
+- `GET /api/wiki` - compound wiki status, latest sync, graph health, and retrieval ladder.
+- `POST /api/wiki/sync` - compile the compound wiki without regenerating the `Horizon/` snapshots.
+- `GET /api/wiki/search?q=` - search generated wiki pages.
 
 Path traversal is blocked: every path resolves inside the vault root or is rejected.
 
 ## Using it
 
 1. Open `/vault`, click **Sync to Obsidian**.
-2. Open the vault in Obsidian; the `Horizon/` folder now holds the snapshots, refreshed on each sync.
+2. Open the vault in Obsidian; the `Horizon/` folder holds snapshots and `wiki/` holds generated synthesis.
 3. Browse any vault note from the Horizon UI; click a note to read it.
+4. Search the compound wiki from `/vault` to inspect what Horizon remembers.
 
 A scheduled auto-sync and writing edits back from Horizon into arbitrary notes are natural follow-ups.
+The autonomous loop already refreshes the compound wiki after each cycle.
 
 ## Exit gate
 
 - `npm run build` passes.
-- With `npm run dev:full` running, Sync writes the `Horizon/` snapshots and they open in Obsidian.
+- With `npm run dev:full` running, Sync writes the `Horizon/` snapshots plus the `wiki/` graph and they open in Obsidian.

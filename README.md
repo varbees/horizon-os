@@ -28,6 +28,14 @@ npm run projects:sweep
 npm run projects:sweep:watch
 ```
 
+Compound wiki memory:
+
+```bash
+npm run wiki:sync
+npm run wiki:status
+npm run wiki:search -- money action memory
+```
+
 ## Build
 
 ```bash
@@ -45,7 +53,7 @@ npm run build
 - `/inbox` - Resource & Content Inbox: link capture, content backlog, and the social skills catalog
 - `/signals` - News & Signals: local RSS feed with category counts, filters, and prunable sources
 - `/connectors` - MCP Connectors: connect to MCP servers with browser OAuth, list and call tools
-- `/vault` - Obsidian vault bridge: mirror Horizon state into the vault as Markdown and read notes back
+- `/vault` - Obsidian vault bridge plus compound wiki memory: snapshots, schema, hot cache, graph pages, and wiki search
 - `/map` - node-editor command graph backed by local SQLite API
 - `/documents` - docs and connector artifacts
 
@@ -75,6 +83,7 @@ npm run build
 - `docs/horizon-version-roadmap.md`
 - `docs/journey-log-system.md`
 - `docs/capital-goals-2027.md`
+- `docs/horizon-compound-wiki.md`
 
 ## Calendar
 

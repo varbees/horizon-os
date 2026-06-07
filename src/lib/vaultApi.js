@@ -15,3 +15,22 @@ export async function readVaultNote(path) {
   if (!response.ok) throw new Error(`note read failed: ${response.status}`);
   return response.json();
 }
+
+export async function fetchWiki() {
+  const response = await fetch("/api/wiki");
+  if (!response.ok) throw new Error(`wiki unavailable: ${response.status}`);
+  return response.json();
+}
+
+export async function syncWiki() {
+  const response = await fetch("/api/wiki/sync", { method: "POST" });
+  if (!response.ok) throw new Error(`wiki sync failed: ${response.status}`);
+  return response.json();
+}
+
+export async function searchWiki(query, limit = 8) {
+  const params = new URLSearchParams({ q: query, limit: String(limit) });
+  const response = await fetch(`/api/wiki/search?${params.toString()}`);
+  if (!response.ok) throw new Error(`wiki search failed: ${response.status}`);
+  return response.json();
+}
