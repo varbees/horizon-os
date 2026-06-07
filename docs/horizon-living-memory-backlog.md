@@ -62,27 +62,30 @@ The goal is not a prettier notes dashboard. The goal is a local agent memory arc
    - Preflight packets now include an estimated context budget section before deploy/Jules handoff.
    - Wiki lint now catches frontmatter/schema gaps and empty sections, not only graph/link defects.
 
+11. **Wiki Query Modes And Gap Capture**
+   - Borrowed the `claude-obsidian` quick/standard/deep query pattern.
+   - Added `queryWiki(db, { question, mode, captureGap })`.
+   - Added `POST /api/wiki/query` and `npm run wiki:query`.
+   - Added Vault controls to build a query packet and optionally capture gaps.
+   - Unknowns are now written to `wiki/meta/gaps.md` as explicit memory-health work instead of being silently answered from weak context.
+
 ## Build Next
 
 The base living-memory backbone is complete enough to use daily. Next work should be driven by observed retrieval failures, dispatch failures, or buyer/outcome evidence rather than speculative memory features.
 
-1. **Wiki query modes and gap capture**
-   - Add quick/standard/deep query packets, modeled on `claude-obsidian`.
-   - File explicit knowledge gaps into `wiki/questions/` or `wiki/meta/gaps.md`.
-
-2. **Log folding / memory compaction**
+1. **Log folding / memory compaction**
    - Add deterministic fold pages under `wiki/folds/`.
    - Keep `wiki/log.md` parseable and short while preserving extractive rollups.
 
-3. **Doctor UI**
+2. **Doctor UI**
    - Surface `/api/doctor` in the Command Center or Vault as an operator strip.
    - Keep the backend read-only; UI should only display status and next repair command.
 
-4. **Dispatch queue policy**
+3. **Dispatch queue policy**
    - Apply OpenClaw's lane/session queue lesson to Horizon dispatches if concurrent external runs start colliding.
    - Keep per-action idempotency as the current guard until real collisions appear.
 
-5. **Turbovec adapter**
+4. **Turbovec adapter**
    - Add only after BM25-lite misses concrete queries.
    - Preserve stable IDs with `wiki_chunks.id`; use SQL/BM25 candidate allowlists for local semantic rerank.
 

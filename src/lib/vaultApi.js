@@ -35,6 +35,16 @@ export async function searchWiki(query, limit = 8) {
   return response.json();
 }
 
+export async function queryWiki(payload) {
+  const response = await fetch("/api/wiki/query", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error(`wiki query failed: ${response.status}`);
+  return response.json();
+}
+
 export async function ingestWikiSource(sourcePath, options = {}) {
   const response = await fetch("/api/wiki/ingest", {
     method: "POST",

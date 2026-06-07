@@ -59,6 +59,7 @@ From `~/Desktop/bolting/_external/threedotslabs/wild-workouts-go-ddd-example`:
 - `captureWikiAnswer(db, { question, answer, links })` saves useful answers under `wiki/questions/` and updates index, hot cache, log, and chunks.
 - `runWikiLint(db)` writes `wiki/meta/Wiki Repair Plan.md` and returns a machine-readable repair plan.
 - `updateContradictionStatus(db, { id, status, note })` marks contradiction rows open, resolved, or superseded without deleting evidence.
+- `queryWiki(db, { question, mode, captureGap })` builds quick, standard, or deep context packets and can persist insufficient-memory gaps to `wiki/meta/gaps.md`.
 - `buildPreflightContext(db, action)` and `formatPreflightContext(packet)` attach wiki hot/index/search hits, action row, dispatch history, and trust state to deployed specs.
 - `summarizeContextBudget(packet)` estimates preflight context size by category and records top contributors/recommendations before dispatch.
 - `horizonDoctor(db)` returns a read-only operator health contract for loop, wiki graph, retrieval, source registry, outbox, and Horizon-self WIP.
@@ -103,6 +104,7 @@ These pages intentionally serve the money OS: action quality, buyer evidence, di
 - `GET /api/wiki` returns wiki status and graph health.
 - `POST /api/wiki/sync` compiles the wiki immediately.
 - `GET /api/wiki/search?q=...` searches generated wiki pages.
+- `POST /api/wiki/query` builds a quick, standard, or deep query packet and can capture explicit gaps.
 - `POST /api/wiki/ingest` compiles a local source file into raw evidence plus generated wiki synthesis.
 - `POST /api/wiki/coverage` runs the curated source coverage pack.
 - `POST /api/wiki/capture` files a question and answer back into `wiki/questions/`.
@@ -119,6 +121,7 @@ npm run context:budget < packet.json
 npm run wiki:status
 npm run wiki:sync
 npm run wiki:search -- turbovec local vector
+npm run wiki:query -- --mode=deep --capture-gap "What does Horizon know about this?"
 npm run wiki:ingest -- /absolute/path/to/source.md
 npm run wiki:coverage
 npm run wiki:capture -- "What should Horizon remember?" "The answer to preserve."
@@ -143,6 +146,7 @@ This slice is ready when:
 - Preflight specs include context budget state, top contributors, and a concrete trimming recommendation.
 - Doctor returns loop/wiki/retrieval/source/outbox/self-WIP health from one read-only contract.
 - Lint flags frontmatter gaps and empty sections.
+- Query modes build quick/standard/deep packets and persist explicit gaps when Horizon lacks enough durable memory.
 - Search retrieves the generated pages.
 - The loop compiles wiki state automatically.
 - Obsidian can render the graph from wikilinks.

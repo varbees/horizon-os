@@ -20,6 +20,7 @@
     "wiki:status": "node scripts/wiki.mjs",
     "wiki:sync": "node scripts/wiki.mjs sync",
     "wiki:search": "node scripts/wiki.mjs search",
+    "wiki:query": "node scripts/wiki.mjs query",
     "wiki:ingest": "node scripts/wiki.mjs ingest",
     "wiki:coverage": "node scripts/wiki.mjs coverage",
     "wiki:capture": "node scripts/wiki.mjs capture",

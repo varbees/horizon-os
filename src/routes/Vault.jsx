@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Brain, Database, FileText, FolderGit2, Loader2, RefreshCw, Save, Search, Wrench, X } from "lucide-react";
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
-import { captureWikiAnswer, fetchVault, ingestWikiSource, readVaultNote, runWikiCoverage, runWikiLint, searchWiki, syncVault, syncWiki } from "../lib/vaultApi.js";
+import { captureWikiAnswer, fetchVault, ingestWikiSource, queryWiki, readVaultNote, runWikiCoverage, runWikiLint, searchWiki, syncVault, syncWiki } from "../lib/vaultApi.js";
 
 function relativeTime(ms) {
   if (!ms) return "";
@@ -24,7 +24,11 @@ export default function Vault() {
   const [wikiCovering, setWikiCovering] = useState(false);
   const [wikiCapturing, setWikiCapturing] = useState(false);
   const [wikiLinting, setWikiLinting] = useState(false);
+  const [wikiQuerying, setWikiQuerying] = useState(false);
   const [wikiQuery, setWikiQuery] = useState("money action memory");
+  const [wikiQueryMode, setWikiQueryMode] = useState("standard");
+  const [captureGaps, setCaptureGaps] = useState(false);
+  const [queryPacket, setQueryPacket] = useState(null);
   const [captureTitle, setCaptureTitle] = useState("");
   const [captureAnswer, setCaptureAnswer] = useState("");
   const [ingestPath, setIngestPath] = useState("");
@@ -92,11 +96,34 @@ export default function Vault() {
     try {
       const res = await searchWiki(wikiQuery, 8);
       setWikiResults(res.results ?? []);
+      setQueryPacket(null);
       if (!res.results?.length) setMsg("No wiki matches yet.");
     } catch {
       setMsg("Compound wiki search failed.");
     } finally {
       setWikiSearching(false);
+    }
+  }
+
+  async function doWikiQuery(event) {
+    event?.preventDefault();
+    if (!wikiQuery.trim()) return;
+    if (!live) {
+      setMsg("Start npm run dev:full to build a wiki query packet.");
+      return;
+    }
+    setWikiQuerying(true);
+    try {
+      const res = await queryWiki({ question: wikiQuery.trim(), mode: wikiQueryMode, captureGap: captureGaps });
+      setQueryPacket(res);
+      setWikiResults(res.searchResults ?? []);
+      if (res.gaps?.length) setMsg(captureGaps ? "Gap captured into wiki/meta/gaps.md." : "Gap detected; enable capture to file it.");
+      else setMsg(`${res.mode} query packet built.`);
+      await load();
+    } catch {
+      setMsg("Wiki query packet failed.");
+    } finally {
+      setWikiQuerying(false);
     }
   }
 
@@ -370,6 +397,42 @@ export default function Vault() {
               {wikiSearching ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Search className="h-4 w-4" aria-hidden="true" />}
               Search
             </button>
+          </form>
+
+          <form onSubmit={doWikiQuery} className="mt-3 rounded-md border border-outlineVariant bg-surfaceContainer p-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <select
+                value={wikiQueryMode}
+                onChange={(event) => setWikiQueryMode(event.target.value)}
+                className="rounded-md border border-outlineVariant bg-surface px-3 py-2 text-sm font-bold text-paper outline-none focus:border-primary"
+              >
+                <option value="quick">Quick</option>
+                <option value="standard">Standard</option>
+                <option value="deep">Deep</option>
+              </select>
+              <label className="flex items-center gap-2 rounded-md border border-outlineVariant bg-surface px-3 py-2 text-xs font-bold text-paper/70">
+                <input type="checkbox" checked={captureGaps} onChange={(event) => setCaptureGaps(event.target.checked)} />
+                Capture gaps
+              </label>
+              <button
+                type="submit"
+                disabled={wikiQuerying || !wikiQuery.trim()}
+                className="inline-flex items-center justify-center gap-2 rounded-md border border-outlineVariant bg-surface px-4 py-2 text-sm font-black text-paper transition hover:border-outline disabled:opacity-50"
+              >
+                {wikiQuerying ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Brain className="h-4 w-4" aria-hidden="true" />}
+                {wikiQuerying ? "Building..." : "Build Packet"}
+              </button>
+            </div>
+            {queryPacket ? (
+              <div className="mt-3 rounded-md border border-outlineVariant bg-surface p-3">
+                <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-paper/46">
+                  <span>{queryPacket.mode} packet</span>
+                  <span>{queryPacket.searchResults?.length ?? 0} pages</span>
+                  <span>{queryPacket.gaps?.length ?? 0} gaps</span>
+                </div>
+                <pre className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap font-mono text-[11px] leading-5 text-paper/62">{queryPacket.contextMarkdown}</pre>
+              </div>
+            ) : null}
           </form>
 
           <div className="mt-4 max-h-[28rem] space-y-2 overflow-y-auto">

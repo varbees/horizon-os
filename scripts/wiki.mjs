@@ -127,6 +127,13 @@ const MEMORY_BACKLOG = [
     summary: "Adopt the ccode/OpenClaw missed patterns: doctor checks plus context-size accounting before agent dispatch.",
     done: "Horizon has a read-only doctor module, context-budget estimator, API endpoints, CLI scripts, and preflight budget lines.",
   },
+  {
+    id: "query-modes-and-gap-capture",
+    title: "Wiki Query Modes And Gap Capture",
+    status: "shipped",
+    summary: "Add quick/standard/deep wiki query packets and persist explicit unknowns instead of pretending sparse memory can answer.",
+    done: "queryWiki(), /api/wiki/query, npm run wiki:query, and Vault packet controls now build query context and capture gaps to wiki/meta/gaps.md.",
+  },
 ];
 
 const DEFAULT_COVERAGE_SOURCES = [
@@ -2165,6 +2172,18 @@ function snippetFor(content, terms) {
   return content.slice(start, start + 240).replace(/\s+/g, " ").trim();
 }
 
+function readWikiPage(relPath, title = pageTitle(relPath)) {
+  const abs = resolve(vaultRoot(), relPath);
+  if (!existsSync(abs)) return { path: relPath, title, exists: false, snippet: "" };
+  const content = readFileSync(abs, "utf8");
+  return {
+    path: relPath,
+    title,
+    exists: true,
+    snippet: stripFrontmatter(content).replace(/\s+/g, " ").trim().slice(0, 700),
+  };
+}
+
 function termFrequency(text, term) {
   const hay = String(text ?? "").toLowerCase();
   let count = 0;
@@ -2254,6 +2273,146 @@ export function searchWiki(db, query, { limit = 10 } = {}) {
   return scored.sort((a, b) => b.score - a.score || b.mtime - a.mtime).slice(0, limit);
 }
 
+const QUERY_MODES = {
+  quick: { limit: 0, title: "Quick query packet" },
+  standard: { limit: 5, title: "Standard query packet" },
+  deep: { limit: 10, title: "Deep query packet" },
+};
+
+const QUERY_STOPWORDS = new Set([
+  "about",
+  "after",
+  "before",
+  "current",
+  "does",
+  "exists",
+  "from",
+  "have",
+  "horizon",
+  "into",
+  "should",
+  "that",
+  "the",
+  "this",
+  "what",
+  "when",
+  "where",
+  "which",
+  "with",
+]);
+
+function gapTerms(question, results) {
+  const hay = results.map((row) => `${row.title} ${row.summary} ${row.snippet}`).join("\n").toLowerCase();
+  return tokens(question)
+    .filter((term) => term.length > 3 && !QUERY_STOPWORDS.has(term))
+    .filter((term, index, all) => all.indexOf(term) === index)
+    .filter((term) => !hay.includes(term));
+}
+
+function queryGaps(question, mode, results) {
+  if (mode === "quick") return [];
+  if (!String(question ?? "").trim()) return [{ kind: "empty-question", summary: "No question was supplied." }];
+  const missingTerms = gapTerms(question, results);
+  if (results.length === 0 || (mode === "deep" && missingTerms.length >= 2)) {
+    return [{
+      kind: "insufficient-memory",
+      summary: "The generated wiki does not contain enough direct evidence to answer this question.",
+      missingTerms,
+    }];
+  }
+  return [];
+}
+
+function queryContextMarkdown({ question, mode, requiredPages, searchResults, gaps }) {
+  const modeTitle = QUERY_MODES[mode]?.title ?? QUERY_MODES.standard.title;
+  const requiredRows = requiredPages.map((page) => `- \`${page.path}\`${page.exists ? ` - ${page.snippet}` : " - missing"}`);
+  const resultRows = searchResults.length
+    ? searchResults.map((row) => `- [[${wikiLinkTitle(row.title)}]] (\`${row.path}\`, ${row.kind}, score ${Math.round(row.score * 100) / 100}) - ${row.snippet || row.summary}`)
+    : ["- No search pages included for this mode."];
+  const gapRows = gaps.length
+    ? gaps.map((gap) => `- ${gap.kind}: ${gap.summary}${gap.missingTerms?.length ? ` Missing terms: ${gap.missingTerms.join(", ")}.` : ""}`)
+    : ["- No explicit knowledge gap detected."];
+  return [
+    `## ${modeTitle}`,
+    "",
+    `Question: ${question}`,
+    "",
+    "### Required pages",
+    ...requiredRows,
+    "",
+    "### Search results",
+    ...resultRows,
+    "",
+    "### Gaps",
+    ...gapRows,
+    "",
+  ].join("\n");
+}
+
+function existingGapsBody() {
+  const path = resolve(vaultRoot(), "wiki", "meta", "gaps.md");
+  if (!existsSync(path)) return "";
+  return readFileSync(path, "utf8").replace(/^---[\s\S]*?---\s*# Wiki Gaps\s*/m, "").trim();
+}
+
+function gapsMarkdown(entry) {
+  return [
+    frontmatter({
+      type: "meta",
+      title: "\"Wiki Gaps\"",
+      updated: isoNow(),
+      tags: "[horizon, memory-health, gaps]",
+      status: "needs-review",
+    }),
+    "# Wiki Gaps",
+    "",
+    `## [${day()}] ${entry.mode} | ${entry.question}`,
+    `- Kind: ${entry.gaps.map((gap) => gap.kind).join(", ")}`,
+    `- Missing terms: ${entry.gaps.flatMap((gap) => gap.missingTerms ?? []).join(", ") || "not computed"}`,
+    `- Search results: ${entry.searchResults.length}`,
+    `- Action: ingest a source or capture a durable answer before treating this as known.`,
+    "",
+    existingGapsBody(),
+    "",
+  ].filter(Boolean).join("\n");
+}
+
+export function queryWiki(db, { question, mode = "standard", captureGap = false } = {}) {
+  ensureDirs();
+  const cleanQuestion = String(question ?? "").trim();
+  const cleanMode = QUERY_MODES[mode] ? mode : "standard";
+  const config = QUERY_MODES[cleanMode];
+  const requiredPages = [
+    readWikiPage("wiki/hot.md", "Hot Cache"),
+    readWikiPage("wiki/index.md", "Wiki Index"),
+  ];
+  const searchResults = config.limit > 0 ? searchWiki(db, cleanQuestion, { limit: config.limit }) : [];
+  const gaps = queryGaps(cleanQuestion, cleanMode, searchResults);
+  const result = {
+    id: randomUUID(),
+    mode: cleanMode,
+    question: cleanQuestion,
+    requiredPages,
+    searchResults,
+    gaps,
+    files: [],
+    queriedAt: isoNow(),
+  };
+  result.contextMarkdown = queryContextMarkdown(result);
+
+  if (captureGap && gaps.length) {
+    result.files.push(writeIndexedPage(db, "wiki/meta/gaps.md", gapsMarkdown(result), { kind: "meta", status: "needs-review" }));
+    db.prepare("INSERT INTO wiki_runs (id, kind, summary, payload_json, created_at) VALUES (?, 'query-gap', ?, ?, ?)").run(
+      result.id,
+      `Query gap: ${cleanQuestion}`,
+      JSON.stringify({ question: cleanQuestion, mode: cleanMode, gaps, searchResultCount: searchResults.length }),
+      result.queriedAt,
+    );
+  }
+
+  return result;
+}
+
 const isCli = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 
 if (isCli) {
@@ -2295,6 +2454,12 @@ if (isCli) {
       }
     } else if (cmd === "search") {
       console.log(JSON.stringify(searchWiki(db, process.argv.slice(3).join(" ")), null, 2));
+    } else if (cmd === "query") {
+      const modeArg = process.argv.find((arg) => arg.startsWith("--mode="));
+      const mode = modeArg ? modeArg.slice("--mode=".length) : "standard";
+      const captureGap = process.argv.includes("--capture-gap");
+      const question = process.argv.slice(3).filter((arg) => !arg.startsWith("--mode=") && arg !== "--capture-gap").join(" ");
+      console.log(JSON.stringify(queryWiki(db, { question, mode, captureGap }), null, 2));
     } else {
       console.log(JSON.stringify(wikiStatus(db), null, 2));
     }
