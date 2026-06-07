@@ -76,19 +76,20 @@ The goal is not a prettier notes dashboard. The goal is a local agent memory arc
    - Fold pages live under `wiki/folds/`, preserve copied log entries, and are indexed/searchable.
    - Dry-run previews the fold path/count without writing files.
 
+13. **Doctor UI Strip**
+   - Surfaced `/api/doctor` in the Command Center as a read-only System doctor region.
+   - Shows loop status, wiki root/graph/retrieval, source registry, dispatch outbox, and Horizon self-WIP from the backend contract.
+   - Keeps repair guidance display-only; mutations stay in explicit loop/wiki commands.
+
 ## Build Next
 
 The base living-memory backbone is complete enough to use daily. Next work should be driven by observed retrieval failures, dispatch failures, or buyer/outcome evidence rather than speculative memory features.
 
-1. **Doctor UI**
-   - Surface `/api/doctor` in the Command Center or Vault as an operator strip.
-   - Keep the backend read-only; UI should only display status and next repair command.
-
-2. **Dispatch queue policy**
+1. **Dispatch queue policy**
    - Apply OpenClaw's lane/session queue lesson to Horizon dispatches if concurrent external runs start colliding.
    - Keep per-action idempotency as the current guard until real collisions appear.
 
-3. **Turbovec adapter**
+2. **Turbovec adapter**
    - Add only after BM25-lite misses concrete queries.
    - Preserve stable IDs with `wiki_chunks.id`; use SQL/BM25 candidate allowlists for local semantic rerank.
 

@@ -114,6 +114,7 @@ These pages intentionally serve the money OS: action quality, buyer evidence, di
 - `GET /api/doctor` returns the read-only Horizon doctor summary.
 - `POST /api/context-budget` estimates a supplied preflight/context packet.
 - `POST /api/vault/sync` now writes both the old `Horizon/` snapshots and the compound wiki.
+- The Command Center renders `/api/doctor` as a read-only System doctor strip.
 
 ## CLI
 

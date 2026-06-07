@@ -87,6 +87,19 @@ test.describe("Horizon OS command center", () => {
     );
   });
 
+  test("surfaces the read-only doctor contract in the command center", async ({ page }) => {
+    await page.goto("/command");
+    await page.waitForLoadState("networkidle");
+
+    const doctor = page.getByRole("region", { name: "System doctor" });
+    await expect(doctor.getByText("System doctor")).toBeVisible();
+    await expect(doctor.getByText("Loop status", { exact: true })).toBeVisible();
+    await expect(doctor.getByText("Wiki graph", { exact: true })).toBeVisible();
+    await expect(doctor.getByText("Source registry", { exact: true })).toBeVisible();
+    await expect(doctor.getByText("Dispatch outbox", { exact: true })).toBeVisible();
+    await expect(doctor.getByText("Horizon self WIP", { exact: true })).toBeVisible();
+  });
+
   test("shows the codebase monetization lens for active and archived projects", async ({ page }) => {
     await page.goto("/projects");
     await page.waitForLoadState("networkidle");

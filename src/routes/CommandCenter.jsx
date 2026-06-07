@@ -16,7 +16,7 @@ import {
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
 import UsagePanel from "../components/UsagePanel.jsx";
-import { deployAction, dispatchToJules, enrichActionWithGemini, fetchActionQueue, fetchJulesSources, fetchLoopStatus, fetchTrust, generateRevenueActions, runLoopCycle, updateAction } from "../lib/actionQueueApi.js";
+import { deployAction, dispatchToJules, enrichActionWithGemini, fetchActionQueue, fetchDoctor, fetchJulesSources, fetchLoopStatus, fetchTrust, generateRevenueActions, runLoopCycle, updateAction } from "../lib/actionQueueApi.js";
 import { actionQueueSeed, projects, socialSkillCatalog } from "../data/horizon.js";
 
 const STATUS_FLOW = {
@@ -72,6 +72,7 @@ export default function CommandCenter() {
   const [loop, setLoop] = useState(null);
   const [loopBusy, setLoopBusy] = useState(false);
   const [trust, setTrust] = useState(null);
+  const [doctor, setDoctor] = useState(null);
   const [nextMoves, setNextMoves] = useState([]);
   const now = useClock();
 
@@ -94,6 +95,9 @@ export default function CommandCenter() {
         setNextMoves(data.nextMoves ?? []);
       })
       .catch(() => {});
+    fetchDoctor()
+      .then((data) => active && setDoctor(data.doctor))
+      .catch(() => {});
     return () => {
       active = false;
     };
@@ -113,6 +117,9 @@ export default function CommandCenter() {
     try {
       const cycle = await runLoopCycle({});
       setLoop(cycle);
+      fetchDoctor()
+        .then((data) => setDoctor(data.doctor))
+        .catch(() => {});
       const data = await fetchActionQueue();
       if (Array.isArray(data.actions) && data.actions.length) {
         setActions(data.actions);
@@ -218,6 +225,12 @@ export default function CommandCenter() {
       <section className="mt-4">
         <LoopStrip loop={loop} busy={loopBusy} onRun={runLoop} now={now} />
       </section>
+
+      {doctor ? (
+        <section className="mt-4" aria-label="System doctor">
+          <DoctorStrip doctor={doctor} />
+        </section>
+      ) : null}
 
       {trust ? (
         <section className="mt-4">
@@ -372,6 +385,62 @@ function LaneBanner() {
 // WIP tripwire threshold: more than this many in-flight Horizon-self actions means the
 // builder is polishing the tool instead of shipping product — surface it, don't hide it.
 const HORIZON_WIP_LIMIT = 3;
+
+const doctorLabels = {
+  "loop.status": "Loop status",
+  "wiki.root": "Wiki root",
+  "wiki.graph": "Wiki graph",
+  "wiki.retrieval": "Wiki retrieval",
+  "source.registry": "Source registry",
+  "dispatch.outbox": "Dispatch outbox",
+  "horizon.self_wip": "Horizon self WIP",
+};
+
+const doctorTone = {
+  ok: "border-signal/30 bg-signal/10 text-signal",
+  warn: "border-brass/35 bg-brass/10 text-brass",
+  fail: "border-rust/40 bg-rust/10 text-rust",
+};
+
+function DoctorStrip({ doctor }) {
+  const attention = doctor.checks?.filter((check) => check.status !== "ok") ?? [];
+  const statusTone = doctor.status === "ok" ? "text-signal" : doctor.status === "fail" ? "text-rust" : "text-brass";
+  return (
+    <Panel className="p-5">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <p className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.26em] text-brass">
+            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> System doctor
+          </p>
+          <h2 className="mt-2 font-display text-2xl font-bold text-paper">{doctor.summary}</h2>
+          <p className="mt-1 text-sm text-paper/56">
+            Read-only health contract for loop, wiki graph, retrieval, source registry, dispatch outbox, and Horizon self-work.
+          </p>
+        </div>
+        <div className="shrink-0 rounded-full border border-outlineVariant bg-surfaceVariant px-3 py-1.5 font-mono text-[10px] font-black uppercase tracking-[0.18em] text-paper/60">
+          <span className={statusTone}>{doctor.status}</span>
+          <span className="mx-2 text-paper/24">/</span>
+          {attention.length} attention
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {(doctor.checks ?? []).map((check) => (
+          <div key={check.id} className={`rounded-[var(--hz-radius-sm)] border p-3 ${doctorTone[check.status] ?? "border-outlineVariant bg-surfaceVariant text-paper"}`}>
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-paper/52">{doctorLabels[check.id] ?? check.id}</p>
+              <span className="rounded-full border border-current/30 px-2 py-0.5 font-mono text-[10px] font-black uppercase tracking-[0.14em]">
+                {check.status}
+              </span>
+            </div>
+            <p className="mt-2 text-sm font-bold leading-5 text-paper/76">{check.summary}</p>
+            {check.action ? <p className="mt-2 text-xs leading-5 text-paper/54">{check.action}</p> : null}
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
 
 function TrustStrip({ trust, nextMove }) {
   const wipOver = (trust.horizonSelfWip ?? 0) > HORIZON_WIP_LIMIT;

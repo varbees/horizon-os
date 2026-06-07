@@ -65,6 +65,12 @@ export async function fetchTrust() {
   return response.json();
 }
 
+export async function fetchDoctor() {
+  const response = await fetch("/api/doctor");
+  if (!response.ok) throw new Error(`doctor unavailable: ${response.status}`);
+  return response.json();
+}
+
 export async function fetchLoopStatus() {
   const response = await fetch("/api/loop/status");
   if (!response.ok) throw new Error(`loop status failed: ${response.status}`);
