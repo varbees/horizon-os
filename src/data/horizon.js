@@ -924,34 +924,63 @@ export const actionQueueSeed = [
   },
 ];
 
-// v0.9 News & Signals. Default RSS/Atom feeds, grouped by category. Prune freely.
+// v1.0 News & Signals. Default RSS/Atom feeds, grouped by money-relevant category.
+// Defaults are deliberately bounded and refresh-viable: no generic tech firehose, no default
+// Reddit feeds (429-prone), no missing/stale newsletter endpoints.
 export const signalSourceSeed = [
-  { id: "hn-front", name: "Hacker News", url: "https://hnrss.org/frontpage", category: "AI News Hubs", kind: "rss", sortOrder: 0 },
-  { id: "techcrunch-ai", name: "TechCrunch AI", url: "https://techcrunch.com/category/artificial-intelligence/feed/", category: "AI News Hubs", kind: "rss", sortOrder: 1 },
-  { id: "verge", name: "The Verge", url: "https://www.theverge.com/rss/index.xml", category: "AI News Hubs", kind: "rss", sortOrder: 2 },
-  { id: "import-ai", name: "Import AI (Jack Clark)", url: "https://importai.substack.com/feed", category: "AI Frontier", kind: "rss", sortOrder: 3 },
-  { id: "latent-space", name: "Latent Space", url: "https://www.latent.space/feed", category: "AI Frontier", kind: "rss", sortOrder: 4 },
-  { id: "simonw", name: "Simon Willison", url: "https://simonwillison.net/atom/everything/", category: "Agentic Engineering", kind: "rss", sortOrder: 5 },
-  { id: "hf-blog", name: "Hugging Face Blog", url: "https://huggingface.co/blog/feed.xml", category: "AI Tool Releases", kind: "rss", sortOrder: 6 },
-  { id: "r-localllama", name: "r/LocalLLaMA", url: "https://www.reddit.com/r/LocalLLaMA/.rss", category: "Agentic Engineering", kind: "reddit", sortOrder: 7 },
-  { id: "r-claudeai", name: "r/ClaudeAI", url: "https://www.reddit.com/r/ClaudeAI/.rss", category: "Agentic Engineering", kind: "reddit", sortOrder: 8 },
-  { id: "r-machinelearning", name: "r/MachineLearning", url: "https://www.reddit.com/r/MachineLearning/.rss", category: "AI Frontier", kind: "reddit", sortOrder: 9 },
-  { id: "yt-twominutepapers", name: "Two Minute Papers", url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCbfYPyITQ-7l4upoX8nvctg", category: "Videos", kind: "youtube", sortOrder: 10 },
-  { id: "yt-aiexplained", name: "AI Explained", url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCNJ1Ymd5yFuUPtn21xtRbbw", category: "Videos", kind: "youtube", sortOrder: 11 },
+  { id: "yc-blog", name: "Y Combinator Blog", url: "https://www.ycombinator.com/blog/rss", category: "Founder Operators", kind: "rss", sortOrder: 0 },
+  { id: "hn-front", name: "Hacker News Frontpage", url: "https://hnrss.org/frontpage", category: "Founder Operators", kind: "rss", sortOrder: 1 },
+  { id: "hn-show", name: "Show HN", url: "https://hnrss.org/show", category: "Founder Operators", kind: "rss", sortOrder: 2 },
+  { id: "plausible", name: "Plausible Blog", url: "https://plausible.io/blog/feed.xml", category: "Founder Operators", kind: "rss", sortOrder: 3 },
+  { id: "saastr", name: "SaaStr", url: "https://www.saastr.com/feed/", category: "GTM & Sales", kind: "rss", sortOrder: 4 },
+  { id: "hubspot-sales", name: "HubSpot Sales", url: "https://blog.hubspot.com/sales/rss.xml", category: "GTM & Sales", kind: "rss", sortOrder: 5 },
+  { id: "yourstory", name: "YourStory", url: "https://yourstory.com/feed", category: "India Market", kind: "rss", sortOrder: 6 },
+  { id: "indianstartupnews", name: "Indian Startup News", url: "https://indianstartupnews.com/rss", category: "India Market", kind: "rss", sortOrder: 7 },
+  { id: "officechai-startups", name: "OfficeChai Startups", url: "https://officechai.com/category/startups/feed/", category: "India Market", kind: "rss", sortOrder: 8 },
+  { id: "trak", name: "Trak.in", url: "https://trak.in/feed/", category: "India Market", kind: "rss", sortOrder: 9 },
+  { id: "medianama", name: "Medianama", url: "https://www.medianama.com/feed/", category: "India Market", kind: "rss", sortOrder: 10 },
+  { id: "petapixel", name: "PetaPixel", url: "https://petapixel.com/feed/", category: "Photo & Creator Market", kind: "rss", sortOrder: 11 },
+  { id: "fstoppers", name: "Fstoppers", url: "https://fstoppers.com/feed", category: "Photo & Creator Market", kind: "rss", sortOrder: 12 },
+  { id: "shotkit", name: "Shotkit", url: "https://shotkit.com/feed/", category: "Photo & Creator Market", kind: "rss", sortOrder: 13 },
+  { id: "import-ai", name: "Import AI (Jack Clark)", url: "https://importai.substack.com/feed", category: "AI Frontier", kind: "rss", sortOrder: 14 },
+  { id: "latent-space", name: "Latent Space", url: "https://www.latent.space/feed", category: "AI Frontier", kind: "rss", sortOrder: 15 },
+  { id: "simonw", name: "Simon Willison", url: "https://simonwillison.net/atom/everything/", category: "Agentic Engineering", kind: "rss", sortOrder: 16 },
+  { id: "hf-blog", name: "Hugging Face Blog", url: "https://huggingface.co/blog/feed.xml", category: "AI Tool Releases", kind: "rss", sortOrder: 17 },
+  { id: "openai", name: "OpenAI News", url: "https://openai.com/news/rss.xml", category: "AI Tool Releases", kind: "rss", sortOrder: 18 },
+  { id: "cloudflare", name: "Cloudflare Blog", url: "https://blog.cloudflare.com/rss/", category: "AI Tool Releases", kind: "rss", sortOrder: 19 },
+  { id: "vercel", name: "Vercel Blog", url: "https://vercel.com/blog/rss.xml", category: "AI Tool Releases", kind: "rss", sortOrder: 20 },
 ];
 
-export const signalCategories = ["AI News Hubs", "AI Frontier", "Agentic Engineering", "AI Tool Releases", "Videos", "AI Business"];
+export const retiredSignalSourceIds = [
+  "techcrunch-ai",
+  "verge",
+  "r-localllama",
+  "r-claudeai",
+  "r-machinelearning",
+  "yt-twominutepapers",
+  "yt-aiexplained",
+];
+
+export const signalCategories = [
+  "Founder Operators",
+  "GTM & Sales",
+  "India Market",
+  "Photo & Creator Market",
+  "Agentic Engineering",
+  "AI Tool Releases",
+  "AI Frontier",
+];
 
 // Example signals so the feed renders before the first live refresh. Replaced on refresh.
 export const signalSeed = [
   {
     id: "seed-1",
     sourceName: "Horizon",
-    category: "AI News Hubs",
+    category: "Founder Operators",
     kind: "rss",
     title: "Press Refresh to pull live signals from your sources",
     url: "",
-    summary: "These are placeholder items. With the local API running, hit Refresh to fetch the seeded feeds. Prune or add sources to fit your interests.",
+    summary: "These are placeholder items. With the local API running, hit Refresh to fetch founder, GTM, India market, creator-market, and AI-tool signals.",
     thumbnail: "",
     publishedAt: "2026-06-03T00:00:00Z",
   },
@@ -960,9 +989,54 @@ export const signalSeed = [
 // v1.0 MCP connectors. HTTP MCP servers Horizon can connect to and authenticate
 // via browser OAuth from the dashboard. URLs match the local Claude Code config.
 export const mcpServerSeed = [
+  { id: "huggingface", name: "Hugging Face", url: "https://huggingface.co/mcp", category: "Assets", provides: "Open-source FLUX image generation and Hub tools via MCP." },
+  { id: "higgsfield", name: "Higgsfield", url: "https://mcp.higgsfield.ai/mcp", category: "Assets", provides: "Premium cinematic image and video generation (30+ models) via MCP." },
   { id: "google-calendar", name: "Google Calendar", url: "https://calendarmcp.googleapis.com/mcp/v1", category: "Intelligence", provides: "Upcoming events into the timeline." },
   { id: "gmail", name: "Gmail", url: "https://gmailmcp.googleapis.com/mcp/v1", category: "Intelligence", provides: "Recent email highlights." },
   { id: "google-drive", name: "Google Drive", url: "https://drivemcp.googleapis.com/mcp/v1", category: "Files", provides: "Recent documents and search." },
+];
+
+// Offline fallback for the Connectors hub. The live source of truth is the `connectors`
+// table (GET /api/connectors); this mirrors the seed so the screen renders without the API.
+export const connectorSeed = [
+  { id: "claude-code", kind: "local_agent", name: "Claude Code", category: "Agent", provides: "Headless reasoning, research, narrative, and asset specs (claude -p).", command: "claude", url: "", state: "unknown" },
+  { id: "codex", kind: "local_agent", name: "Codex", category: "Agent", provides: "Headless implementation and reproducible tooling (codex exec).", command: "codex", url: "", state: "unknown" },
+  { id: "jules", kind: "local_agent", name: "Jules", category: "Agent", provides: "Async repo work and pull requests over the Jules REST API (needs JULES_API_KEY).", command: "jules", url: "", state: "unknown" },
+  { id: "huggingface", kind: "mcp", name: "Hugging Face", category: "Assets", provides: "Open-source FLUX image generation and Hub tools via MCP.", url: "https://huggingface.co/mcp", state: "disconnected" },
+  { id: "higgsfield", kind: "mcp", name: "Higgsfield", category: "Assets", provides: "Premium cinematic image and video generation (30+ models) via MCP.", url: "https://mcp.higgsfield.ai/mcp", state: "disconnected" },
+  { id: "google-calendar", kind: "mcp", name: "Google Calendar", category: "Intelligence", provides: "Upcoming events into the timeline.", url: "https://calendarmcp.googleapis.com/mcp/v1", state: "disconnected" },
+  { id: "gmail", kind: "mcp", name: "Gmail", category: "Intelligence", provides: "Recent email highlights.", url: "https://gmailmcp.googleapis.com/mcp/v1", state: "disconnected" },
+  { id: "google-drive", kind: "mcp", name: "Google Drive", category: "Files", provides: "Recent documents and search.", url: "https://drivemcp.googleapis.com/mcp/v1", state: "disconnected" },
+];
+
+// Offline preview briefs for the Content engine. Live source: GET /api/content/briefs.
+export const contentBriefSeeds = [
+  {
+    id: "seed-photoselect-shot-sunday",
+    title: "Shot Sunday. Delivered Monday.",
+    engine: "photoselect",
+    source_artifact: "PhotoSelect delivery flow: upload -> WhatsApp link -> client selects -> payment gate -> instant unlock.",
+    hook: "Show the clock, not your face.",
+    audience: "Indian wedding and event studio owners on a phone",
+    channels_json: JSON.stringify(["Instagram", "WhatsApp", "YouTube"]),
+    series: "Delivered Monday",
+    tone: "premium, outcome-heavy, faceless",
+    status: "draft",
+    research_json: "{}",
+  },
+  {
+    id: "seed-antharmaya-rung",
+    title: "How Horizon OS runs Claude Code and Codex natively",
+    engine: "antharmaya_labs",
+    source_artifact: "Connectors hub + executor registry: claude -p and codex exec as native executors, no external API key.",
+    hook: "The work is the face.",
+    audience: "Solo devs and indie builders",
+    channels_json: JSON.stringify(["X", "DEV.to", "Reddit"]),
+    series: "Horizon Rungs",
+    tone: "developer-proof, evidence-heavy, faceless",
+    status: "draft",
+    research_json: "{}",
+  },
 ];
 
 export const projects = [
@@ -1926,6 +2000,18 @@ export const systemNodes = [
     next: "Cost one real line item each week.",
     outputs: ["Region shortlist", "Infra cost", "Decision memo"],
   },
+  {
+    id: "job-engine",
+    label: "AI Job Hunt",
+    kind: "Revenue",
+    status: "30-day sprint live",
+    x: 1010,
+    y: 60,
+    color: "#2558d8",
+    note: "₹20 LPA+ AI/agentic engineer or technical PM track. The plan lives in _cofounder/AI-JOB-PLAN-2026.md; the daily clock runs in the Map routine rail.",
+    next: "Follow today's block. The 45-min unassisted practice is non-negotiable.",
+    outputs: ["Portfolio projects", "Applications", "Interviews", "Offer"],
+  },
 ];
 
 export const systemEdges = [
@@ -1959,6 +2045,9 @@ export const systemEdges = [
   { from: "plantsage", to: "journey-log", label: "feeds" },
   { from: "journey-log", to: "safe-haven", label: "evidences" },
   { from: "daily-floor", to: "safe-haven", label: "keeps" },
+  { from: "daily-floor", to: "job-engine", label: "powers" },
+  { from: "job-engine", to: "capital-targets", label: "funds" },
+  { from: "playbook-engine", to: "job-engine", label: "positions" },
 ];
 
 export const calendarIcs = `BEGIN:VCALENDAR

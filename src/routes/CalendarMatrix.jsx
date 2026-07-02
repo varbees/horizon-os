@@ -232,13 +232,7 @@ export default function CalendarMatrix() {
   }, [selectedEvent]);
 
   const downloadCalendar = () => {
-    const blob = new Blob([calendarIcs], { type: "text/calendar;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "horizon-os-calendar.ics";
-    anchor.click();
-    URL.revokeObjectURL(url);
+    window.open("/api/calendar/export.ics", "_blank");
   };
 
   const setCalendarView = (view) => {
@@ -370,10 +364,10 @@ export default function CalendarMatrix() {
             Export ICS
           </button>
           <a
-            href="/horizon-calendar.ics"
+            href="/api/calendar/export.ics"
             className="inline-flex items-center gap-2 rounded-md border border-outlineVariant bg-surface px-4 py-2.5 text-sm font-bold text-paper/76 transition hover:border-outline hover:text-paper"
           >
-            Static file
+            Export API
             <ExternalLink className="h-4 w-4" aria-hidden="true" />
           </a>
         </div>

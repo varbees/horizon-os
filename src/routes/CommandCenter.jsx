@@ -8,6 +8,7 @@ import {
   Cpu,
   RefreshCw,
   Rocket,
+  Search,
   Send,
   Terminal,
   Waypoints,
@@ -16,7 +17,7 @@ import {
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
 import UsagePanel from "../components/UsagePanel.jsx";
-import { deployAction, dispatchToJules, enrichActionWithGemini, fetchActionQueue, fetchDoctor, fetchJulesSources, fetchLoopStatus, fetchTrust, generateRevenueActions, runLoopCycle, updateAction } from "../lib/actionQueueApi.js";
+import { deployAction, dispatchToJules, enrichActionWithModel, fetchActionQueue, fetchAiModels, fetchDoctor, fetchJulesSources, fetchLoopStatus, fetchTrust, generateRevenueActions, runLoopCycle, updateAction } from "../lib/actionQueueApi.js";
 import { actionQueueSeed, projects, socialSkillCatalog } from "../data/horizon.js";
 
 const STATUS_FLOW = {
@@ -157,10 +158,20 @@ export default function CommandCenter() {
     setOpen((cur) => (cur && cur.id === action.id ? { ...cur, status: "deployed", deployed_path: path } : cur));
   }
 
-  async function enrich(action) {
-    if (source !== "live") throw new Error("Start npm run dev:full to enrich with Gemini.");
-    const fields = await enrichActionWithGemini(action.id);
-    const merge = (a) => ({ ...a, goal: fields.goal, constraints: fields.constraints, done_criteria: fields.done_criteria, tools: fields.tools, prompt: fields.prompt ?? a.prompt, enriched: 1 });
+  async function enrich(action, modelSelection) {
+    if (source !== "live") throw new Error("Start npm run dev:full to enrich with the configured model provider.");
+    const fields = await enrichActionWithModel(action.id, modelSelection);
+    const merge = (a) => ({
+      ...a,
+      goal: fields.goal,
+      constraints: fields.constraints,
+      done_criteria: fields.done_criteria,
+      tools: fields.tools,
+      prompt: fields.prompt ?? a.prompt,
+      enriched: 1,
+      model_provider: fields.provider,
+      model_id: fields.model,
+    });
     setActions((prev) => prev.map((a) => (a.id === action.id ? merge(a) : a)));
     setOpen((cur) => (cur && cur.id === action.id ? merge(cur) : cur));
   }
@@ -190,7 +201,7 @@ export default function CommandCenter() {
       <SectionHeader
         eyebrow="Revenue command center"
         title="Turn signals into money actions."
-        copy="The operator surface for paid proof: deploy a Claude, Codex, Gemini, or Jules-ready task into the right project with buyer, offer, constraints, and done criteria."
+        copy="The operator surface for paid proof: deploy a Claude, Codex, NIM/Gemini, or Jules-ready task into the right project with buyer, offer, constraints, and done criteria."
       />
 
       <section className="overflow-hidden rounded-[var(--hz-radius-lg)] border border-outlineVariant bg-gradient-to-br from-primaryContainer/70 via-surfaceVariant to-secondaryContainer/50 p-6">
@@ -322,7 +333,7 @@ export default function CommandCenter() {
         </Panel>
       </section>
 
-      {open ? <ActionDrawer action={open} onClose={() => setOpen(null)} onDeploy={() => deploy(open)} onEnrich={() => enrich(open)} /> : null}
+      {open ? <ActionDrawer action={open} onClose={() => setOpen(null)} onDeploy={() => deploy(open)} onEnrich={(selection) => enrich(open, selection)} /> : null}
     </div>
   );
 }
@@ -446,7 +457,7 @@ function TrustStrip({ trust, nextMove }) {
   const wipOver = (trust.horizonSelfWip ?? 0) > HORIZON_WIP_LIMIT;
   const cells = [
     { k: "Loop", v: trust.loopOk ? "ok" : "down", tone: trust.loopOk ? "text-signal" : "text-rust", sub: trust.loopAgeMinutes != null ? `${trust.loopAgeMinutes}m ago` : "never run" },
-    { k: "Quota", v: trust.quotaState === "ok" ? "ok" : trust.quotaState === "quota" ? "spent" : "—", tone: trust.quotaState === "quota" ? "text-brass" : "text-paper", sub: "gemini enrich" },
+    { k: "Quota", v: trust.quotaState === "ok" ? "ok" : trust.quotaState === "quota" ? "spent" : "—", tone: trust.quotaState === "quota" ? "text-brass" : "text-paper", sub: "model enrich" },
     { k: "Dispatches", v: trust.openDispatches ?? 0, tone: (trust.openDispatches ?? 0) > 0 ? "text-brass" : "text-paper", sub: "open / awaiting" },
     { k: "Tool WIP", v: trust.horizonSelfWip ?? 0, tone: wipOver ? "text-rust" : "text-paper", sub: wipOver ? `over limit (${HORIZON_WIP_LIMIT})` : "horizon-self" },
   ];
@@ -572,16 +583,97 @@ function Scorecard({ icon: Icon, tone, value, label, sub }) {
   );
 }
 
+const MODEL_SELECTION_STORAGE_KEY = "horizon.aiModelSelection";
+
+function modelSelectionValue(provider, model) {
+  if (!provider || !model) return "";
+  return `${provider}:::${model}`;
+}
+
+function parseModelSelection(value) {
+  const raw = String(value ?? "");
+  const splitAt = raw.indexOf(":::");
+  if (splitAt === -1) return null;
+  const provider = raw.slice(0, splitAt);
+  const model = raw.slice(splitAt + 3);
+  return provider && model ? { provider, model } : null;
+}
+
+function catalogDefaultValue(catalog) {
+  const explicit = catalog?.defaultSelection;
+  if (explicit?.provider && explicit?.model) return modelSelectionValue(explicit.provider, explicit.model);
+  const firstProvider = catalog?.providers?.find((provider) => provider.available && provider.models?.length);
+  return firstProvider ? modelSelectionValue(firstProvider.id, firstProvider.models[0].id) : "";
+}
+
+function catalogHasValue(catalog, value) {
+  const selection = parseModelSelection(value);
+  if (!selection) return false;
+  return Boolean(
+    catalog?.providers?.some((provider) =>
+      provider.id === selection.provider && provider.models?.some((model) => model.id === selection.model),
+    ),
+  );
+}
+
+function filteredModelGroups(catalog, query) {
+  const q = String(query ?? "").trim().toLowerCase();
+  return (catalog?.providers ?? [])
+    .filter((provider) => provider.available && provider.models?.length)
+    .map((provider) => ({
+      ...provider,
+      models: provider.models.filter((model) => {
+        if (!q) return true;
+        return [provider.label, provider.id, model.label, model.id]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(q));
+      }),
+    }))
+    .filter((provider) => provider.models.length);
+}
+
 function ActionDrawer({ action, onClose, onDeploy, onEnrich }) {
   const [enriching, setEnriching] = useState(false);
   const [err, setErr] = useState(null);
+  const [modelCatalog, setModelCatalog] = useState({ providers: [], defaultSelection: null });
+  const [modelLoading, setModelLoading] = useState(true);
+  const [modelError, setModelError] = useState("");
+  const [modelQuery, setModelQuery] = useState("");
+  const [selectedModel, setSelectedModel] = useState("");
   const runnable = Boolean((action.goal || action.summary) && (action.cwd || action.project_path));
+
+  useEffect(() => {
+    let active = true;
+    setModelLoading(true);
+    fetchAiModels()
+      .then((catalog) => {
+        if (!active) return;
+        setModelCatalog(catalog);
+        setModelError("");
+        setSelectedModel((current) => {
+          const stored = window.localStorage.getItem(MODEL_SELECTION_STORAGE_KEY) || "";
+          if (catalogHasValue(catalog, current)) return current;
+          if (catalogHasValue(catalog, stored)) return stored;
+          return catalogDefaultValue(catalog);
+        });
+      })
+      .catch((error) => {
+        if (!active) return;
+        setModelError(String(error.message || error));
+      })
+      .finally(() => {
+        if (active) setModelLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleEnrich() {
     setEnriching(true);
     setErr(null);
     try {
-      await onEnrich();
+      await onEnrich(parseModelSelection(selectedModel) ?? undefined);
     } catch (e) {
       setErr(String(e.message || e));
     } finally {
@@ -642,9 +734,21 @@ function ActionDrawer({ action, onClose, onDeploy, onEnrich }) {
             disabled={enriching}
             className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-black text-primary transition hover:bg-primary/15 disabled:opacity-60"
           >
-            <Cpu className="h-3.5 w-3.5" aria-hidden="true" /> {enriching ? "Enriching…" : action.enriched ? "Re-enrich" : "Enrich with Gemini"}
+            <Cpu className="h-3.5 w-3.5" aria-hidden="true" /> {enriching ? "Enriching…" : action.enriched ? "Re-enrich" : "Enrich with model"}
           </button>
         </div>
+        <ModelPicker
+          catalog={modelCatalog}
+          error={modelError}
+          loading={modelLoading}
+          query={modelQuery}
+          selectedModel={selectedModel}
+          onQueryChange={setModelQuery}
+          onSelectedModelChange={(value) => {
+            setSelectedModel(value);
+            if (value) window.localStorage.setItem(MODEL_SELECTION_STORAGE_KEY, value);
+          }}
+        />
         {err ? <p className="mt-1 text-xs text-rust">{err}</p> : null}
 
         {action.goal ? <SpecBlock label="Goal" text={action.goal} /> : null}
@@ -736,6 +840,51 @@ function ActionDrawer({ action, onClose, onDeploy, onEnrich }) {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function ModelPicker({ catalog, loading, error, query, selectedModel, onQueryChange, onSelectedModelChange }) {
+  const groups = filteredModelGroups(catalog, query);
+  const optionCount = groups.reduce((sum, provider) => sum + provider.models.length, 0);
+  const configured = (catalog?.providers ?? []).filter((provider) => provider.configured);
+  const providerStatus = configured
+    .map((provider) => `${provider.label}: ${provider.error ? "fallback" : `${provider.models?.length ?? 0} models`}`)
+    .join(" · ");
+
+  return (
+    <div className="mt-2 rounded-md border border-outlineVariant bg-surfaceVariant/70 p-2">
+      <div className="flex items-center gap-2 rounded-md border border-outlineVariant bg-white/75 px-2 py-1.5">
+        <Search className="h-3.5 w-3.5 shrink-0 text-paper/40" aria-hidden="true" />
+        <input
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          aria-label="Search AI models"
+          placeholder={loading ? "Fetching models" : "Search models"}
+          className="min-w-0 flex-1 bg-transparent font-mono text-[11px] text-paper outline-none placeholder:text-paper/36"
+          type="search"
+        />
+      </div>
+      <select
+        value={selectedModel}
+        onChange={(event) => onSelectedModelChange(event.target.value)}
+        aria-label="AI model"
+        disabled={loading || optionCount === 0}
+        className="mt-2 w-full rounded-md border border-outlineVariant bg-white/85 px-2 py-1.5 text-xs font-bold text-paper outline-none transition focus:border-primary disabled:opacity-60"
+      >
+        {optionCount === 0 ? <option value="">{loading ? "Fetching provider models" : "No configured models found"}</option> : null}
+        {groups.map((provider) => (
+          <optgroup key={provider.id} label={provider.label}>
+            {provider.models.map((model) => (
+              <option key={`${provider.id}:${model.id}`} value={modelSelectionValue(provider.id, model.id)}>
+                {model.label || model.id}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+      {error ? <p className="mt-1 text-xs text-rust">{error}</p> : null}
+      {providerStatus ? <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.12em] text-paper/42">{providerStatus}</p> : null}
     </div>
   );
 }

@@ -20,12 +20,28 @@ export async function deployAction(id) {
   return response.json();
 }
 
-export async function enrichActionWithGemini(id) {
-  const response = await fetch(`/api/action-queue/${encodeURIComponent(id)}/enrich`, { method: "PATCH" });
+export async function fetchAiModels() {
+  const response = await fetch("/api/ai-models");
+  const data = await response.json().catch(() => ({ ok: false }));
+  if (!response.ok) throw new Error(data.error || `model catalog failed: ${response.status}`);
+  return data;
+}
+
+export async function enrichActionWithModel(id, selection = {}) {
+  const response = await fetch(`/api/action-queue/${encodeURIComponent(id)}/enrich`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      provider: selection.provider || undefined,
+      model: selection.model || undefined,
+    }),
+  });
   const data = await response.json().catch(() => ({ ok: false }));
   if (!response.ok) throw new Error(data.error || `enrich failed: ${response.status}`);
   return data;
 }
+
+export const enrichActionWithGemini = enrichActionWithModel;
 
 export async function fetchJulesSources() {
   const response = await fetch("/api/jules/sources");

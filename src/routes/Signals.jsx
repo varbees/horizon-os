@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
+import ConnectorActionStrip from "../components/ConnectorActionStrip.jsx";
+import SegmentedControl from "../components/ui/SegmentedControl.jsx";
 import {
   addSignalSource,
   deleteSignalSource,
@@ -145,9 +147,9 @@ export default function Signals() {
   return (
     <div>
       <SectionHeader
-        eyebrow="News & Signals v0.9"
-        title="Your hourly intelligence feed."
-        copy="An RSS command surface fetched locally, never through the browser. Seeded with sensible AI, agentic-engineering, Reddit, and video sources. Prune the list, then refresh."
+        eyebrow="News & Signals v1.0"
+        title="Your founder intelligence feed."
+        copy="A local RSS command surface for founder execution, GTM, India market timing, creator-market proof, and AI tool releases. It is curated to create action fuel, not passive reading."
         action={
           <button
             type="button"
@@ -160,6 +162,10 @@ export default function Signals() {
           </button>
         }
       />
+
+      <section className="mb-4">
+        <ConnectorActionStrip surface="signals" />
+      </section>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -189,30 +195,18 @@ export default function Signals() {
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <div className="inline-flex overflow-hidden rounded-md border border-outlineVariant">
-            {VIEWS.map((v) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setView(v)}
-                className={`px-3 py-1.5 font-mono text-[11px] font-black uppercase tracking-[0.14em] transition ${view === v ? "bg-primary text-onPrimary" : "bg-white/60 text-paper/52"}`}
-              >
-                {v === "grid" ? "Grid" : v === "list" ? "List" : "Saved"}
-              </button>
-            ))}
-          </div>
-          <div className="inline-flex overflow-hidden rounded-md border border-outlineVariant">
-            {RANGES.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => setRange(r.id)}
-                className={`px-3 py-1.5 font-mono text-[11px] font-black uppercase tracking-[0.14em] transition ${range === r.id ? "bg-secondaryContainer text-paper" : "bg-white/60 text-paper/52"}`}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            label="Signal view"
+            options={VIEWS.map((v) => ({ id: v, label: v === "grid" ? "Grid" : v === "list" ? "List" : "Saved" }))}
+            value={view}
+            onChange={setView}
+          />
+          <SegmentedControl
+            label="Signal date range"
+            options={RANGES.map((r) => ({ id: r.id, label: r.label }))}
+            value={range}
+            onChange={setRange}
+          />
         </div>
         <input
           type="search"
