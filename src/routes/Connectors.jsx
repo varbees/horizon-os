@@ -14,6 +14,7 @@ import {
   Unplug,
 } from "lucide-react";
 import Panel from "../components/Panel.jsx";
+import ProviderKeys from "../components/ProviderKeys.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
 import Button from "../components/ui/Button.jsx";
 import {
@@ -49,7 +50,7 @@ const groupMeta = {
   },
   skill: {
     title: "Skills",
-    copy: "Reserved lane for installed prompt and workflow packs that should become callable from the command center.",
+    copy: "Installed prompt and workflow packs. Open any skill in the Playground to run it against your live Horizon context.",
     icon: Sparkles,
   },
 };
@@ -194,6 +195,10 @@ export default function Connectors() {
       {source !== "live" ? (
         <p className="mb-4 font-mono text-xs uppercase tracking-[0.18em] text-paper/52">Offline preview. Start npm run dev:full for health checks and OAuth.</p>
       ) : null}
+
+      <div className="mb-5">
+        <ProviderKeys />
+      </div>
 
       {Object.values(tools).some((list) => list?.length) ? (
         <div className="mb-4 flex min-w-0 items-center gap-2 rounded-[var(--hz-radius-md)] border border-outlineVariant bg-surfaceVariant px-3 py-2">
@@ -362,6 +367,10 @@ function ConnectorRow({ connector, busy, tools, toolQuery, onHealth, onConnect, 
             className={connectBusy ? "[&>svg]:animate-spin" : ""}
           >
             Connect
+          </Button>
+        ) : connector.kind === "skill" ? (
+          <Button type="button" onClick={() => { window.location.href = `/playground?skill=${encodeURIComponent(connector.id)}`; }} icon={Sparkles} variant="primary">
+            Open in Playground
           </Button>
         ) : null}
       </div>

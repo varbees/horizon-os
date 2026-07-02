@@ -17,6 +17,7 @@ import {
   Rss,
   Terminal,
   Wallet,
+  Wand2,
 } from "lucide-react";
 
 const navGroups = [
@@ -25,6 +26,7 @@ const navGroups = [
     items: [
       { to: "/", label: "Command", icon: LayoutDashboard, detail: "Daily anchors" },
       { to: "/command", label: "Center", icon: Terminal, detail: "Action queue" },
+      { to: "/playground", label: "Playground", icon: Wand2, detail: "Ideation" },
       { to: "/calendar", label: "Calendar", icon: CalendarDays, detail: "Job plan week" },
       { to: "/projects", label: "Hub", icon: Gauge, detail: "Repo lanes" },
       { to: "/journey", label: "Journey", icon: BookOpen, detail: "Trek ledger" },
@@ -50,6 +52,7 @@ const navItems = navGroups.flatMap((group) => group.items);
 const mobileNavItems = [
   { to: "/", label: "Command", icon: LayoutDashboard },
   { to: "/command", label: "Center", icon: Terminal },
+  { to: "/playground", label: "Playground", icon: Wand2 },
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
   { to: "/projects", label: "Hub", icon: Gauge },
   { to: "/journey", label: "Journey", icon: BookOpen },

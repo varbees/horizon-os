@@ -20,6 +20,7 @@ import { summarizeContextBudget } from "./context-budget.mjs";
 import { autoEnrich, enrichActionWithAvailableProvider, llmAvailable } from "./auto-enrich.mjs";
 import { generateWithAvailableProvider, listAiModelCatalog } from "./llm-providers.mjs";
 import { redactForLog } from "./redact.mjs";
+import { managedEnvStatus, upsertManagedEnv } from "./env-store.mjs";
 import { runCycle as runHorizonCycle, loopStatus } from "./horizon-loop.mjs";
 import { gitDetail } from "./git-detail.mjs";
 import { horizonDoctor } from "./doctor.mjs";
@@ -419,6 +420,84 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/api/command-base") {
       return json(res, 200, getCommandBase());
+    }
+
+    if (req.method === "GET" && url.pathname.startsWith("/api/skills/")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/skills/", ""));
+      const row = db.prepare("SELECT * FROM connectors WHERE id = ? AND kind = 'skill'").get(id);
+      if (!row) return json(res, 404, { error: "skill_not_found" });
+      const skillPath = resolve(repoRoot, row.command);
+      if (!skillPath.startsWith(resolve(repoRoot, "skills"))) return json(res, 400, { error: "skill_path_invalid" });
+      try {
+        const { readFileSync } = await import("node:fs");
+        const content = readFileSync(skillPath, "utf8").slice(0, 24_000);
+        return json(res, 200, { ok: true, id: row.id, name: row.name, category: row.category, content });
+      } catch (error) {
+        return json(res, 500, { error: "skill_read_failed", detail: redactForLog(String(error?.message ?? error)) });
+      }
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/provider-keys") {
+      return json(res, 200, { ok: true, keys: managedEnvStatus() });
+    }
+
+    if (req.method === "PATCH" && url.pathname === "/api/provider-keys") {
+      const body = await readJson(req);
+      const result = upsertManagedEnv(body);
+      return json(res, 200, { ok: true, ...result, keys: managedEnvStatus() });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/settings") {
+      const rows = all("SELECT key, value FROM app_settings");
+      return json(res, 200, { ok: true, settings: Object.fromEntries(rows.map((row) => [row.key, row.value])) });
+    }
+
+    if (req.method === "PATCH" && url.pathname === "/api/settings") {
+      const body = await readJson(req);
+      const entries = Object.entries(body ?? {}).filter(([key]) => /^[a-z0-9_.:-]{1,64}$/i.test(key));
+      const upsert = db.prepare(
+        "INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')",
+      );
+      for (const [key, value] of entries) upsert.run(key, String(value ?? "").slice(0, 2000));
+      const rows = all("SELECT key, value FROM app_settings");
+      return json(res, 200, { ok: true, settings: Object.fromEntries(rows.map((row) => [row.key, row.value])) });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/playground/generate") {
+      const body = await readJson(req);
+      const prompt = String(body.prompt ?? "").trim().slice(0, 8000);
+      if (!prompt) return json(res, 400, { error: "prompt_required" });
+      const stored = Object.fromEntries(all("SELECT key, value FROM app_settings").map((row) => [row.key, row.value]));
+      const provider = String(body.provider ?? stored["llm.provider"] ?? "").trim() || undefined;
+      const model = String(body.model ?? stored["llm.model"] ?? "").trim() || undefined;
+      let system = String(body.system ?? "").trim().slice(0, 6000);
+
+      if (body.useContext) {
+        const runway = db.prepare("SELECT * FROM runway_state WHERE id = 'current'").get() ?? {};
+        const openTasks = all("SELECT title, node_id, priority FROM tasks WHERE status != 'done' ORDER BY priority = 'high' DESC, created_at DESC LIMIT 10");
+        const planStart = new Date("2026-06-29T00:00:00+05:30");
+        const jobPlanDay = Math.floor((Date.now() - planStart.getTime()) / 86_400_000) + 1;
+        const context = [
+          "Operator context (Horizon OS, live from SQLite):",
+          `- AI job plan: Day ${jobPlanDay} of 30 (phase: ${jobPlanDay <= 15 ? "learn+build" : jobPlanDay <= 30 ? "apply+build" : "sustain"}).`,
+          `- Capital: cash INR ${runway.current_cash_inr ?? "?"}, burn INR ${runway.monthly_burn_inr ?? "?"}/mo, MRR INR ${runway.mrr_inr ?? "?"}. Milestone ${runway.milestone_date ?? "2027-02-15"}.`,
+          openTasks.length ? `- Open tasks:\n${openTasks.map((t) => `  - [${t.priority}] ${t.title} (${t.node_id ?? "unassigned"})`).join("\n")}` : "- No open tasks.",
+          "Ground every idea in this context. Ideas must serve: landing the job, PhotoSelect revenue, consulting cash, or wellbeing that sustains the other three.",
+        ].join("\n");
+        system = system ? `${system}\n\n${context}` : context;
+      }
+
+      try {
+        const result = await generateWithAvailableProvider(prompt, {
+          ...(system ? { system } : {}),
+          ...(provider ? { provider } : {}),
+          ...(model ? { model } : {}),
+          timeoutMs: 60_000,
+        });
+        return json(res, 200, { ok: true, ...result });
+      } catch (error) {
+        return json(res, 502, { error: "generate_failed", detail: redactForLog(String(error?.message ?? error)) });
+      }
     }
 
     if (req.method === "POST" && url.pathname === "/api/routine/brief") {

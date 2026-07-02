@@ -7,24 +7,40 @@ import "./env.mjs";
 import { execFile } from "node:child_process";
 
 let cache = { at: 0, data: null };
+let refreshing = null;
 const TTL_MS = 5 * 60 * 1000;
 
-function runCcusage() {
+// bunx first (fast, no registry roundtrip when cached), npx as fallback.
+// `ccusage@latest` over npx was observed hanging on registry fetches, which
+// blocked /api/usage indefinitely — hence hard 25s timeouts per runner.
+const RUNNERS = [
+  ["bunx", ["ccusage", "daily", "--json"]],
+  ["npx", ["-y", "ccusage", "daily", "--json"]],
+];
+
+function runWith(cmd, args) {
   return new Promise((resolve, reject) => {
-    execFile(
-      "npx",
-      ["-y", "ccusage@latest", "daily", "--json"],
-      { timeout: 90_000, maxBuffer: 16 * 1024 * 1024 },
-      (error, stdout) => {
-        if (error) return reject(error);
-        try {
-          resolve(JSON.parse(stdout));
-        } catch (parseError) {
-          reject(parseError);
-        }
-      },
-    );
+    execFile(cmd, args, { timeout: 25_000, maxBuffer: 16 * 1024 * 1024 }, (error, stdout) => {
+      if (error) return reject(error);
+      try {
+        resolve(JSON.parse(stdout));
+      } catch (parseError) {
+        reject(parseError);
+      }
+    });
   });
+}
+
+async function runCcusage() {
+  let lastError;
+  for (const [cmd, args] of RUNNERS) {
+    try {
+      return await runWith(cmd, args);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError ?? new Error("ccusage unavailable");
 }
 
 function cacheHit(row) {
@@ -87,17 +103,26 @@ function buildSummary(raw) {
   };
 }
 
+function refreshInBackground() {
+  if (refreshing) return refreshing;
+  refreshing = runCcusage()
+    .then((raw) => {
+      cache = { at: Date.now(), data: buildSummary(raw) };
+    })
+    .catch((error) => {
+      cache = { at: Date.now(), data: { available: false, error: String(error.message ?? error) } };
+    })
+    .finally(() => {
+      refreshing = null;
+    });
+  return refreshing;
+}
+
+// Never blocks the caller: serves cached data (even stale) instantly and
+// refreshes in the background. First-ever call returns a pending marker.
 export async function getUsageSummary({ force = false } = {}) {
-  if (!force && cache.data && Date.now() - cache.at < TTL_MS) return cache.data;
-  try {
-    const raw = await runCcusage();
-    const summary = buildSummary(raw);
-    cache = { at: Date.now(), data: summary };
-    return summary;
-  } catch (error) {
-    const fallback = { available: false, error: String(error.message ?? error) };
-    // cache failures briefly so a missing ccusage doesn't spawn repeatedly
-    cache = { at: Date.now(), data: fallback };
-    return fallback;
-  }
+  const fresh = cache.data && Date.now() - cache.at < TTL_MS;
+  if (!fresh || force) void refreshInBackground();
+  if (cache.data) return { ...cache.data, stale: !fresh };
+  return { available: false, pending: true };
 }

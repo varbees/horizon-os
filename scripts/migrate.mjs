@@ -344,6 +344,50 @@ const MIGRATIONS = [
       db.exec("CREATE INDEX IF NOT EXISTS idx_content_briefs_automate ON content_briefs(automate)");
     },
   },
+  {
+    version: 7,
+    name: "app_settings_and_skill_connectors",
+    up(db) {
+      // Operator-level runtime settings (LLM default provider/model, playground prefs).
+      // Key-value so new settings never need a migration.
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS app_settings (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL DEFAULT '',
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `);
+
+      // Register the installed social-media skill pack (v1.3.0, extracted on disk at
+      // skills/social-media/extracted/<id>/SKILL.md) into the connectors skill lane so
+      // skills are visible, health-checkable, and loadable into the Playground.
+      const skillSeeds = [
+        ["social-media-context-sms", "Social Media Context", "Strategy", "Set up voice, audience, content pillars before any other social task."],
+        ["content-strategy-sms", "Content Strategy", "Strategy", "Decide what to post: pillars, topic clusters, content mix."],
+        ["platform-strategy-sms", "Platform Strategy", "Strategy", "Per-platform tactics for LinkedIn, X, Threads, Bluesky."],
+        ["content-calendar-sms", "Content Calendar", "Strategy", "Plan the posting schedule and cadence."],
+        ["post-writer-sms", "Post Writer", "Create", "Write a single post for any platform."],
+        ["thread-writer-sms", "Thread Writer", "Create", "Write a multi-part thread or content series."],
+        ["carousel-writer-sms", "Carousel Writer", "Create", "Write slide-by-slide carousel / Idea Pin content."],
+        ["caption-writer-sms", "Caption Writer", "Create", "Caption a visual-first post (IG, TikTok, Pinterest, YouTube)."],
+        ["hook-writer-sms", "Hook Writer", "Create", "Write opening lines, hooks, titles, thumbnail text."],
+        ["content-repurposer-sms", "Content Repurposer", "Create", "Turn one piece into many formats / cross-post."],
+        ["performance-analyzer-sms", "Performance Analyzer", "Analyze", "Analyze how posts performed (engagement, impressions)."],
+        ["audience-growth-tracker-sms", "Audience Growth Tracker", "Analyze", "Track follower growth and what drives it."],
+        ["content-pattern-analyzer-sms", "Content Pattern Analyzer", "Analyze", "Find patterns in what content works and what doesn't."],
+        ["optimization-advisor-sms", "Optimization Advisor", "Analyze", "Synthesize analytics into prioritized next actions."],
+      ];
+      const seedSkill = db.prepare(`
+        INSERT INTO connectors (id, kind, name, category, provides, command, state, sort_order)
+        VALUES (?, 'skill', ?, ?, ?, ?, 'installed', ?)
+        ON CONFLICT(id) DO UPDATE SET kind = 'skill', name = excluded.name, category = excluded.category,
+          provides = excluded.provides, command = excluded.command, state = 'installed', updated_at = datetime('now')
+      `);
+      skillSeeds.forEach(([id, name, category, provides], index) => {
+        seedSkill.run(id, name, category, provides, `skills/social-media/extracted/${id}/SKILL.md`, 100 + index);
+      });
+    },
+  },
 ];
 
 const LATEST = MIGRATIONS.reduce((m, x) => Math.max(m, x.version), 0);

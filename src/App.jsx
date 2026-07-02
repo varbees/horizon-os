@@ -16,6 +16,7 @@ import Signals from "./routes/Signals.jsx";
 import Connectors from "./routes/Connectors.jsx";
 import Content from "./routes/Content.jsx";
 import Vault from "./routes/Vault.jsx";
+import Playground from "./routes/Playground.jsx";
 
 const CalendarMatrix = lazy(() => import("./routes/CalendarMatrix.jsx"));
 
@@ -26,6 +27,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Overview />} />
           <Route path="/command" element={<CommandCenter />} />
+          <Route path="/playground" element={<Playground />} />
           <Route
             path="/calendar"
             element={
