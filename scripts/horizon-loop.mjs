@@ -7,13 +7,13 @@ import "./env.mjs";
 //
 //   1. sweep      scan ~/Desktop/bolting/* for new commits / dirty repos
 //   2. generate   turn signals into revenue actions (rule-based, always works)
-//   3. enrich     Gemini turns rough actions into runnable specs (quota-safe; optional)
+//   3. enrich     model workers turn rough actions into runnable specs (optional)
 //   4. ready      count enriched actions awaiting the operator's reviewed dispatch
 //
 // Design rules (match COMMAND_CENTER guardrails):
 //   - Never throws: each stage is isolated so a single failure never stops the loop.
 //   - Never blocks on remote models: enrichment is optional polish; the loop runs
-//     fine with no Gemini key or an exhausted quota (429 -> stoppedForQuota).
+//     fine with no model keys or an exhausted quota (429 -> stoppedForQuota).
 //   - Does NOT auto-dispatch to Jules. Jules changes real repos, so dispatch stays
 //     operator-triggered and plan-gated. The loop only reports what is *ready*.
 //
@@ -25,10 +25,10 @@ import { fileURLToPath } from "node:url";
 import { openHorizonDb } from "./horizon-db.mjs";
 import { runProjectSweep } from "./project-sweep.mjs";
 import { generateRevenueActions } from "./revenue-actions.mjs";
-import { autoEnrich } from "./auto-enrich.mjs";
-import { geminiAvailable } from "./gemini.mjs";
+import { autoEnrich, llmAvailable } from "./auto-enrich.mjs";
 import { reconcileDispatches } from "./reconcile.mjs";
 import { syncHorizonWiki } from "./wiki.mjs";
+import { runContentStage } from "./content-loop.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const HORIZON_DIR = resolve(root, ".horizon");
@@ -81,19 +81,20 @@ export async function runCycle({ db: providedDb, enrichLimit } = {}) {
   }
 
   // 3. enrich (quota-safe, optional)
-  if (geminiAvailable()) {
+  if (llmAvailable()) {
     try {
       const enr = await autoEnrich({ db, limit: enrichLimit });
       cycle.stages.enrich = {
         candidates: enr.candidates,
         enriched: enr.enriched,
         stoppedForQuota: enr.stoppedForQuota,
+        providerCounts: enr.providerCounts,
       };
     } catch (e) {
       cycle.errors.push("enrich: " + msg(e));
     }
   } else {
-    cycle.stages.enrich = { skipped: "gemini_key_missing" };
+    cycle.stages.enrich = { skipped: "llm_key_missing" };
   }
 
   // 4. readiness — enriched actions awaiting the operator's reviewed Jules dispatch
@@ -122,6 +123,14 @@ export async function runCycle({ db: providedDb, enrichLimit } = {}) {
     cycle.stages.wiki = { files: wiki.files.length, sources: wiki.sources };
   } catch (e) {
     cycle.errors.push("wiki: " + msg(e));
+  }
+
+  // 7. content — auto-advance opted-in briefs through the free draft lanes (research ->
+  //    editorial package). Never spends provider credits, never publishes (manual gates).
+  try {
+    cycle.stages.content = await runContentStage(db, { cwd: root });
+  } catch (e) {
+    cycle.errors.push("content: " + msg(e));
   }
 
   cycle.finishedAt = new Date().toISOString();
@@ -155,6 +164,7 @@ if (isCli) {
       `ready:${s.ready?.enrichedActions ?? "-"}`,
       `reconcile:${s.reconcile?.skipped ? "skip" : `${s.reconcile?.reconciled ?? 0}/${s.reconcile?.polled ?? 0}`}`,
       `wiki:${s.wiki?.files ?? "-"}`,
+      `content:${s.content?.skipped ? "skip" : `${(s.content?.advanced ?? []).filter((a) => a.ok).length}adv`}`,
       cycle.ok ? "OK" : `ERR(${cycle.errors.length})`,
     ].join("  ");
     console.log(`[${cycle.startedAt}] ${line}`);

@@ -186,6 +186,164 @@ const MIGRATIONS = [
       db.exec(`CREATE INDEX IF NOT EXISTS idx_wiki_runs_created ON wiki_runs(created_at)`);
     },
   },
+  {
+    version: 4,
+    name: "content_engine",
+    up(db) {
+      // The wealth-engine content layer: turn one real build-log artifact into premium,
+      // faceless distribution for two engines (Antharmaya Labs dev lane / PhotoSelect buyer
+      // lane) through a Research -> Brief -> Asset plan -> Generate -> Assemble -> QA -> Publish
+      // pipeline. Manual publish only; no scheduler. TRIBE v2 is a story angle, not a dependency.
+
+      // --- unified connector registry: backs the mandatory Connectors hub ---
+      // kind: 'local_agent' (Claude Code, Codex via local CLI auth), 'mcp' (OAuth HTTP servers),
+      // 'skill' (reserved). No secrets here; local agents use the operator's own subscription auth.
+      db.exec(`CREATE TABLE IF NOT EXISTS connectors (
+        id TEXT PRIMARY KEY,
+        kind TEXT NOT NULL DEFAULT 'mcp',
+        name TEXT NOT NULL DEFAULT '',
+        category TEXT NOT NULL DEFAULT '',
+        provides TEXT NOT NULL DEFAULT '',
+        url TEXT NOT NULL DEFAULT '',
+        command TEXT NOT NULL DEFAULT '',
+        state TEXT NOT NULL DEFAULT 'disconnected',
+        version TEXT NOT NULL DEFAULT '',
+        last_health_at TEXT NOT NULL DEFAULT '',
+        health_json TEXT NOT NULL DEFAULT '{}',
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_connectors_kind ON connectors(kind)`);
+
+      const seedConnector = db.prepare(`INSERT OR IGNORE INTO connectors
+        (id, kind, name, category, provides, url, command, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+      const connectorSeeds = [
+        // Local agents (native, no external API — they run on the operator's own CLI auth)
+        ["claude-code", "local_agent", "Claude Code", "Agent", "Headless reasoning, research, narrative, and asset specs (claude -p).", "", "claude", 0],
+        ["codex", "local_agent", "Codex", "Agent", "Headless implementation and reproducible tooling (codex exec).", "", "codex", 1],
+        // MCP servers (OAuth HTTP — plug into the existing mcp-client transport)
+        ["jules", "mcp", "Jules", "Agent", "Async repo work and pull requests via MCP.", "https://jules.googleapis.com/mcp", "", 2],
+        ["huggingface", "mcp", "Hugging Face", "Assets", "Open-source FLUX image generation and Hub tools via MCP.", "https://huggingface.co/mcp", "", 3],
+        ["higgsfield", "mcp", "Higgsfield", "Assets", "Premium cinematic image and video generation (30+ models) via MCP.", "https://mcp.higgsfield.ai/mcp", "", 4],
+        ["google-calendar", "mcp", "Google Calendar", "Intelligence", "Upcoming events into the timeline.", "https://calendarmcp.googleapis.com/mcp/v1", "", 5],
+        ["gmail", "mcp", "Gmail", "Intelligence", "Recent email highlights.", "https://gmailmcp.googleapis.com/mcp/v1", "", 6],
+        ["google-drive", "mcp", "Google Drive", "Files", "Recent documents and search.", "https://drivemcp.googleapis.com/mcp/v1", "", 7],
+      ];
+      for (const row of connectorSeeds) seedConnector.run(...row);
+
+      // --- content briefs: the fact-checked, two-audience source of truth per piece ---
+      // engine: 'antharmaya_labs' | 'photoselect'. status walks the pipeline lanes.
+      db.exec(`CREATE TABLE IF NOT EXISTS content_briefs (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL DEFAULT '',
+        engine TEXT NOT NULL DEFAULT 'antharmaya_labs',
+        source_artifact TEXT NOT NULL DEFAULT '',
+        hook TEXT NOT NULL DEFAULT '',
+        audience TEXT NOT NULL DEFAULT '',
+        channels_json TEXT NOT NULL DEFAULT '[]',
+        series TEXT NOT NULL DEFAULT '',
+        tone TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'draft',
+        research_json TEXT NOT NULL DEFAULT '{}',
+        do_not_build_json TEXT NOT NULL DEFAULT '[]',
+        notes TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_content_briefs_engine ON content_briefs(engine)`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_content_briefs_status ON content_briefs(status)`);
+
+      // --- generated visual assets (HF FLUX stills, Higgsfield video, NIM/Gemini) ---
+      db.exec(`CREATE TABLE IF NOT EXISTS content_assets (
+        id TEXT PRIMARY KEY,
+        brief_id TEXT NOT NULL DEFAULT '',
+        kind TEXT NOT NULL DEFAULT 'still',
+        provider TEXT NOT NULL DEFAULT 'huggingface',
+        prompt TEXT NOT NULL DEFAULT '',
+        negative_prompt TEXT NOT NULL DEFAULT '',
+        aspect_ratio TEXT NOT NULL DEFAULT '1:1',
+        status TEXT NOT NULL DEFAULT 'planned',
+        external_id TEXT NOT NULL DEFAULT '',
+        result_url TEXT NOT NULL DEFAULT '',
+        local_path TEXT NOT NULL DEFAULT '',
+        manifest_json TEXT NOT NULL DEFAULT '{}',
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_content_assets_brief ON content_assets(brief_id)`);
+
+      // --- assembled editorial package (one row per brief) ---
+      db.exec(`CREATE TABLE IF NOT EXISTS content_packages (
+        id TEXT PRIMARY KEY,
+        brief_id TEXT NOT NULL DEFAULT '',
+        blog TEXT NOT NULL DEFAULT '',
+        x_thread_json TEXT NOT NULL DEFAULT '[]',
+        linkedin TEXT NOT NULL DEFAULT '',
+        instagram_caption TEXT NOT NULL DEFAULT '',
+        reel_script_json TEXT NOT NULL DEFAULT '[]',
+        alt_text TEXT NOT NULL DEFAULT '',
+        cta_json TEXT NOT NULL DEFAULT '[]',
+        checklist_json TEXT NOT NULL DEFAULT '[]',
+        status TEXT NOT NULL DEFAULT 'draft',
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_content_packages_brief ON content_packages(brief_id)`);
+
+      // --- per-lane run audit (mirrors agent_dispatches shape; the stall tripwire generalizes) ---
+      db.exec(`CREATE TABLE IF NOT EXISTS pipeline_runs (
+        id TEXT PRIMARY KEY,
+        brief_id TEXT NOT NULL DEFAULT '',
+        lane TEXT NOT NULL DEFAULT '',
+        executor TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'running',
+        input_json TEXT NOT NULL DEFAULT '{}',
+        output_json TEXT NOT NULL DEFAULT '{}',
+        error TEXT NOT NULL DEFAULT '',
+        started_at TEXT NOT NULL DEFAULT (datetime('now')),
+        finished_at TEXT NOT NULL DEFAULT ''
+      )`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_pipeline_runs_brief ON pipeline_runs(brief_id)`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_pipeline_runs_status ON pipeline_runs(status)`);
+    },
+  },
+  {
+    version: 5,
+    name: "reclassify_jules_agent",
+    up(db) {
+      // Jules is not a hosted OAuth MCP server — it is a native programmatic executor reached
+      // over its REST API (X-Goog-Api-Key, scripts/jules.mjs + julesAdapter), gated on
+      // JULES_API_KEY. v4 seeded it as `mcp` with a guessed URL, so the hub's Connect flow POSTed
+      // to a dead endpoint ("Error POSTing to endpoint"). Reclassify it as a native agent so it
+      // sits beside Claude Code and Codex and is health-checked via julesAvailable(), not OAuth.
+      db.prepare(`UPDATE connectors SET
+          kind = 'local_agent',
+          url = '',
+          command = 'jules',
+          provides = 'Async repo work and pull requests over the Jules REST API (needs JULES_API_KEY).',
+          state = 'disconnected',
+          version = '',
+          updated_at = datetime('now')
+        WHERE id = 'jules'`).run();
+    },
+  },
+  {
+    version: 6,
+    name: "content_automation",
+    up(db) {
+      // Opt-in autonomous advancement. The loop only auto-advances briefs the operator flags
+      // (automate = 1) so quota is spent deliberately, and it never crosses the manual gates
+      // (asset generation spends provider credits; publish is always human). `auto_max_status` is
+      // the furthest lane the loop may take a brief to on its own (default 'packaged' = a full
+      // reviewable draft, assets + publish left to the operator).
+      addColumn(db, "content_briefs", "automate", "INTEGER NOT NULL DEFAULT 0");
+      addColumn(db, "content_briefs", "auto_max_status", "TEXT NOT NULL DEFAULT 'packaged'");
+      addColumn(db, "content_briefs", "auto_last_run_at", "TEXT NOT NULL DEFAULT ''");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_content_briefs_automate ON content_briefs(automate)");
+    },
+  },
 ];
 
 const LATEST = MIGRATIONS.reduce((m, x) => Math.max(m, x.version), 0);

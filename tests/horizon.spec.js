@@ -143,4 +143,167 @@ test.describe("Horizon OS command center", () => {
       expect(target.height, `${target.label} height`).toBeGreaterThanOrEqual(44);
     }
   });
+
+  test("validates Strategy writes and exposes Forge catalog stats through the API", async ({ request }) => {
+    const invalid = await request.post("http://127.0.0.1:8787/api/strategy", { data: { project_id: "" } });
+    expect(invalid.status()).toBe(400);
+
+    const strategy = await request.post("http://127.0.0.1:8787/api/strategy", {
+      data: {
+        project_id: "photoselect",
+        tam_sam_som: "TAM: wedding photo delivery. SAM: Indian studio workflows. SOM: first 50 studios.",
+        beachhead_market: "High-volume Indian wedding studios selling selection galleries.",
+        moats: "Payment history, client gallery workflow, switching cost.",
+        market_strategy: "Narrow beachhead first, category language later.",
+        business_model: "Vertical SaaS plus pack revenue.",
+      },
+    });
+    expect(strategy.ok()).toBeTruthy();
+
+    const saved = await request.get("http://127.0.0.1:8787/api/strategy/photoselect");
+    expect(saved.ok()).toBeTruthy();
+    const savedJson = await saved.json();
+    expect(savedJson.strategy.project_id).toBe("photoselect");
+    expect(savedJson.strategy.completeness.completed).toBeGreaterThanOrEqual(5);
+
+    const forge = await request.get("http://127.0.0.1:8787/api/forge");
+    expect(forge.ok()).toBeTruthy();
+    const forgeJson = await forge.json();
+    expect(Array.isArray(forgeJson.agents)).toBeTruthy();
+    expect(forgeJson.stats).toEqual(
+      expect.objectContaining({
+        total: expect.any(Number),
+        categories: expect.any(Array),
+        revenueModels: expect.any(Array),
+      }),
+    );
+  });
+
+  test("renders Strategy and Forge without horizontal overflow on mobile", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    for (const route of ["/strategy", "/forge"]) {
+      await page.goto(route);
+      await page.waitForLoadState("networkidle");
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow, `${route} overflow`).toBeLessThanOrEqual(2);
+    }
+
+    await expect(page.getByRole("heading", { name: "Agent Forge" })).toBeVisible();
+    await page.goto("/strategy");
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("heading", { name: "Startup Incubation Engine" })).toBeVisible();
+    await expect(page.getByText("Strategy completeness")).toBeVisible();
+  });
+
+  test("surfaces native agents and MCP providers in the integration hub", async ({ page }) => {
+    await page.goto("/connectors");
+    await page.waitForLoadState("networkidle");
+
+    await expect(page.getByRole("heading", { name: "Integration hub for agents, MCP, and skills." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Local Agents" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Claude Code" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Codex" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Hugging Face" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Higgsfield" })).toBeVisible();
+
+    await page.getByRole("button", { name: /Check Codex health/ }).click();
+    await expect(page.getByText(/codex is ready|codex is unavailable/i)).toBeVisible();
+  });
+
+  test("lists every tool returned by a connected MCP provider", async ({ page }) => {
+    await page.route("**/api/connectors", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          connectors: [
+            {
+              id: "google-drive",
+              kind: "mcp",
+              name: "Google Drive",
+              category: "Files",
+              provides: "Recent documents and search.",
+              url: "https://drivemcp.googleapis.com/mcp/v1",
+              state: "connected",
+              sort_order: 0,
+            },
+          ],
+        }),
+      });
+    });
+    await page.route("**/api/connectors/google-drive/tools", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          tools: [
+            "copy_file",
+            "create_file",
+            "download_file_content",
+            "get_file_metadata",
+            "get_file_permissions",
+            "list_recent_files",
+            "search_files",
+            "update_file",
+          ].map((name) => ({ name, description: `${name} description` })),
+        }),
+      });
+    });
+
+    await page.goto("/connectors");
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("button", { name: "List Google Drive tools" }).click();
+
+    const drive = page.getByRole("article", { name: "Google Drive" });
+    await expect(drive.getByText("8 tools loaded")).toBeVisible();
+    await expect(drive.getByRole("button", { name: /copy_file/ })).toBeVisible();
+    await expect(drive.getByRole("button", { name: /create_file/ })).toBeVisible();
+    await expect(drive.getByRole("button", { name: /download_file_content/ })).toBeVisible();
+    await expect(drive.getByRole("button", { name: /get_file_metadata/ })).toBeVisible();
+    await expect(drive.getByRole("button", { name: /get_file_permissions/ })).toBeVisible();
+    await expect(drive.getByRole("button", { name: /list_recent_files/ })).toBeVisible();
+    await expect(drive.getByRole("button", { name: /search_files/ })).toBeVisible();
+    await expect(drive.getByRole("button", { name: /update_file/ })).toBeVisible();
+  });
+
+  test("runs the content engine manual-publish flow", async ({ page }) => {
+    const title = `PhotoSelect delivery reel ${Date.now()}`;
+
+    await page.goto("/content");
+    await page.waitForLoadState("networkidle");
+
+    await expect(page.getByRole("heading", { name: "Content Engine" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Generate in the backyard" })).toBeVisible();
+    await expect(page.getByText("Higgsfield · generate_image")).toBeVisible();
+    await page.getByLabel("Brief title").fill(title);
+    await page.getByLabel("Engine").selectOption("photoselect");
+    await page.getByLabel("Source artifact").fill("PhotoSelect checkout and delivery build log");
+    await page.getByLabel("Hook").fill("Shot Sunday. Delivered Monday.");
+    await page.getByLabel("Audience").fill("Indian wedding studio owners");
+    await page.getByLabel("Channels").fill("instagram,whatsapp");
+    await page.getByRole("button", { name: "Save brief" }).click();
+
+    const brief = page.getByRole("article", { name: title });
+    await expect(brief).toBeVisible();
+
+    // The native Auto-draft button runs Claude Code (minutes) — too slow for e2e. Exercise the
+    // fast template-package manual-publish path here; the autonomous lane is covered server-side.
+    await brief.getByRole("button", { name: "Plan still" }).click();
+    await expect(page.getByRole("status").getByText("huggingface still planned")).toBeVisible();
+
+    await brief.getByRole("button", { name: "Template package" }).click();
+    await expect(page.getByText("content package")).toBeVisible();
+
+    await brief.getByRole("button", { name: "Mark published" }).click();
+    await expect(page.getByRole("status").getByText("published manually")).toBeVisible();
+  });
+
+  test("spreads connector actions into relevant work surfaces", async ({ page }) => {
+    await page.goto("/signals");
+    await page.waitForLoadState("networkidle");
+
+    await expect(page.getByRole("heading", { name: "Turn inbox and files into action fuel" })).toBeVisible();
+    await expect(page.getByText("Gmail · search_threads")).toBeVisible();
+    await expect(page.getByText("Google Drive · list_recent_files")).toBeVisible();
+    await expect(page.getByText("Google Calendar · list_events")).toBeVisible();
+  });
 });

@@ -4,15 +4,57 @@ import "./env.mjs";
 // .env and is never sent to the browser. Used by small in-app workers that turn
 // rough actions into runnable specs, rank money relevance, and draft offers.
 
-const MODEL = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
+import { redactForLog } from "./redact.mjs";
+
+export const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
 const ENDPOINT = (model) =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  `https://generativelanguage.googleapis.com/v1beta/models/${normalizeGeminiModelId(model)}:generateContent`;
+const MODELS_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
+
+export function normalizeGeminiModelId(model) {
+  return String(model || DEFAULT_GEMINI_MODEL).replace(/^models\//, "");
+}
 
 export function geminiAvailable() {
   return Boolean(process.env.GEMINI_API_KEY);
 }
 
-export async function geminiGenerate(prompt, { system, timeoutMs = 30_000 } = {}) {
+export async function listGeminiModels({ timeoutMs = 12_000 } = {}) {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error("GEMINI_API_KEY not set");
+
+  const models = [];
+  let pageToken = "";
+  do {
+    const url = new URL(MODELS_ENDPOINT);
+    url.searchParams.set("key", key);
+    url.searchParams.set("pageSize", "1000");
+    if (pageToken) url.searchParams.set("pageToken", pageToken);
+
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`gemini models ${res.status}: ${redactForLog(text).slice(0, 200)}`);
+    }
+    const data = await res.json();
+    for (const model of data?.models ?? []) {
+      if (!model?.supportedGenerationMethods?.includes("generateContent")) continue;
+      const id = normalizeGeminiModelId(model.name);
+      models.push({
+        id,
+        label: model.displayName || id,
+        description: model.description || "",
+        inputTokenLimit: model.inputTokenLimit ?? null,
+        outputTokenLimit: model.outputTokenLimit ?? null,
+      });
+    }
+    pageToken = data?.nextPageToken || "";
+  } while (pageToken);
+
+  return models;
+}
+
+export async function geminiGenerate(prompt, { system, model = DEFAULT_GEMINI_MODEL, timeoutMs = 30_000 } = {}) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY not set");
   const body = {
@@ -20,7 +62,7 @@ export async function geminiGenerate(prompt, { system, timeoutMs = 30_000 } = {}
     ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
     generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
   };
-  const res = await fetch(`${ENDPOINT(MODEL)}?key=${encodeURIComponent(key)}`, {
+  const res = await fetch(`${ENDPOINT(model)}?key=${encodeURIComponent(key)}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
@@ -28,14 +70,14 @@ export async function geminiGenerate(prompt, { system, timeoutMs = 30_000 } = {}
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`gemini ${res.status}: ${text.slice(0, 200)}`);
+    throw new Error(`gemini ${res.status}: ${redactForLog(text).slice(0, 200)}`);
   }
   const data = await res.json();
   const parts = data?.candidates?.[0]?.content?.parts ?? [];
   return parts.map((p) => p.text ?? "").join("").trim();
 }
 
-function extractJson(text) {
+export function extractJson(text) {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const raw = fenced ? fenced[1] : text;
   const start = raw.indexOf("{");
@@ -44,8 +86,7 @@ function extractJson(text) {
   return JSON.parse(raw.slice(start, end + 1));
 }
 
-// Turn a rough action into a runnable spec. Returns the enrichment fields.
-export async function enrichAction(action) {
+export function buildActionEnrichmentRequest(action) {
   const system =
     "You are Horizon OS's action-spec worker for a solo, faceless founder (no sales calls, no ads, low burn). " +
     "Turn a rough action into a precise, runnable agent task. Bias every output toward producing money, proof, or distribution. " +
@@ -63,8 +104,10 @@ export async function enrichAction(action) {
       '"prompt": "a tightened, self-contained agent prompt to achieve the goal" }',
   ].join("\n");
 
-  const text = await geminiGenerate(prompt, { system });
-  const obj = extractJson(text);
+  return { system, prompt };
+}
+
+export function normalizeActionEnrichment(obj, action = {}) {
   return {
     goal: String(obj.goal ?? "").trim(),
     constraints: String(obj.constraints ?? "").trim(),
@@ -72,4 +115,16 @@ export async function enrichAction(action) {
     tools: String(obj.tools ?? "").trim(),
     prompt: String(obj.prompt ?? action.prompt ?? "").trim(),
   };
+}
+
+export async function enrichActionWithGenerator(action, generate) {
+  const { system, prompt } = buildActionEnrichmentRequest(action);
+  const text = await generate(prompt, { system });
+  const obj = extractJson(text);
+  return normalizeActionEnrichment(obj, action);
+}
+
+// Turn a rough action into a runnable spec. Returns the enrichment fields.
+export async function enrichAction(action) {
+  return enrichActionWithGenerator(action, geminiGenerate);
 }

@@ -9,8 +9,9 @@ emits a heartbeat the dashboard reads.
 
 1. **sweep** — `runProjectSweep`: scan `~/Desktop/bolting/*` for new commits / dirty repos.
 2. **generate** — `generateRevenueActions` (rule-based, always works, reuses the sweep).
-3. **enrich** — `autoEnrich` via Gemini: rough actions → runnable specs. Quota-safe: stops
-   cleanly on a 429 (`stoppedForQuota: true`); skipped entirely if no `GEMINI_API_KEY`.
+3. **enrich** — `autoEnrich` via configured model providers: rough actions → runnable specs.
+   Gemini is attempted first when present; NVIDIA NIM is the fallback or direct provider. It reports
+   `stoppedForQuota: true` only when quota stops enrichment and no fallback is available.
 4. **ready** — count enriched actions awaiting the operator's reviewed dispatch.
 
 It **never throws** (each stage isolated) and **never blocks on a remote model** — enrichment
@@ -39,5 +40,6 @@ via the action drawer's **Send to Jules** button (see `docs/gemini-jules-setup.m
 ## Keys
 
 Both live server-side in `.env`, loaded by `scripts/env.mjs`, never shipped to the browser:
-`GEMINI_API_KEY` (enrichment), `JULES_API_KEY` (operator dispatch). A 429 means the
-integration is correct but quota is spent — it clears on reset.
+`GEMINI_API_KEY` / `NVIDIA_NIM_API_KEY` (enrichment), `JULES_API_KEY` (operator dispatch).
+A Gemini 429 means the integration is correct but quota is spent; NIM can keep the loop moving if
+configured.

@@ -1,16 +1,21 @@
-# Gemini + Jules Setup (wired and verified)
+# Model Providers + Jules Setup
 
-Both agent APIs are configured server-side and confirmed working. Keys live in `.env` (gitignored),
-loaded via `scripts/env.mjs`. Browser code never receives them.
+Model and agent APIs are configured server-side. Keys live in `.env` (gitignored), loaded via
+`scripts/env.mjs`. Browser code never receives them.
 
-## Gemini (in-app worker)
+## Enrichment providers
 
-- Key: `GEMINI_API_KEY` in `.env`. Model: `GEMINI_MODEL` (default `gemini-2.0-flash`).
-- Client: `scripts/gemini.mjs` (dependency-free REST). Worker: `enrichAction()` turns a rough action
-  into goal + constraints + done-criteria + a tightened prompt.
-- Endpoint: `PATCH /api/action-queue/:id/enrich`. UI: the action drawer's "Enrich with Gemini" button.
-- Status: verified — a live call authenticates and reaches the API. A `429` means free-tier quota is
-  exhausted for now (resets daily); the integration is correct.
+- Gemini key: `GEMINI_API_KEY` in `.env`. Model: `GEMINI_MODEL` (default `gemini-2.0-flash`).
+- NVIDIA NIM key: `NVIDIA_NIM_API_KEY` in `.env`. Model: `NVIDIA_NIM_MODEL`
+  (default `meta/llama-3.1-8b-instruct`). Endpoint:
+  `NVIDIA_NIM_ENDPOINT` (default `https://integrate.api.nvidia.com/v1/chat/completions`).
+- Clients: `scripts/gemini.mjs` and `scripts/nim.mjs`. Shared worker:
+  `enrichActionWithAvailableProvider()` in `scripts/auto-enrich.mjs`.
+- Provider order: try Gemini first when available; fall through to NIM on Gemini quota, schema, or
+  provider failures. If only NIM is configured, NIM enriches directly.
+- Endpoint: `PATCH /api/action-queue/:id/enrich`. UI: the action drawer's "Enrich with model" button.
+- A Gemini `429` means free-tier quota is exhausted for now; with NIM configured, Horizon keeps
+  enriching through the fallback path instead of stopping the loop.
 
 ## Jules (async repository work)
 
@@ -44,8 +49,8 @@ After a sweep generates actions, enrich the new ones into runnable specs in one 
 - `POST /api/action-queue/enrich-all` — same, from the API (for a UI button or the hourly loop).
 
 `scripts/auto-enrich.mjs` is quota-safe: it enriches a bounded batch (`HORIZON_ENRICH_LIMIT`, default 6)
-with a delay between calls and **stops cleanly on a 429** (`stoppedForQuota: true`) so the operating
-loop never blocks on Gemini quota. Run it again after the daily quota resets.
+with a delay between calls. It only reports `stoppedForQuota: true` when Gemini hits quota and no
+fallback provider is configured. The operating loop never blocks on remote model availability.
 
 ## Dispatch to Jules from the UI
 
@@ -62,6 +67,6 @@ Verified end-to-end: a real session was created on `antharmaya/The-Layers-of-Com
 
 ## Security note
 
-The Gemini key and the Jules key were shared in plaintext during setup and now exist in chat history.
-Rotate both if that transcript is ever shared (Gemini: AI Studio console; Jules: web-app Settings,
+Keys were shared in plaintext during setup and now exist in chat history. Rotate them if that transcript
+is ever shared (Gemini: AI Studio console; NVIDIA: API catalog key page; Jules: web-app Settings,
 delete and recreate the key).

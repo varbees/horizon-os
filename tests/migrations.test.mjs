@@ -33,6 +33,8 @@ test("migrations create the core and compound wiki schema idempotently", async (
     "wiki_links",
     "wiki_chunks",
     "wiki_runs",
+    "startup_strategies",
+    "agent_catalog",
   ]) {
     assert.ok(tables.has(table), `expected table ${table}`);
   }
@@ -42,6 +44,16 @@ test("migrations create the core and compound wiki schema idempotently", async (
   const actionQueueColumns = columnNames(db, "action_queue");
   for (const column of ["state", "lane", "priority_score", "dispatch_target", "idempotency_key"]) {
     assert.ok(actionQueueColumns.has(column), `expected action_queue.${column}`);
+  }
+
+  const agentCatalogColumns = columnNames(db, "agent_catalog");
+  for (const column of ["id", "name", "description", "category", "revenue_model", "github_url", "added_at"]) {
+    assert.ok(agentCatalogColumns.has(column), `expected agent_catalog.${column}`);
+  }
+
+  const indexes = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type = 'index'").all().map((row) => row.name));
+  for (const index of ["idx_agent_catalog_category", "idx_agent_catalog_revenue_model", "idx_startup_strategies_updated"]) {
+    assert.ok(indexes.has(index), `expected index ${index}`);
   }
 
   db.close();

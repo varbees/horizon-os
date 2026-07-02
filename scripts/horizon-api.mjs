@@ -13,12 +13,13 @@ import { getUsageSummary } from "./usage.mjs";
 import { mcpServerSeed } from "../src/data/horizon.js";
 import { portfolioProjects } from "../src/data/portfolio.js";
 import { frontmatter, listNotes, readNote, vaultInfo, writeNote } from "./vault.mjs";
-import { callTool, connectServer, connectionState, disconnectServer, finishAuth, listTools } from "./mcp-client.mjs";
+import { callTool, connectServer, connectionState, disconnectServer, finishAuth, listTools, reconnectStored } from "./mcp-client.mjs";
 import { buildRunnableSpec } from "./action-spec.mjs";
 import { buildPreflightContext, formatPreflightContext } from "./preflight-context.mjs";
 import { summarizeContextBudget } from "./context-budget.mjs";
-import { enrichAction, geminiAvailable } from "./gemini.mjs";
-import { autoEnrich } from "./auto-enrich.mjs";
+import { autoEnrich, enrichActionWithAvailableProvider, llmAvailable } from "./auto-enrich.mjs";
+import { generateWithAvailableProvider, listAiModelCatalog } from "./llm-providers.mjs";
+import { redactForLog } from "./redact.mjs";
 import { runCycle as runHorizonCycle, loopStatus } from "./horizon-loop.mjs";
 import { gitDetail } from "./git-detail.mjs";
 import { horizonDoctor } from "./doctor.mjs";
@@ -34,8 +35,18 @@ import {
   listActivities as julesListActivities,
   listSources as julesListSources,
 } from "./jules.mjs";
+import { runClaudeCode, claudeCodeHealth } from "./executors/claude-code.mjs";
+import { codexHealth } from "./executors/codex.mjs";
+import { listPrompts, renderLanePrompt } from "./content-prompts.mjs";
+import { runContentStage, advanceBrief } from "./content-loop.mjs";
 
 function mcpServerById(id) {
+  try {
+    const row = db.prepare("SELECT * FROM connectors WHERE id = ?").get(id);
+    if (row?.kind === "mcp") return row;
+  } catch {
+    /* db is initialized after this function is defined */
+  }
   return mcpServerSeed.find((s) => s.id === id) ?? null;
 }
 
@@ -205,6 +216,64 @@ function journeyPayload(body) {
   };
 }
 
+const strategyFields = [
+  ["tam_sam_som", "Market sizing"],
+  ["beachhead_market", "Beachhead"],
+  ["moats", "Moats"],
+  ["market_strategy", "Ocean strategy"],
+  ["business_model", "Business model"],
+];
+
+function cleanLongText(value) {
+  return String(value ?? "").trim().slice(0, 12_000);
+}
+
+function strategyPayload(body) {
+  const payload = {
+    project_id: String(body.project_id ?? body.projectId ?? "").trim(),
+  };
+  for (const [field] of strategyFields) payload[field] = cleanLongText(body[field]);
+  return payload;
+}
+
+function strategyCompleteness(strategy) {
+  const missing = strategyFields
+    .filter(([field]) => !String(strategy?.[field] ?? "").trim())
+    .map(([, label]) => label);
+  const total = strategyFields.length;
+  const completed = total - missing.length;
+  return {
+    completed,
+    total,
+    score: total ? Math.round((completed / total) * 100) : 0,
+    missing,
+  };
+}
+
+function decorateStrategy(strategy) {
+  if (!strategy) return null;
+  return { ...strategy, completeness: strategyCompleteness(strategy) };
+}
+
+function countBy(rows, field) {
+  const counts = new Map();
+  for (const row of rows) {
+    const value = String(row[field] ?? "").trim() || "Uncategorized";
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+function forgeStats(agents) {
+  return {
+    total: agents.length,
+    categories: countBy(agents, "category"),
+    revenueModels: countBy(agents, "revenue_model"),
+  };
+}
+
 function getCommandBase() {
   return {
     nodes: all("SELECT * FROM graph_nodes ORDER BY kind, label"),
@@ -228,6 +297,117 @@ function toFtsQuery(input) {
     .join(" OR ");
 }
 
+function jsonArray(value, fallback = []) {
+  if (Array.isArray(value)) return value;
+  try {
+    const parsed = JSON.parse(value ?? "[]");
+    return Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function compactText(value, limit = 12_000) {
+  return String(value ?? "").trim().slice(0, limit);
+}
+
+function briefPathId(pathname, suffix = "") {
+  const prefix = "/api/content/briefs/";
+  if (!pathname.startsWith(prefix)) return "";
+  const raw = pathname.slice(prefix.length, suffix ? -suffix.length : undefined);
+  return decodeURIComponent(raw.replace(/\/$/, ""));
+}
+
+function connectorRows() {
+  return all("SELECT * FROM connectors ORDER BY sort_order, name").map((row) => (
+    row.kind === "mcp" ? { ...row, state: connectionState(row.id) } : row
+  ));
+}
+
+function getConnector(id) {
+  return db.prepare("SELECT * FROM connectors WHERE id = ?").get(id) ?? null;
+}
+
+function getBrief(id) {
+  return db.prepare("SELECT * FROM content_briefs WHERE id = ?").get(id) ?? null;
+}
+
+function briefDetails(id) {
+  const brief = getBrief(id);
+  if (!brief) return null;
+  return {
+    brief,
+    runs: all("SELECT * FROM pipeline_runs WHERE brief_id = ? ORDER BY started_at DESC", id),
+    assets: all("SELECT * FROM content_assets WHERE brief_id = ? ORDER BY created_at", id),
+    package: db.prepare("SELECT * FROM content_packages WHERE brief_id = ? ORDER BY updated_at DESC LIMIT 1").get(id) ?? null,
+  };
+}
+
+function defaultAssetPrompt(brief) {
+  const engine = brief.engine === "photoselect" ? "PhotoSelect" : "Antharmaya Labs";
+  return [
+    `${engine} faceless premium content asset.`,
+    brief.hook ? `Hook: ${brief.hook}.` : "",
+    brief.source_artifact ? `Source artifact: ${brief.source_artifact}.` : "",
+    "Light, restrained, evidence-led, no founder face, no fake science visuals.",
+  ].filter(Boolean).join(" ");
+}
+
+function packageForBrief(brief, assets = []) {
+  const channels = jsonArray(brief.channels_json);
+  const isPhotoSelect = brief.engine === "photoselect";
+  const hook = compactText(brief.hook) || (isPhotoSelect ? "Shot Sunday. Delivered Monday." : "The work is the face.");
+  const audience = compactText(brief.audience) || (isPhotoSelect ? "Indian wedding studio owners" : "technical founders");
+  const assetLines = assets.length
+    ? assets.map((asset) => `${asset.provider} ${asset.kind}: ${asset.prompt}`).join("\n")
+    : "No generated assets attached yet. Use a product screenshot or delivery-flow screen recording.";
+
+  return {
+    blog: [
+      `# ${brief.title}`,
+      "",
+      hook,
+      "",
+      `Audience: ${audience}.`,
+      "",
+      "Proof source:",
+      brief.source_artifact || "Add a build log, product screenshot, or shipped workflow before publishing.",
+      "",
+      "Asset plan:",
+      assetLines,
+    ].join("\n"),
+    x_thread_json: JSON.stringify([
+      hook,
+      brief.source_artifact || "A shipped workflow beats a generic announcement.",
+      isPhotoSelect
+        ? "Show the delivery flow, the payment gate, and the unlock moment."
+        : "Show the command surface, the repo diff, and the operating principle.",
+      "Manual publish only after checking facts, screenshots, links, and alt text.",
+    ]),
+    linkedin: `${hook}\n\nBuilt from: ${brief.source_artifact || "a real Horizon OS artifact"}\n\nManual publish after proof review.`,
+    instagram_caption: isPhotoSelect
+      ? `${hook}\n\nA faceless reel: upload, WhatsApp link, client selection, payment unlock.\n\nFor studios tired of Drive links and payment chasing.`
+      : `${hook}\n\nA command-center build note from Antharmaya Labs.\n\nNo face, no hype, just the system getting sharper.`,
+    reel_script_json: JSON.stringify([
+      { frame: 1, text: hook, visual: isPhotoSelect ? "studio delivery dashboard" : "Horizon OS command screen" },
+      { frame: 2, text: "The old workflow", visual: isPhotoSelect ? "Drive and WhatsApp chaos" : "scattered agent chats" },
+      { frame: 3, text: "The new proof", visual: brief.source_artifact || "real shipped artifact" },
+      { frame: 4, text: "Manual publish only", visual: "checklist and final caption" },
+    ]),
+    alt_text: `${brief.title}: ${hook}`,
+    cta_json: JSON.stringify(isPhotoSelect
+      ? ["DM for founding-studio setup", "Join the early-access list", "Send one delivery pain point"]
+      : ["Read the build note", "Inspect the repo pattern", "Follow the Horizon OS rung"]),
+    checklist_json: JSON.stringify([
+      "Facts match the source artifact",
+      "No founder face required",
+      "No invented metrics or fake science",
+      "Visual text stays inside safe zones",
+      "Manual publish link captured after posting",
+    ]),
+  };
+}
+
 const server = createServer(async (req, res) => {
   try {
     if (req.method === "OPTIONS") return json(res, 204, {});
@@ -239,6 +419,38 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/api/command-base") {
       return json(res, 200, getCommandBase());
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/routine/brief") {
+      const body = await readJson(req);
+      const day = Number(body.day) || 0;
+      const phase = String(body.phase ?? "").slice(0, 120);
+      const date = String(body.date ?? "").slice(0, 16);
+      const blocks = Array.isArray(body.blocks) ? body.blocks.slice(0, 20) : [];
+      const doneList = blocks.filter((b) => b?.done).map((b) => `${b.start} ${b.title}`);
+      const pendingList = blocks.filter((b) => !b?.done).map((b) => `${b.start} ${b.title}`);
+      const openTasks = all(
+        "SELECT title, priority FROM tasks WHERE node_id = 'job-engine' AND status != 'done' ORDER BY created_at DESC LIMIT 8",
+      );
+      const prompt = [
+        `Today is ${date}, Day ${day} of the 30-day AI job plan (phase: ${phase}).`,
+        doneList.length ? `Blocks already done today:\n${doneList.map((t) => `- ${t}`).join("\n")}` : "No blocks completed yet today.",
+        `Blocks remaining:\n${pendingList.map((t) => `- ${t}`).join("\n")}`,
+        openTasks.length ? `Open job-engine tasks:\n${openTasks.map((t) => `- [${t.priority}] ${t.title}`).join("\n")}` : "",
+        "Write a short operator brief (max 120 words): 1) the single highest-leverage focus for the rest of today, 2) one specific risk of drift to refuse, 3) one line of grounded encouragement. Plain text, no markdown headers.",
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+      try {
+        const result = await generateWithAvailableProvider(prompt, {
+          system:
+            "You are the operator brief inside Horizon OS, the founder's local command center. He is on a 30-day sprint to land a 20LPA+ AI/agentic engineering or technical PM role while keeping PhotoSelect and a consulting lane warm. Be direct, concrete, and brief. The daily 45-minute unassisted practice block is non-negotiable and must never be suggested as skippable.",
+          timeoutMs: 45_000,
+        });
+        return json(res, 200, result);
+      } catch (error) {
+        return json(res, 502, { error: "brief_failed", detail: redactForLog(String(error?.message ?? error)) });
+      }
     }
 
     if (req.method === "GET" && url.pathname === "/api/projects") {
@@ -260,6 +472,40 @@ const server = createServer(async (req, res) => {
         ...result,
         actions: actionRows(),
       });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/calendar/export.ics") {
+      const events = all("SELECT * FROM calendar_events ORDER BY start_at");
+      const dtstamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      let ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Horizon OS//Calendar Export//EN\r\nCALSCALE:GREGORIAN\r\n";
+      for (const ev of events) {
+        if (!ev.start_at) continue;
+        ics += "BEGIN:VEVENT\r\n";
+        ics += `UID:${ev.id}@horizon-os\r\n`;
+        ics += `DTSTAMP:${dtstamp}\r\n`;
+        if (ev.all_day) {
+           const dStart = ev.start_at.split('T')[0].replace(/-/g, '');
+           ics += `DTSTART;VALUE=DATE:${dStart}\r\n`;
+           if (ev.end_at) {
+              const dEnd = ev.end_at.split('T')[0].replace(/-/g, '');
+              ics += `DTEND;VALUE=DATE:${dEnd}\r\n`;
+           }
+        } else {
+           const dtStart = ev.start_at.includes('T') ? ev.start_at.replace(/[-:]/g, '').substring(0, 15) + 'Z' : '';
+           const dtEnd = ev.end_at && ev.end_at.includes('T') ? ev.end_at.replace(/[-:]/g, '').substring(0, 15) + 'Z' : '';
+           if (dtStart) ics += `DTSTART:${dtStart}\r\n`;
+           if (dtEnd) ics += `DTEND:${dtEnd}\r\n`;
+        }
+        ics += `SUMMARY:${ev.title}\r\n`;
+        if (ev.description) ics += `DESCRIPTION:${ev.description.replace(/\\n/g, '\\\\n')}\r\n`;
+        if (ev.rrule) ics += `RRULE:${ev.rrule}\r\n`;
+        ics += "END:VEVENT\r\n";
+      }
+      ics += "END:VCALENDAR\r\n";
+      res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="horizon-calendar.ics"');
+      res.end(ics);
+      return;
     }
 
     if (req.method === "GET" && url.pathname === "/api/calendar/events") {
@@ -345,6 +591,46 @@ const server = createServer(async (req, res) => {
       const id = decodeURIComponent(url.pathname.replace("/api/calendar/events/", ""));
       db.prepare("DELETE FROM calendar_events WHERE id = ?").run(id);
       return json(res, 200, { ok: true, id });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/forge") {
+      const agents = all("SELECT * FROM agent_catalog ORDER BY category, name");
+      return json(res, 200, {
+        agents,
+        stats: forgeStats(agents),
+      });
+    }
+
+    if (req.method === "GET" && url.pathname.startsWith("/api/strategy/")) {
+      const projectId = decodeURIComponent(url.pathname.replace("/api/strategy/", "")).trim();
+      if (!projectId) return json(res, 400, { ok: false, error: "project_id_required" });
+      const strategy = db.prepare("SELECT * FROM startup_strategies WHERE project_id = ?").get(projectId) || null;
+      return json(res, 200, { strategy: decorateStrategy(strategy) });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/strategy") {
+      const body = strategyPayload(await readJson(req));
+      if (!body.project_id) return json(res, 400, { ok: false, error: "project_id_required" });
+      db.prepare(`
+        INSERT INTO startup_strategies (project_id, tam_sam_som, beachhead_market, moats, market_strategy, business_model, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+        ON CONFLICT(project_id) DO UPDATE SET
+          tam_sam_som = excluded.tam_sam_som,
+          beachhead_market = excluded.beachhead_market,
+          moats = excluded.moats,
+          market_strategy = excluded.market_strategy,
+          business_model = excluded.business_model,
+          updated_at = datetime('now')
+      `).run(
+        body.project_id,
+        body.tam_sam_som,
+        body.beachhead_market,
+        body.moats,
+        body.market_strategy,
+        body.business_model,
+      );
+      const strategy = db.prepare("SELECT * FROM startup_strategies WHERE project_id = ?").get(body.project_id);
+      return json(res, 200, { ok: true, strategy: decorateStrategy(strategy) });
     }
 
     if (req.method === "GET" && url.pathname === "/api/journey") {
@@ -573,6 +859,14 @@ const server = createServer(async (req, res) => {
       }
     }
 
+    if (req.method === "GET" && url.pathname === "/api/ai-models") {
+      try {
+        return json(res, 200, { ok: true, ...(await listAiModelCatalog()) });
+      } catch (error) {
+        return json(res, 500, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
     if (req.method === "POST" && url.pathname === "/api/context-budget") {
       try {
         const body = await readJson(req);
@@ -692,7 +986,7 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/api/mcp") {
       return json(res, 200, {
-        servers: mcpServerSeed.map((s) => ({ ...s, state: connectionState(s.id) })),
+        servers: connectorRows().filter((row) => row.kind === "mcp"),
       });
     }
 
@@ -919,10 +1213,27 @@ const server = createServer(async (req, res) => {
       }
     }
 
+    // Run only the autonomous content stage (advance opted-in briefs through the free draft lanes).
+    // Lighter than a full loop cycle; the operator can trigger a content pass on demand.
+    if (req.method === "POST" && url.pathname === "/api/loop/content") {
+      const body = await readJson(req);
+      try {
+        const result = await runContentStage(db, { limit: Number(body.limit) || undefined, cwd: repoRoot });
+        return json(res, 200, { ok: true, ...result });
+      } catch (error) {
+        return json(res, 502, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
     if (req.method === "POST" && url.pathname === "/api/action-queue/enrich-all") {
       const body = await readJson(req);
       try {
-        const result = await autoEnrich({ db, limit: Number(body.limit) || undefined });
+        const result = await autoEnrich({
+          db,
+          limit: Number(body.limit) || undefined,
+          provider: body.provider,
+          model: body.model,
+        });
         return json(res, 200, result);
       } catch (error) {
         return json(res, 502, { ok: false, error: String(error.message ?? error) });
@@ -1013,9 +1324,13 @@ const server = createServer(async (req, res) => {
       const id = decodeURIComponent(url.pathname.replace("/api/action-queue/", "").replace("/enrich", ""));
       const action = db.prepare("SELECT * FROM action_queue WHERE id = ?").get(id);
       if (!action) return json(res, 404, { ok: false, error: "action_not_found" });
-      if (!geminiAvailable()) return json(res, 503, { ok: false, error: "gemini_key_missing" });
+      if (!llmAvailable()) return json(res, 503, { ok: false, error: "llm_key_missing" });
+      const body = await readJson(req);
       try {
-        const fields = await enrichAction(action);
+        const { fields, provider, model } = await enrichActionWithAvailableProvider(action, {
+          provider: body.provider,
+          model: body.model,
+        });
         db.prepare(`
           UPDATE action_queue SET goal = ?, constraints = ?, done_criteria = ?, tools = ?, prompt = ?,
             cwd = COALESCE(NULLIF(cwd,''), ?), enriched = 1, updated_at = datetime('now')
@@ -1029,7 +1344,7 @@ const server = createServer(async (req, res) => {
           action.project_path || "",
           id,
         );
-        return json(res, 200, { ok: true, id, ...fields });
+        return json(res, 200, { ok: true, id, provider, model, ...fields });
       } catch (error) {
         return json(res, 502, { ok: false, error: String(error.message ?? error) });
       }
@@ -1326,6 +1641,366 @@ const server = createServer(async (req, res) => {
       return json(res, 201, { ok: true, id });
     }
 
+    // --- Connector registry (the integration hub: local agents + MCP + skills) ---
+    if (req.method === "GET" && url.pathname === "/api/connectors") {
+      return json(res, 200, { connectors: connectorRows() });
+    }
+
+    if (req.method === "POST" && url.pathname.startsWith("/api/connectors/") && url.pathname.endsWith("/health")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/connectors/", "").replace("/health", ""));
+      const row = db.prepare("SELECT * FROM connectors WHERE id = ?").get(id);
+      if (!row) return json(res, 404, { ok: false, error: "connector_not_found" });
+      let state = row.state;
+      let version = row.version;
+      let health = {};
+      if (row.kind === "local_agent") {
+        let probe;
+        if (id === "codex") probe = await codexHealth();
+        else if (id === "jules") probe = { ok: julesAvailable(), version: julesAvailable() ? "REST API (JULES_API_KEY)" : "", error: julesAvailable() ? "" : "jules_key_missing" };
+        else probe = await claudeCodeHealth();
+        state = probe.ok ? "ready" : "unavailable";
+        version = probe.version || "";
+        health = probe;
+      } else if (row.kind === "mcp") {
+        state = connectionState(id);
+        health = { state };
+      }
+      db.prepare("UPDATE connectors SET state = ?, version = ?, last_health_at = datetime('now'), health_json = ?, updated_at = datetime('now') WHERE id = ?")
+        .run(state, version, JSON.stringify(health), id);
+      return json(res, 200, { ok: true, id, state, version, health });
+    }
+
+    if (req.method === "POST" && url.pathname.startsWith("/api/connectors/") && url.pathname.endsWith("/connect")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/connectors/", "").replace("/connect", ""));
+      const row = getConnector(id);
+      if (!row) return json(res, 404, { ok: false, error: "connector_not_found" });
+      if (row.kind !== "mcp") return json(res, 400, { ok: false, error: "connector_not_mcp" });
+      try {
+        const result = await connectServer(id, row.url);
+        db.prepare("UPDATE connectors SET state = ?, updated_at = datetime('now') WHERE id = ?")
+          .run(result.connected ? "connected" : "authorizing", id);
+        return json(res, 200, { ok: true, ...result });
+      } catch (error) {
+        db.prepare("UPDATE connectors SET state = 'unavailable', health_json = ?, updated_at = datetime('now') WHERE id = ?")
+          .run(JSON.stringify({ ok: false, error: String(error.message ?? error) }), id);
+        return json(res, 502, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
+    if (req.method === "POST" && url.pathname.startsWith("/api/connectors/") && url.pathname.endsWith("/tools")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/connectors/", "").replace("/tools", ""));
+      const row = getConnector(id);
+      if (!row) return json(res, 404, { ok: false, error: "connector_not_found" });
+      if (row.kind !== "mcp") return json(res, 400, { ok: false, error: "connector_not_mcp" });
+      try {
+        const tools = await listTools(id);
+        return json(res, 200, { ok: true, tools: tools.map((t) => ({ name: t.name, description: t.description })) });
+      } catch (error) {
+        return json(res, 409, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
+    if (req.method === "POST" && url.pathname.startsWith("/api/connectors/") && url.pathname.endsWith("/call")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/connectors/", "").replace("/call", ""));
+      const row = getConnector(id);
+      if (!row) return json(res, 404, { ok: false, error: "connector_not_found" });
+      if (row.kind !== "mcp") return json(res, 400, { ok: false, error: "connector_not_mcp" });
+      const body = await readJson(req);
+      try {
+        const result = await callTool(id, body.name, body.arguments ?? {});
+        return json(res, 200, { ok: true, result });
+      } catch (error) {
+        return json(res, 409, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
+    if (req.method === "POST" && url.pathname.startsWith("/api/connectors/") && url.pathname.endsWith("/disconnect")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/connectors/", "").replace("/disconnect", ""));
+      const row = getConnector(id);
+      if (!row) return json(res, 404, { ok: false, error: "connector_not_found" });
+      if (row.kind !== "mcp") return json(res, 400, { ok: false, error: "connector_not_mcp" });
+      disconnectServer(id);
+      db.prepare("UPDATE connectors SET state = 'disconnected', updated_at = datetime('now') WHERE id = ?").run(id);
+      return json(res, 200, { ok: true });
+    }
+
+    // --- Content engine: the prompt library + brief pipeline ---
+    if (req.method === "GET" && url.pathname === "/api/content/prompts") {
+      return json(res, 200, { prompts: listPrompts() });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/content/briefs") {
+      return json(res, 200, { briefs: all("SELECT * FROM content_briefs ORDER BY updated_at DESC") });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/content/briefs") {
+      const body = await readJson(req);
+      const id = body.id ?? randomUUID();
+      db.prepare(`INSERT INTO content_briefs
+        (id, title, engine, source_artifact, hook, audience, channels_json, series, tone, status, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+        id,
+        String(body.title ?? "").trim() || "Untitled brief",
+        body.engine ?? "antharmaya_labs",
+        body.source_artifact ?? body.sourceArtifact ?? "",
+        body.hook ?? "",
+        body.audience ?? "",
+        JSON.stringify(Array.isArray(body.channels) ? body.channels : []),
+        body.series ?? "",
+        body.tone ?? "",
+        body.status ?? "draft",
+        body.notes ?? "",
+      );
+      return json(res, 201, { ok: true, id });
+    }
+
+    if (req.method === "POST" && url.pathname.startsWith("/api/content/briefs/") && url.pathname.endsWith("/run")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/content/briefs/", "").replace("/run", ""));
+      const brief = db.prepare("SELECT * FROM content_briefs WHERE id = ?").get(id);
+      if (!brief) return json(res, 404, { ok: false, error: "brief_not_found" });
+      const body = await readJson(req);
+      const lane = body.lane ?? "research";
+      const rendered = renderLanePrompt(lane, brief);
+      if (!rendered) return json(res, 400, { ok: false, error: "unknown_lane" });
+
+      const runId = randomUUID();
+      const executorPref = body.executor ?? "claude-code";
+      db.prepare("INSERT INTO pipeline_runs (id, brief_id, lane, executor, status, input_json) VALUES (?, ?, ?, ?, 'running', ?)")
+        .run(runId, id, lane, executorPref, JSON.stringify({ prompt_id: rendered.id }));
+
+      // Try native Claude Code (operator subscription auth). On any failure (CLI absent,
+      // unauthenticated, timeout), fall back to a handoff spec the operator/agent can run.
+      let out = { ok: false, error: "skipped" };
+      if (executorPref !== "handoff") {
+        out = await runClaudeCode(rendered.rendered, { maxTurns: 16, timeoutMs: 180000, cwd: repoRoot });
+      }
+
+      if (out.ok) {
+        const research = out.json ?? { summary: out.result };
+        db.prepare("UPDATE pipeline_runs SET status = 'completed', output_json = ?, finished_at = datetime('now') WHERE id = ?")
+          .run(JSON.stringify({ durationMs: out.durationMs, hasJson: Boolean(out.json) }), runId);
+        if (lane === "research") {
+          db.prepare("UPDATE content_briefs SET research_json = ?, status = 'researched', updated_at = datetime('now') WHERE id = ?")
+            .run(JSON.stringify(research), id);
+        }
+        return json(res, 200, { ok: true, mode: "claude-code", runId, lane, research, durationMs: out.durationMs });
+      }
+
+      mkdirSync(queueDir, { recursive: true });
+      const specPath = resolve(queueDir, `content-${id}-${lane}.md`);
+      writeFileSync(specPath, rendered.rendered, "utf8");
+      db.prepare("UPDATE pipeline_runs SET status = 'handoff', executor = 'handoff', output_json = ?, error = ?, finished_at = datetime('now') WHERE id = ?")
+        .run(JSON.stringify({ specPath }), String(out.error ?? ""), runId);
+      return json(res, 200, { ok: true, mode: "handoff", runId, lane, specPath, reason: out.error });
+    }
+
+    // Advance a brief by one native lane (Claude Code research OR editorial package), persisting
+    // the result. Same logic the autonomous loop uses, so a manual click and a loop cycle produce
+    // identical, autonomous-quality drafts. Runs synchronously (a few minutes for a real lane).
+    if (req.method === "POST" && url.pathname.startsWith("/api/content/briefs/") && url.pathname.endsWith("/advance")) {
+      const id = briefPathId(url.pathname, "/advance");
+      const brief = db.prepare("SELECT * FROM content_briefs WHERE id = ?").get(id);
+      if (!brief) return json(res, 404, { ok: false, error: "brief_not_found" });
+      const result = await advanceBrief(db, brief, { cwd: repoRoot });
+      return json(res, 200, { ok: result.ok, result, details: briefDetails(id) });
+    }
+
+    if (req.method === "POST" && url.pathname.startsWith("/api/content/briefs/") && url.pathname.endsWith("/assets")) {
+      const id = briefPathId(url.pathname, "/assets");
+      const brief = getBrief(id);
+      if (!brief) return json(res, 404, { ok: false, error: "brief_not_found" });
+      const body = await readJson(req);
+      const assetId = body.id ?? randomUUID();
+      const provider = body.provider ?? "huggingface";
+      const kind = body.kind ?? "still";
+      const prompt = compactText(body.prompt) || defaultAssetPrompt(brief);
+      const manifest = {
+        source: "horizon-content-engine",
+        connector: body.connector ?? provider,
+        toolName: body.toolName ?? "",
+        usage: body.usage ?? "",
+      };
+      db.prepare(`INSERT INTO content_assets
+        (id, brief_id, kind, provider, prompt, negative_prompt, aspect_ratio, status, manifest_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+        assetId,
+        id,
+        kind,
+        provider,
+        prompt,
+        compactText(body.negative_prompt ?? body.negativePrompt, 4000),
+        body.aspect_ratio ?? body.aspectRatio ?? (kind === "video" ? "9:16" : "1:1"),
+        body.status ?? "planned",
+        JSON.stringify(manifest),
+      );
+      db.prepare("UPDATE content_briefs SET status = CASE WHEN status = 'draft' THEN 'asset_planned' ELSE status END, updated_at = datetime('now') WHERE id = ?").run(id);
+      return json(res, 201, { ok: true, asset: db.prepare("SELECT * FROM content_assets WHERE id = ?").get(assetId), details: briefDetails(id) });
+    }
+
+    if (req.method === "POST" && url.pathname.startsWith("/api/content/assets/") && url.pathname.endsWith("/generate")) {
+      const assetId = decodeURIComponent(url.pathname.replace("/api/content/assets/", "").replace("/generate", ""));
+      const asset = db.prepare("SELECT * FROM content_assets WHERE id = ?").get(assetId);
+      if (!asset) return json(res, 404, { ok: false, error: "asset_not_found" });
+      const body = await readJson(req);
+      const connectorId = body.connector ?? asset.provider;
+      const toolName = compactText(body.toolName, 180);
+      if (!toolName) return json(res, 400, { ok: false, error: "tool_name_required" });
+      const input = {
+        prompt: asset.prompt,
+        negative_prompt: asset.negative_prompt,
+        aspect_ratio: asset.aspect_ratio,
+        ...(body.arguments ?? {}),
+      };
+      const runId = randomUUID();
+      db.prepare("INSERT INTO pipeline_runs (id, brief_id, lane, executor, status, input_json) VALUES (?, ?, 'generate_asset', ?, 'running', ?)")
+        .run(runId, asset.brief_id, connectorId, JSON.stringify({ assetId, connectorId, toolName, arguments: input }));
+      try {
+        const result = await callTool(connectorId, toolName, input);
+        db.prepare(`UPDATE content_assets
+          SET status = 'generated', external_id = ?, result_url = ?, manifest_json = ?, updated_at = datetime('now')
+          WHERE id = ?`).run(
+          compactText(result?.id ?? result?.content?.[0]?.id, 500),
+          compactText(result?.url ?? result?.content?.[0]?.url, 1000),
+          JSON.stringify({ connectorId, toolName, result }),
+          assetId,
+        );
+        db.prepare("UPDATE pipeline_runs SET status = 'completed', output_json = ?, finished_at = datetime('now') WHERE id = ?")
+          .run(JSON.stringify({ assetId }), runId);
+        return json(res, 200, { ok: true, runId, asset: db.prepare("SELECT * FROM content_assets WHERE id = ?").get(assetId) });
+      } catch (error) {
+        db.prepare("UPDATE content_assets SET status = 'planned', updated_at = datetime('now') WHERE id = ?").run(assetId);
+        db.prepare("UPDATE pipeline_runs SET status = 'handoff', output_json = ?, error = ?, finished_at = datetime('now') WHERE id = ?")
+          .run(JSON.stringify({ assetId, connectorId, toolName, arguments: input }), String(error.message ?? error), runId);
+        return json(res, 409, { ok: false, runId, error: String(error.message ?? error) });
+      }
+    }
+
+    if (req.method === "POST" && url.pathname.startsWith("/api/content/briefs/") && url.pathname.endsWith("/package")) {
+      const id = briefPathId(url.pathname, "/package");
+      const brief = getBrief(id);
+      if (!brief) return json(res, 404, { ok: false, error: "brief_not_found" });
+      const body = await readJson(req);
+      const assets = all("SELECT * FROM content_assets WHERE brief_id = ? ORDER BY created_at", id);
+      const generated = { ...packageForBrief(brief, assets), ...body };
+      const packageId = body.id ?? db.prepare("SELECT id FROM content_packages WHERE brief_id = ? ORDER BY updated_at DESC LIMIT 1").get(id)?.id ?? randomUUID();
+      db.prepare(`INSERT INTO content_packages
+        (id, brief_id, blog, x_thread_json, linkedin, instagram_caption, reel_script_json, alt_text, cta_json, checklist_json, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          blog = excluded.blog,
+          x_thread_json = excluded.x_thread_json,
+          linkedin = excluded.linkedin,
+          instagram_caption = excluded.instagram_caption,
+          reel_script_json = excluded.reel_script_json,
+          alt_text = excluded.alt_text,
+          cta_json = excluded.cta_json,
+          checklist_json = excluded.checklist_json,
+          status = excluded.status,
+          updated_at = datetime('now')`).run(
+        packageId,
+        id,
+        generated.blog ?? "",
+        Array.isArray(generated.x_thread_json) ? JSON.stringify(generated.x_thread_json) : generated.x_thread_json ?? "[]",
+        generated.linkedin ?? "",
+        generated.instagram_caption ?? "",
+        Array.isArray(generated.reel_script_json) ? JSON.stringify(generated.reel_script_json) : generated.reel_script_json ?? "[]",
+        generated.alt_text ?? "",
+        Array.isArray(generated.cta_json) ? JSON.stringify(generated.cta_json) : generated.cta_json ?? "[]",
+        Array.isArray(generated.checklist_json) ? JSON.stringify(generated.checklist_json) : generated.checklist_json ?? "[]",
+        generated.status ?? "qa_ready",
+      );
+      db.prepare("UPDATE content_briefs SET status = 'packaged', updated_at = datetime('now') WHERE id = ?").run(id);
+      return json(res, 200, { ok: true, package: db.prepare("SELECT * FROM content_packages WHERE id = ?").get(packageId), details: briefDetails(id) });
+    }
+
+    if (req.method === "POST" && url.pathname.startsWith("/api/content/briefs/") && url.pathname.endsWith("/publish")) {
+      const id = briefPathId(url.pathname, "/publish");
+      const brief = getBrief(id);
+      if (!brief) return json(res, 404, { ok: false, error: "brief_not_found" });
+      const pkg = db.prepare("SELECT * FROM content_packages WHERE brief_id = ? ORDER BY updated_at DESC LIMIT 1").get(id);
+      if (!pkg) return json(res, 409, { ok: false, error: "package_required" });
+      const body = await readJson(req);
+      const manifest = {
+        publishedAt: new Date().toISOString(),
+        url: body.url ?? "",
+        notes: body.notes ?? "",
+        manual: true,
+      };
+      db.prepare("UPDATE content_packages SET status = 'published', checklist_json = ?, updated_at = datetime('now') WHERE id = ?")
+        .run(JSON.stringify([...jsonArray(pkg.checklist_json), `published manually ${manifest.url || manifest.publishedAt}`]), pkg.id);
+      db.prepare("UPDATE content_briefs SET status = 'published', notes = ?, updated_at = datetime('now') WHERE id = ?")
+        .run([brief.notes, `Published manually: ${manifest.url || manifest.publishedAt}`].filter(Boolean).join("\n"), id);
+      db.prepare("INSERT INTO pipeline_runs (id, brief_id, lane, executor, status, input_json, output_json, finished_at) VALUES (?, ?, 'publish', 'manual', 'completed', ?, ?, datetime('now'))")
+        .run(randomUUID(), id, JSON.stringify(body), JSON.stringify(manifest));
+      return json(res, 200, { ok: true, published: manifest, details: briefDetails(id) });
+    }
+
+    if (req.method === "POST" && url.pathname.startsWith("/api/content/briefs/") && url.pathname.endsWith("/action")) {
+      const id = briefPathId(url.pathname, "/action");
+      const brief = getBrief(id);
+      if (!brief) return json(res, 404, { ok: false, error: "brief_not_found" });
+      const body = await readJson(req);
+      const actionId = body.id ?? `content-${id}-${Date.now()}`;
+      db.prepare(`
+        INSERT INTO action_queue (id, title, summary, source, project_id, project_path, agent, prompt, status, impact, sort_order, lane)
+        VALUES (?, ?, ?, 'content-engine', ?, ?, ?, ?, 'queued', ?, ?, 'distribution')
+      `).run(
+        actionId,
+        body.title ?? `Publish ${brief.title}`,
+        body.summary ?? `Manual publish package for ${brief.engine}.`,
+        brief.engine === "photoselect" ? "photoselect" : "antharmaya-labs",
+        body.project_path ?? body.projectPath ?? "",
+        body.agent ?? "claude",
+        body.prompt ?? `Review and manually publish the content package for ${brief.title}.`,
+        body.impact ?? "distribution",
+        Number(body.sort_order ?? body.sortOrder ?? 0),
+      );
+      return json(res, 201, { ok: true, id: actionId });
+    }
+
+    if (req.method === "POST" && url.pathname.startsWith("/api/content/briefs/") && url.pathname.endsWith("/automate")) {
+      const id = briefPathId(url.pathname, "/automate");
+      const brief = db.prepare("SELECT * FROM content_briefs WHERE id = ?").get(id);
+      if (!brief) return json(res, 404, { ok: false, error: "brief_not_found" });
+      const body = await readJson(req);
+      const automate = body.automate === false ? 0 : 1;
+      const autoMax = body.auto_max_status ?? brief.auto_max_status ?? "packaged";
+      db.prepare("UPDATE content_briefs SET automate = ?, auto_max_status = ?, updated_at = datetime('now') WHERE id = ?")
+        .run(automate, autoMax, id);
+      return json(res, 200, { ok: true, id, automate: Boolean(automate), auto_max_status: autoMax });
+    }
+
+    if (req.method === "GET" && url.pathname.startsWith("/api/content/briefs/")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/content/briefs/", ""));
+      const details = briefDetails(id);
+      if (!details) return json(res, 404, { ok: false, error: "brief_not_found" });
+      return json(res, 200, details);
+    }
+
+    if (req.method === "PATCH" && url.pathname.startsWith("/api/content/briefs/")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/content/briefs/", ""));
+      const existing = db.prepare("SELECT * FROM content_briefs WHERE id = ?").get(id);
+      if (!existing) return json(res, 404, { ok: false, error: "brief_not_found" });
+      const body = await readJson(req);
+      db.prepare(`UPDATE content_briefs SET
+          title = ?, engine = ?, source_artifact = ?, hook = ?, audience = ?,
+          channels_json = ?, series = ?, tone = ?, status = ?, notes = ?, updated_at = datetime('now')
+        WHERE id = ?`).run(
+        body.title ?? existing.title,
+        body.engine ?? existing.engine,
+        body.source_artifact ?? existing.source_artifact,
+        body.hook ?? existing.hook,
+        body.audience ?? existing.audience,
+        Array.isArray(body.channels) ? JSON.stringify(body.channels) : existing.channels_json,
+        body.series ?? existing.series,
+        body.tone ?? existing.tone,
+        body.status ?? existing.status,
+        body.notes ?? existing.notes,
+        id,
+      );
+      return json(res, 200, { ok: true, id });
+    }
+
     return json(res, 404, { ok: false, error: "not_found" });
   } catch (error) {
     return json(res, 500, { ok: false, error: error.message });
@@ -1334,4 +2009,17 @@ const server = createServer(async (req, res) => {
 
 server.listen(port, "127.0.0.1", () => {
   console.log(`horizon-api listening on http://127.0.0.1:${port}`);
+  // Revive MCP sessions from stored tokens so connected tools (HF/Higgsfield/Google) and the
+  // autonomous content loop can call them after a restart without a manual re-connect.
+  try {
+    const mcpServers = all("SELECT id, url FROM connectors WHERE kind = 'mcp' AND url != ''");
+    reconnectStored(mcpServers)
+      .then((results) => {
+        const live = results.filter((r) => r.connected).map((r) => r.id);
+        if (live.length) console.log(`mcp reconnected from stored tokens: ${live.join(", ")}`);
+      })
+      .catch(() => {});
+  } catch {
+    /* best-effort */
+  }
 });

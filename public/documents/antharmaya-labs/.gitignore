@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+.uv/
+*.png
+out/
+checkpoints/
+.sky/
+.DS_Store

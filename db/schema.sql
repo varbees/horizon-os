@@ -343,3 +343,119 @@ CREATE INDEX IF NOT EXISTS idx_project_sweep_runs_finished ON project_sweep_runs
 CREATE INDEX IF NOT EXISTS idx_project_sweep_projects_run ON project_sweep_projects(run_id);
 CREATE INDEX IF NOT EXISTS idx_project_sweep_projects_project ON project_sweep_projects(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_sweep_projects_category ON project_sweep_projects(category);
+
+CREATE TABLE IF NOT EXISTS startup_strategies (
+  project_id TEXT PRIMARY KEY,
+  tam_sam_som TEXT NOT NULL DEFAULT '',
+  beachhead_market TEXT NOT NULL DEFAULT '',
+  moats TEXT NOT NULL DEFAULT '',
+  market_strategy TEXT NOT NULL DEFAULT '',
+  business_model TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS agent_catalog (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT '',
+  revenue_model TEXT NOT NULL DEFAULT '',
+  github_url TEXT NOT NULL DEFAULT '',
+  added_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_catalog_category ON agent_catalog(category);
+CREATE INDEX IF NOT EXISTS idx_agent_catalog_revenue_model ON agent_catalog(revenue_model);
+CREATE INDEX IF NOT EXISTS idx_startup_strategies_updated ON startup_strategies(updated_at);
+
+-- Content engine + connector registry (migration v4 `content_engine`). Mirror only;
+-- scripts/migrate.mjs is the runtime source of truth and also seeds the connectors.
+
+CREATE TABLE IF NOT EXISTS connectors (
+  id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL DEFAULT 'mcp',
+  name TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT '',
+  provides TEXT NOT NULL DEFAULT '',
+  url TEXT NOT NULL DEFAULT '',
+  command TEXT NOT NULL DEFAULT '',
+  state TEXT NOT NULL DEFAULT 'disconnected',
+  version TEXT NOT NULL DEFAULT '',
+  last_health_at TEXT NOT NULL DEFAULT '',
+  health_json TEXT NOT NULL DEFAULT '{}',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_connectors_kind ON connectors(kind);
+
+CREATE TABLE IF NOT EXISTS content_briefs (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL DEFAULT '',
+  engine TEXT NOT NULL DEFAULT 'antharmaya_labs',
+  source_artifact TEXT NOT NULL DEFAULT '',
+  hook TEXT NOT NULL DEFAULT '',
+  audience TEXT NOT NULL DEFAULT '',
+  channels_json TEXT NOT NULL DEFAULT '[]',
+  series TEXT NOT NULL DEFAULT '',
+  tone TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'draft',
+  research_json TEXT NOT NULL DEFAULT '{}',
+  do_not_build_json TEXT NOT NULL DEFAULT '[]',
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_content_briefs_engine ON content_briefs(engine);
+CREATE INDEX IF NOT EXISTS idx_content_briefs_status ON content_briefs(status);
+
+CREATE TABLE IF NOT EXISTS content_assets (
+  id TEXT PRIMARY KEY,
+  brief_id TEXT NOT NULL DEFAULT '',
+  kind TEXT NOT NULL DEFAULT 'still',
+  provider TEXT NOT NULL DEFAULT 'huggingface',
+  prompt TEXT NOT NULL DEFAULT '',
+  negative_prompt TEXT NOT NULL DEFAULT '',
+  aspect_ratio TEXT NOT NULL DEFAULT '1:1',
+  status TEXT NOT NULL DEFAULT 'planned',
+  external_id TEXT NOT NULL DEFAULT '',
+  result_url TEXT NOT NULL DEFAULT '',
+  local_path TEXT NOT NULL DEFAULT '',
+  manifest_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_content_assets_brief ON content_assets(brief_id);
+
+CREATE TABLE IF NOT EXISTS content_packages (
+  id TEXT PRIMARY KEY,
+  brief_id TEXT NOT NULL DEFAULT '',
+  blog TEXT NOT NULL DEFAULT '',
+  x_thread_json TEXT NOT NULL DEFAULT '[]',
+  linkedin TEXT NOT NULL DEFAULT '',
+  instagram_caption TEXT NOT NULL DEFAULT '',
+  reel_script_json TEXT NOT NULL DEFAULT '[]',
+  alt_text TEXT NOT NULL DEFAULT '',
+  cta_json TEXT NOT NULL DEFAULT '[]',
+  checklist_json TEXT NOT NULL DEFAULT '[]',
+  status TEXT NOT NULL DEFAULT 'draft',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_content_packages_brief ON content_packages(brief_id);
+
+CREATE TABLE IF NOT EXISTS pipeline_runs (
+  id TEXT PRIMARY KEY,
+  brief_id TEXT NOT NULL DEFAULT '',
+  lane TEXT NOT NULL DEFAULT '',
+  executor TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'running',
+  input_json TEXT NOT NULL DEFAULT '{}',
+  output_json TEXT NOT NULL DEFAULT '{}',
+  error TEXT NOT NULL DEFAULT '',
+  started_at TEXT NOT NULL DEFAULT (datetime('now')),
+  finished_at TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_pipeline_runs_brief ON pipeline_runs(brief_id);
+CREATE INDEX IF NOT EXISTS idx_pipeline_runs_status ON pipeline_runs(status);

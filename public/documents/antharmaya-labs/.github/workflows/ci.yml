@@ -1,0 +1,25 @@
+name: ci
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  lab-code:
+    runs-on: ubuntu-latest   # CPU is fine; rung-0/1 toy code runs on CPU in CI
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+      - name: Sync env
+        run: uv sync --group dev
+      - name: Lint
+        run: uv run ruff check .
+      - name: Run rung-0 code (smoke test)
+        run: |
+          # generated code lands here as you complete each rung; tolerate empty early on
+          if ls labs/00-foundations/*.py >/dev/null 2>&1; then
+            for f in labs/00-foundations/*.py; do echo "running $f"; uv run python "$f"; done
+          else
+            echo "no rung-0 code yet — skipping"
+          fi

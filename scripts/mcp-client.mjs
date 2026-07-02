@@ -155,3 +155,24 @@ export function disconnectServer(serverId) {
   sessions.delete(serverId);
   saveStore(serverId, { tokens: null, pendingAuthUrl: null });
 }
+
+// Revive sessions from persisted tokens on process start. The OAuth tokens survive a restart in
+// .horizon/mcp/<id>.json, but the in-memory session map does not — so without this, every API
+// restart silently drops tool access and the autonomous loop cannot call connected tools until a
+// human re-connects in the browser. Best-effort and non-throwing: pass the {id, url} pairs from
+// the connector registry (mcp-client does not know server URLs on its own).
+export async function reconnectStored(servers = []) {
+  const out = [];
+  for (const { id, url } of servers) {
+    if (!url) continue;
+    const store = loadStore(id);
+    if (!store.tokens) continue; // never authorized -> nothing to revive
+    try {
+      const result = await connectServer(id, url);
+      out.push({ id, ...result });
+    } catch (error) {
+      out.push({ id, connected: false, error: String(error?.message ?? error) });
+    }
+  }
+  return out;
+}

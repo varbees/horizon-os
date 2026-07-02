@@ -1,0 +1,21 @@
+[project]
+name = "antharmaya-labs"
+version = "0.0.1"
+description = "Antharmaya Labs — reconstructing the ML-systems stack from first principles, in the open."
+requires-python = ">=3.11"
+dependencies = [
+    "jax>=0.4.34",          # CPU build by default; on a GPU box: uv pip install -U "jax[cuda12]"
+    "flax>=0.10.0",         # neural nets (NNX API)
+    "optax>=0.2.0",         # optimizers (introduced from rung 1)
+    "numpy>=1.26",
+    "matplotlib>=3.8",      # plots for the guides
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[tool.ruff]
+line-length = 100

@@ -1,4 +1,4 @@
-const modes = new Set(["programmatic", "handoff"]);
+const modes = new Set(["programmatic", "handoff", "local"]);
 const registry = new Map();
 
 function requireFunction(adapter, field) {

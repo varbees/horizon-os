@@ -17,6 +17,7 @@ import {
   offerPipelineSeed,
   resourceSeeds,
   runwayStateSeed,
+  retiredSignalSourceIds,
   socialPostSeeds,
   socialSkillCatalog,
   systemEdges,
@@ -464,6 +465,10 @@ function seed(db) {
   `);
   for (const s of signalSourceSeed) {
     insertSource.run(s.id, s.name, s.url, s.category ?? "AI News Hubs", s.kind ?? "rss", Number(s.sortOrder ?? 0));
+  }
+  if (retiredSignalSourceIds.length) {
+    const placeholders = retiredSignalSourceIds.map(() => "?").join(", ");
+    db.prepare(`UPDATE signal_sources SET active = 0 WHERE id IN (${placeholders})`).run(...retiredSignalSourceIds);
   }
 
   const insertSignal = db.prepare(`

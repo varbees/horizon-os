@@ -1,0 +1,27 @@
+# A small, cost-safe GPU box for rung-1+ runs.
+# Launch:  sky launch -c lab infra/skypilot/foundations.yaml
+# Stop:    sky stop lab      (or: sky down lab  to destroy)
+name: antharmaya-lab
+
+resources:
+  cloud: aws
+  accelerators: A10G:1      # one 24GB GPU (g5.xlarge). Plenty for rungs 1-2 learning.
+  use_spot: true            # cheaper; may be preempted (fine for non-critical training)
+
+# auto-stop after 30 min idle so a forgotten box doesn't burn credits overnight
+autostop:
+  idle_minutes: 30
+  down: false               # 'stop' (keeps disk). Set true to destroy on idle.
+
+# sync this repo to the box
+workdir: .
+
+setup: |
+  pip install -U "jax[cuda12]" flax optax numpy matplotlib
+
+# replace with the actual rung you're running
+run: |
+  echo "GPU check:"; python -c "import jax; print(jax.devices())"
+  mkdir -p out
+  # e.g.:  python labs/01-transformer/train.py --out out/
+  # pull artifacts down afterwards from ~/sky_workdir/out
