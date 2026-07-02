@@ -4,21 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "e655e6c1d418c5e2",
+        "id": "196b29dc41c7ba02",
         "type": "tabs",
         "children": [
           {
-            "id": "74d79a906be3a06d",
+            "id": "83470febd12470fe",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Welcome.md",
+                "file": "wiki/sources/claude-obsidian.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Welcome"
+              "title": "claude-obsidian"
             }
           }
         ]
@@ -183,9 +183,44 @@
       "bases:Create new base": false
     }
   },
-  "active": "74d79a906be3a06d",
+  "active": "83470febd12470fe",
   "lastOpenFiles": [
-    "create a link.md",
-    "Welcome.md"
+    "wiki/concepts/Compound Horizon Memory.md",
+    "wiki/concepts/LLM Wiki Pattern.md",
+    "wiki/sources/Karpathy LLM Wiki Pattern.md",
+    "AGENTS.md",
+    "wiki/log.md",
+    "wiki/domains/Action Memory.md",
+    "wiki/domains/Money Lanes.md",
+    "wiki/meta/dashboard.md",
+    "wiki/hot.md",
+    "wiki/entities/claude-obsidian.md",
+    "wiki/index.md",
+    "wiki/concepts/Agent Workflow Memory.md",
+    "Welcome.md",
+    "wiki/domains/Work Event Ledger.md",
+    "wiki/domains/Dispatch Memory.md",
+    "wiki/entities/rateguard.md",
+    "wiki/entities/PhotoSelect.md",
+    "wiki/entities/turbovec.md",
+    "wiki/entities/Horizon OS.md",
+    "wiki/concepts/Retrieval Ladder.md",
+    "wiki/sources/turbovec.md",
+    "wiki/sources/claude-obsidian.md",
+    "wiki/overview.md",
+    "WIKI.md",
+    "wiki/sources",
+    "wiki/questions",
+    "wiki/meta",
+    "wiki/entities",
+    "wiki/domains",
+    "wiki/concepts",
+    "wiki/comparisons",
+    "wiki",
+    "_templates",
+    "_attachments",
+    "Untitled.canvas",
+    "Horizon/Capital.md",
+    "Horizon/Journey.md"
   ]
 }

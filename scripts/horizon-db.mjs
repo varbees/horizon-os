@@ -12,7 +12,6 @@ import {
   signalSeed,
   signalSourceSeed,
   cashLedgerSeed,
-  hackathonEvents,
   journeyEntries,
   offerPipelineSeed,
   resourceSeeds,
@@ -22,8 +21,8 @@ import {
   socialSkillCatalog,
   systemEdges,
   systemNodes,
-  timeBlocks,
 } from "../src/data/horizon.js";
+import { routineCalendarSeed } from "../src/data/routine.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dbPath = process.env.HORIZON_DB_PATH ?? resolve(root, ".horizon", "horizon.sqlite");
@@ -107,37 +106,6 @@ function ensureTaskColumns(db) {
   db.exec("CREATE INDEX IF NOT EXISTS idx_tasks_phase ON tasks(phase_id)");
 }
 
-function parseTimeRange(timeLabel) {
-  const match = timeLabel.match(/(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})/);
-  if (!match) return { start: "09:00", end: "10:00" };
-  return {
-    start: `${match[1]}:${match[2]}`,
-    end: `${match[3]}:${match[4]}`,
-  };
-}
-
-function anchorDateForBlock(block) {
-  if (block.calendar.includes("BYDAY=SA") || block.time.startsWith("Sat")) return "2026-05-30";
-  if (block.calendar.includes("BYDAY=SU") || block.days === "Sunday") return "2026-05-31";
-  return "2026-05-25";
-}
-
-function calendarIdForLane(lane) {
-  return String(lane ?? "foundry").toLowerCase().replace(/[^a-z0-9]+/g, "-") || "foundry";
-}
-
-function normalizeRrule(rule) {
-  return String(rule ?? "").replace(/^RRULE:/, "");
-}
-
-function recurrenceWithHorizon(rule) {
-  const normalized = normalizeRrule(rule);
-  if (!normalized || /(?:^|;)COUNT=|(?:^|;)UNTIL=/.test(normalized)) return normalized;
-  if (normalized.includes("FREQ=DAILY")) return `${normalized};COUNT=730`;
-  if (normalized.includes("BYDAY=MO,TU,WE,TH,FR")) return `${normalized};COUNT=520`;
-  return `${normalized};COUNT=104`;
-}
-
 function seed(db) {
   const insertNode = db.prepare(`
     INSERT INTO graph_nodes (id, label, kind, status, x, y, color, note, next_action, outputs_json)
@@ -200,43 +168,32 @@ function seed(db) {
       updated_at = datetime('now')
   `);
 
-  for (const block of timeBlocks) {
-    const date = anchorDateForBlock(block);
-    const { start, end } = parseTimeRange(block.time);
-    const rrule = recurrenceWithHorizon(block.calendar);
-    insertEvent.run(
-      block.id,
-      block.title,
-      block.lane,
-      block.time,
-      `${date}T${start}:00+05:30[Asia/Kolkata]`,
-      `${date}T${end}:00+05:30[Asia/Kolkata]`,
-      calendarIdForLane(block.lane),
-      block.activity,
-      rrule,
-      rrule ? `RRULE:${rrule}` : "",
-      block.output,
-      block.color,
-      "confirmed",
-      "seeded",
-    );
+  // Calendar seeds now come from the job-plan routine (src/data/routine.js) —
+  // the old foundry-week timeBlocks and hackathonEvents are retired. Purge any
+  // previously seeded rows that are not part of the current seed set; rows the
+  // operator created himself (sync_state != 'seeded') are never touched.
+  const routineRows = routineCalendarSeed();
+  const seedIds = new Set(routineRows.map((row) => row.id));
+  const staleSeeded = db.prepare("SELECT id FROM calendar_events WHERE sync_state = 'seeded'").all();
+  const deleteEvent = db.prepare("DELETE FROM calendar_events WHERE id = ?");
+  for (const row of staleSeeded) {
+    if (!seedIds.has(row.id)) deleteEvent.run(row.id);
   }
 
-  for (const event of hackathonEvents) {
-    const { start, end } = parseTimeRange(event.time);
+  for (const row of routineRows) {
     insertEvent.run(
-      event.id,
-      event.title,
-      event.lane,
-      event.time,
-      `${event.date}T${start}:00+05:30[Asia/Kolkata]`,
-      `${event.date}T${end}:00+05:30[Asia/Kolkata]`,
-      calendarIdForLane(event.lane),
-      event.activity,
-      "",
-      "",
-      event.output,
-      event.color,
+      row.id,
+      row.title,
+      row.lane,
+      row.time_label,
+      `${row.date}T${row.start}:00+05:30[Asia/Kolkata]`,
+      `${row.date}T${row.end}:00+05:30[Asia/Kolkata]`,
+      row.calendar_id,
+      row.description,
+      row.rrule,
+      row.rrule ? `RRULE:${row.rrule}` : "",
+      row.output,
+      row.color,
       "confirmed",
       "seeded",
     );
@@ -263,11 +220,13 @@ function seed(db) {
       updated_at = datetime('now')
   `);
 
+  const eventExists = db.prepare("SELECT 1 FROM calendar_events WHERE id = ?");
   for (const task of actionTasks) {
     insertTask.run(
       task.id,
       task.nodeId ?? null,
-      task.eventId ?? null,
+      // Seeded tasks may reference retired calendar events; keep the task, drop the link.
+      task.eventId && eventExists.get(task.eventId) ? task.eventId : null,
       task.projectId ?? "",
       task.phaseId ?? "",
       task.lane ?? "General",

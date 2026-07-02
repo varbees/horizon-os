@@ -17,8 +17,6 @@ import {
   Rss,
   Terminal,
   Wallet,
-  TrendingUp,
-  Zap,
 } from "lucide-react";
 
 const navGroups = [
@@ -27,16 +25,9 @@ const navGroups = [
     items: [
       { to: "/", label: "Command", icon: LayoutDashboard, detail: "Daily anchors" },
       { to: "/command", label: "Center", icon: Terminal, detail: "Action queue" },
-      { to: "/calendar", label: "Calendar", icon: CalendarDays, detail: "Foundry week" },
+      { to: "/calendar", label: "Calendar", icon: CalendarDays, detail: "Job plan week" },
       { to: "/projects", label: "Hub", icon: Gauge, detail: "Repo lanes" },
       { to: "/journey", label: "Journey", icon: BookOpen, detail: "Trek ledger" },
-    ],
-  },
-  {
-    label: "Incubation & Revenue",
-    items: [
-      { to: "/strategy", label: "Strategy", icon: TrendingUp, detail: "Startup Playbook" },
-      { to: "/forge", label: "Forge", icon: Zap, detail: "Agent Catalog" },
     ],
   },
   {
@@ -62,8 +53,6 @@ const mobileNavItems = [
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
   { to: "/projects", label: "Hub", icon: Gauge },
   { to: "/journey", label: "Journey", icon: BookOpen },
-  { to: "/strategy", label: "Strategy", icon: TrendingUp },
-  { to: "/forge", label: "Forge", icon: Zap },
   { to: "/capital", label: "Capital", icon: Wallet },
   { to: "/inbox", label: "Inbox", icon: Inbox },
   { to: "/content", label: "Content", icon: PenSquare },

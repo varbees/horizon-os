@@ -65,3 +65,52 @@ export const routineKindColor = {
   review: "#3f7f5f",
   revenue: "#1fbf8f",
 };
+
+const routineKindLane = {
+  practice: "Practice",
+  learn: "Learning",
+  build: "Build",
+  apply: "Applications",
+  rest: "Rest",
+  review: "Review",
+  revenue: "Revenue",
+};
+
+const routineKindCalendarId = {
+  practice: "body",
+  learn: "product",
+  build: "capital",
+  apply: "attention",
+  rest: "systems",
+  review: "review",
+  revenue: "capital",
+};
+
+export const JOB_PLAN_PHASE2_START = "2026-07-14"; // Day 16
+export const JOB_PLAN_PHASE_DAYS = 15;
+
+// Pure calendar seed rows for the job-plan routine — consumed by both the SQLite
+// seeder (scripts/horizon-db.mjs) and the frontend fallback (src/lib/calendarEvents.js),
+// so the calendar has exactly one source of truth for recurring blocks.
+export function routineCalendarSeed() {
+  const phases = [
+    { prefix: "jobplan-p1", anchor: JOB_PLAN_START, blocks: sprintBlocks, phaseLabel: "Days 1-15" },
+    { prefix: "jobplan-p2", anchor: JOB_PLAN_PHASE2_START, blocks: applyBlocks, phaseLabel: "Days 16-30" },
+  ];
+  return phases.flatMap(({ prefix, anchor, blocks, phaseLabel }) =>
+    blocks.map((block) => ({
+      id: `${prefix}-${block.id}`,
+      title: block.title,
+      lane: routineKindLane[block.kind] ?? "Review",
+      time_label: `${block.start} - ${block.end}`,
+      date: anchor,
+      start: block.start,
+      end: block.end,
+      calendar_id: routineKindCalendarId[block.kind] ?? "review",
+      description: `${phaseLabel} · ${block.detail}`,
+      output: block.kind === "rest" ? "Recovery counts as output here." : "One visible artifact: code pushed, application sent, note written, or rep logged.",
+      color: routineKindColor[block.kind] ?? "#2558d8",
+      rrule: `FREQ=DAILY;COUNT=${JOB_PLAN_PHASE_DAYS}`,
+    })),
+  );
+}

@@ -16,8 +16,6 @@ import Signals from "./routes/Signals.jsx";
 import Connectors from "./routes/Connectors.jsx";
 import Content from "./routes/Content.jsx";
 import Vault from "./routes/Vault.jsx";
-import Strategy from "./routes/Strategy.jsx";
-import Forge from "./routes/Forge.jsx";
 
 const CalendarMatrix = lazy(() => import("./routes/CalendarMatrix.jsx"));
 
@@ -38,8 +36,6 @@ export default function App() {
           />
           <Route path="/projects" element={<Projects />} />
           <Route path="/project/:id" element={<ProjectDetail />} />
-          <Route path="/strategy" element={<Strategy />} />
-          <Route path="/forge" element={<Forge />} />
           <Route path="/journey" element={<JourneyLog />} />
           <Route path="/capital" element={<Capital />} />
           <Route path="/inbox" element={<Inbox />} />

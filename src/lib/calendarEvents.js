@@ -1,8 +1,13 @@
 import "temporal-polyfill/global";
 import { hackathonEvents, timeBlocks } from "../data/horizon.js";
+import { routineCalendarSeed } from "../data/routine.js";
 
 export const HORIZON_TIMEZONE = "Asia/Kolkata";
 export const HORIZON_WEEK_START = "2026-05-25";
+
+export function todayInHorizonTz() {
+  return Temporal.Now.plainDateISO(HORIZON_TIMEZONE).toString();
+}
 
 export const horizonCalendars = {
   attention: {
@@ -94,18 +99,22 @@ export const calendarOptions = Object.entries(horizonCalendars).map(([id, calend
   color: calendar.lightColors.main,
 }));
 
-export const defaultCalendarDraft = {
-  title: "New command block",
-  date: HORIZON_WEEK_START,
-  startTime: "09:00",
-  endTime: "09:30",
-  calendarId: "manual",
-  lane: "Manual",
-  location: "Horizon OS",
-  description: "Visible output required before this block counts.",
-  output: "One shipped artifact, sent message, updated doc, or logged metric.",
-  recurrence: "none",
-};
+export function defaultCalendarDraftToday() {
+  return {
+    title: "New command block",
+    date: todayInHorizonTz(),
+    startTime: "09:00",
+    endTime: "09:30",
+    calendarId: "manual",
+    lane: "Manual",
+    location: "Horizon OS",
+    description: "Visible output required before this block counts.",
+    output: "One shipped artifact, sent message, updated doc, or logged metric.",
+    recurrence: "none",
+  };
+}
+
+export const defaultCalendarDraft = defaultCalendarDraftToday();
 
 function pad(value) {
   return String(value).padStart(2, "0");
@@ -170,6 +179,31 @@ function parsePeople(peopleJson) {
   } catch {
     return [];
   }
+}
+
+// Offline fallback seeds for the calendar: the job-plan routine, mirroring what
+// scripts/horizon-db.mjs seeds into SQLite. Used only when the local API is down.
+export function buildRoutineCalendarEvents() {
+  return routineCalendarSeed().map((row) => ({
+    id: row.id,
+    title: row.title,
+    start: zonedFrom(row.date, row.start),
+    end: zonedFrom(row.date, row.end),
+    calendarId: row.calendar_id,
+    lane: row.lane,
+    location: "Horizon OS",
+    description: row.description,
+    output: row.output,
+    color: row.color,
+    source: "seed",
+    rrule: row.rrule,
+    _customContent: {
+      timeGrid: `${row.title}\n${row.lane}`,
+      monthGrid: row.title,
+      monthAgenda: row.title,
+      weekAgenda: `${row.start} ${row.title}`,
+    },
+  }));
 }
 
 export function buildTimeBlockCalendarEvents() {

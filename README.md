@@ -11,7 +11,7 @@ npm run projects:sweep
 npm run dev:full
 ```
 
-`npm run dev:full` starts the local SQLite API on `127.0.0.1:8787` and the Vite app on `127.0.0.1:5177`.
+`npm run dev:full` starts the local SQLite API on `127.0.0.1:8791` and the Vite app on `127.0.0.1:5177`.
 `npm run projects:sweep` builds the local project index at `/home/driftr/Desktop/bolting/_horizon_project_index`.
 
 Frontend only:
@@ -59,7 +59,7 @@ npm run build
 - `/signals` - News & Signals: local RSS feed with category counts, filters, and prunable sources
 - `/connectors` - MCP Connectors: connect to MCP servers with browser OAuth, list and call tools
 - `/vault` - Obsidian vault bridge plus compound wiki memory: snapshots, schema, hot cache, graph pages, and wiki search
-- `/map` - node-editor command graph backed by local SQLite API
+- `/map` - fluid command graph (React Flow: animated revenue path, minimap, dagre auto-layout, click-to-center) + AI Job Plan routine rail with DeepSeek daily brief, backed by local SQLite API
 - `/documents` - docs and connector artifacts
 
 ## Canonical Docs
