@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Database, Plus, RefreshCw, Sparkles } from "lucide-react";
+import { Database, Maximize2, Minimize2, PanelLeft, PanelRight, Plus, RefreshCw, Sparkles } from "lucide-react";
 import PrimaryButton from "../components/PrimaryButton.jsx";
 import CommandGraph from "../components/CommandGraph.jsx";
 import RoutineRail from "../components/RoutineRail.jsx";
@@ -18,6 +18,18 @@ export default function SystemMap() {
   const [persistStatus, setPersistStatus] = useState("");
   const [enriching, setEnriching] = useState(false);
   const [enrichNote, setEnrichNote] = useState("");
+  const [workspace, setWorkspace] = useState(false);
+  const [showInspector, setShowInspector] = useState(true);
+  const [showRoutine, setShowRoutine] = useState(true);
+
+  useEffect(() => {
+    if (!workspace) return undefined;
+    const onKey = (event) => {
+      if (event.key === "Escape") setWorkspace(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [workspace]);
 
   const counts = useMemo(() => {
     if (!commandBase) return { nodes: 0, edges: 0, events: 0, tasks: 0, contexts: 0 };
@@ -98,25 +110,72 @@ export default function SystemMap() {
     }
   };
 
+  const statusPill = (
+    <span
+      className={`flex items-center gap-2 rounded-full border border-outlineVariant bg-surfaceContainer px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] ${
+        apiStatus === "connected" ? "text-signal" : apiStatus === "offline" ? "text-rust" : "text-paper/48"
+      }`}
+    >
+      <Database className="h-3.5 w-3.5" aria-hidden="true" />
+      {apiStatus === "connected" ? "SQLite connected" : apiStatus === "offline" ? "API offline" : "Checking"}
+      <span className="text-paper/40">
+        · {counts.nodes}n {counts.edges}e {counts.tasks}t
+      </span>
+    </span>
+  );
+
   return (
-    <div className="flex h-[calc(100vh-7.5rem)] min-h-[540px] flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div
+      className={
+        workspace
+          ? "fixed inset-0 z-[70] flex flex-col gap-0 bg-surfaceVariant p-3"
+          : "flex h-[calc(100vh-7.5rem)] min-h-[540px] flex-col gap-3"
+      }
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
         <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">Command graph · fluid canvas</p>
+          <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-brass">
+            {workspace ? "Workspace mode · Esc to exit" : "Command graph · fluid canvas"}
+          </p>
           <h1 className="font-display text-2xl font-bold text-paper">Run the foundry like a node editor.</h1>
         </div>
         <div className="flex items-center gap-2">
-          <span
-            className={`flex items-center gap-2 rounded-full border border-outlineVariant bg-surfaceContainer px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] ${
-              apiStatus === "connected" ? "text-signal" : apiStatus === "offline" ? "text-rust" : "text-paper/48"
-            }`}
+          {statusPill}
+          {workspace ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowInspector((value) => !value)}
+                className={`grid h-9 w-9 place-items-center rounded-md border transition ${
+                  showInspector ? "border-primary/40 bg-primaryContainer text-onPrimaryContainer" : "border-outlineVariant text-paper/58 hover:text-paper"
+                }`}
+                aria-label="Toggle inspector panel"
+                aria-pressed={showInspector}
+              >
+                <PanelLeft className="h-4 w-4" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowRoutine((value) => !value)}
+                className={`grid h-9 w-9 place-items-center rounded-md border transition ${
+                  showRoutine ? "border-primary/40 bg-primaryContainer text-onPrimaryContainer" : "border-outlineVariant text-paper/58 hover:text-paper"
+                }`}
+                aria-label="Toggle routine panel"
+                aria-pressed={showRoutine}
+              >
+                <PanelRight className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setWorkspace((value) => !value)}
+            className="flex items-center gap-2 rounded-md border border-outlineVariant px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-paper/62 transition hover:border-outline hover:text-paper"
+            aria-pressed={workspace}
           >
-            <Database className="h-3.5 w-3.5" aria-hidden="true" />
-            {apiStatus === "connected" ? "SQLite connected" : apiStatus === "offline" ? "API offline" : "Checking"}
-            <span className="text-paper/40">
-              · {counts.nodes}n {counts.edges}e {counts.tasks}t
-            </span>
-          </span>
+            {workspace ? <Minimize2 className="h-4 w-4" aria-hidden="true" /> : <Maximize2 className="h-4 w-4" aria-hidden="true" />}
+            {workspace ? "Exit" : "Workspace"}
+          </button>
           <button
             type="button"
             onClick={() => void load()}
@@ -128,8 +187,20 @@ export default function SystemMap() {
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 xl:grid-cols-[300px_minmax(0,1fr)_340px]">
-        <aside className="order-2 flex min-h-0 flex-col gap-3 overflow-y-auto xl:order-1">
+      <div
+        className={
+          workspace
+            ? "relative min-h-0 flex-1"
+            : "grid min-h-0 flex-1 grid-cols-1 gap-3 xl:grid-cols-[300px_minmax(0,1fr)_340px]"
+        }
+      >
+        <aside
+          className={
+            workspace
+              ? `absolute left-3 top-3 z-10 max-h-[calc(100%-1.5rem)] w-[300px] overflow-y-auto rounded-lg transition-opacity ${showInspector ? "opacity-100" : "pointer-events-none opacity-0"}`
+              : "order-2 flex min-h-0 flex-col gap-3 overflow-y-auto xl:order-1"
+          }
+        >
           <div className="rounded-lg border border-outlineVariant bg-surface p-3.5 shadow-rule">
             <div className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: selectedNode.color }} aria-hidden="true" />
@@ -195,7 +266,13 @@ export default function SystemMap() {
           </div>
         </aside>
 
-        <div className="relative order-1 min-h-[420px] overflow-hidden rounded-lg border border-outlineVariant bg-surface shadow-rule xl:order-2">
+        <div
+          className={
+            workspace
+              ? "absolute inset-0 overflow-hidden rounded-lg border border-outlineVariant bg-surface shadow-rule"
+              : "relative order-1 min-h-[420px] overflow-hidden rounded-lg border border-outlineVariant bg-surface shadow-rule xl:order-2"
+          }
+        >
           <CommandGraph onPersistStatus={setPersistStatus} />
           {persistStatus ? (
             <p className="absolute bottom-2 right-3 z-10 rounded bg-surface/90 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-paper/48 backdrop-blur">
@@ -204,7 +281,13 @@ export default function SystemMap() {
           ) : null}
         </div>
 
-        <aside className="order-3 min-h-0">
+        <aside
+          className={
+            workspace
+              ? `absolute right-3 top-3 z-10 h-[calc(100%-1.5rem)] w-[340px] transition-opacity ${showRoutine ? "opacity-100" : "pointer-events-none opacity-0"}`
+              : "order-3 min-h-0"
+          }
+        >
           <RoutineRail />
         </aside>
       </div>
