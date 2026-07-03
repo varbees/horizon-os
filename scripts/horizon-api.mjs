@@ -509,9 +509,38 @@ function briefPathId(pathname, suffix = "") {
 }
 
 function connectorRows() {
-  return all("SELECT * FROM connectors ORDER BY sort_order, name").map((row) => (
+  const dbRows = all("SELECT * FROM connectors ORDER BY sort_order, name").map((row) =>
     row.kind === "mcp" ? { ...row, state: connectionState(row.id) } : row
-  ));
+  );
+  // Built-in internet capabilities (always available, no DB config needed)
+  const builtins = [
+    {
+      id: "builtin-web-search", kind: "builtin", name: "Web Search", icon: "Search",
+      description: "DuckDuckGo Lite — no API key required. Search the web from any agent deploy.",
+      state: "ready", category: "internet",
+    },
+    {
+      id: "builtin-web-fetch", kind: "builtin", name: "URL Fetch", icon: "Globe",
+      description: "Fetch and extract text from any URL. 3K char limit, auto HTML→text.",
+      state: "ready", category: "internet",
+    },
+    {
+      id: "builtin-research-feeds", kind: "builtin", name: "Research Feeds", icon: "Rss",
+      description: "6 pre-configured feeds: HN, AI News, Arxiv CS.AI/CL, LangChain, Anthropic.",
+      state: "ready", category: "internet", feedCount: 6,
+    },
+    {
+      id: "builtin-graphify", kind: "builtin", name: "Graphify Knowledge Graphs", icon: "GitGraph",
+      description: "10 repos graphed — 13,591 nodes, 27,354 edges. Codebase structure injected into every deploy.",
+      state: "ready", category: "context",
+    },
+    {
+      id: "builtin-opensrc", kind: "builtin", name: "opensrc Dependency Source", icon: "Package",
+      description: "Vercel's opensrc — pull real dependency source to disk for agents to read.",
+      state: "ready", category: "context",
+    },
+  ];
+  return [...builtins, ...dbRows];
 }
 
 function getConnector(id) {
@@ -1357,6 +1386,15 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === "POST" && url.pathname === "/api/signals/refresh") {
+      // Auto-seed research feeds if not already configured
+      for (const [key, feed] of Object.entries(RESEARCH_FEEDS)) {
+        const exists = db.prepare("SELECT 1 FROM signal_sources WHERE url = ?").get(feed.url);
+        if (!exists) {
+          db.prepare("INSERT INTO signal_sources (id, name, url, kind, category, sort_order, active) VALUES (?, ?, ?, 'rss', ?, 10, 1)").run(
+            `research-${key}`, feed.name, feed.url, feed.category || "general"
+          );
+        }
+      }
       const sources = all("SELECT * FROM signal_sources WHERE active = 1 ORDER BY sort_order");
       const insert = db.prepare(`
         INSERT INTO signals (id, source_id, source_name, category, kind, title, url, summary, thumbnail, published_at, status, fetched_at)
