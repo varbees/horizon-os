@@ -119,6 +119,43 @@ function syncVaultSnapshots() {
   ].join("\n");
   put("Horizon/Signals - Saved.md", sig);
 
+  // Agents (Connectors)
+  try {
+    const agents = all("SELECT * FROM connectors WHERE kind = 'mcp' ORDER BY sort_order");
+    const agentsMd = [
+      frontmatter({ title: "Agents & Tools", source: "horizon-os", synced: stamp, tags: "horizon/agents" }),
+      "# Agents & Tools\n",
+      ...agents.map(a => `- **[[${a.id}]]**: ${a.name} (${a.url || a.command})`),
+      ...mcpServerSeed.map(s => `- **[[${s.id}]]**: ${s.name} (Seeded)`),
+      "",
+    ].join("\n");
+    put("Horizon/Agents.md", agentsMd);
+  } catch(e) {}
+
+  // Decisions
+  try {
+    const decisions = all("SELECT * FROM decisions ORDER BY created_at DESC");
+    const descMd = [
+      frontmatter({ title: "Decisions", source: "horizon-os", synced: stamp, tags: "horizon/decisions" }),
+      "# Decisions Archive\n",
+      ...decisions.map(d => `### ${d.title}\n${d.body}\n`),
+      "",
+    ].join("\n");
+    put("Horizon/Decisions.md", descMd);
+  } catch(e) {}
+
+  // Content Pipeline
+  try {
+    const briefs = all("SELECT * FROM content_briefs ORDER BY updated_at DESC");
+    const contentMd = [
+      frontmatter({ title: "Content Pipeline", source: "horizon-os", synced: stamp, tags: "horizon/content" }),
+      "# Content Pipeline\n",
+      ...briefs.map(c => `- **${c.status.toUpperCase()}**: ${c.title} — Engine: [[${c.engine}]]`),
+      "",
+    ].join("\n");
+    put("Horizon/Content Pipeline.md", contentMd);
+  } catch(e) {}
+
   // Projects
   portfolioProjects.forEach(p => {
     const projMd = [
@@ -132,6 +169,12 @@ function syncVaultSnapshots() {
       `- **First Move:** ${p.firstMove}`,
       `- **Next:** ${p.next}`,
       `- **Reopen When:** ${p.reopenWhen}`,
+      "",
+      `## Ecosystem`,
+      `- [[Tasks]]`,
+      `- [[Calendar]]`,
+      `- [[Decisions]]`,
+      `- [[Content Pipeline]]`,
       "",
     ].join("\n");
     put(`Horizon/Projects/${p.name}.md`, projMd);
@@ -2298,18 +2341,32 @@ const server = createServer(async (req, res) => {
       try {
         const { readdirSync, statSync, readFileSync } = await import("node:fs");
         const wsRoot = workspaceRootFor(db);
-        const roots = [
-          { dir: repoRoot, label: "Repo root", recursive: false },
-          { dir: resolve(repoRoot, "docs"), label: "docs", recursive: true },
-          { dir: resolve(repoRoot, "public/documents"), label: "documents", recursive: true },
-        ];
-        if (wsRoot && wsRoot !== resolve(repoRoot, "..") && wsRoot !== repoRoot) {
-          // a user-loaded workspace — surface its top-level docs shallowly
-          roots.push({ dir: wsRoot, label: "Workspace", recursive: false });
-          roots.push({ dir: resolve(wsRoot, "docs"), label: "Workspace docs", recursive: true });
-        }
+        // Generated / vendored / heavy trees we never want in the reader. `brains/`
+        // alone is ~11.7k Graphify wiki files — pure noise for a hand-authored doc browser.
+        const EXCLUDE = new Set([
+          "node_modules", ".git", "_external", "dist", ".next", ".horizon", "graphify-out",
+          "brains", "vault", ".obsidian", ".trash", "target", "build", "__pycache__",
+          ".venv", "coverage", "playwright-report", "test-results", ".cache", ".idea", ".vscode",
+        ]);
+        const pinFor = (rel) => {
+          if (rel === "_cofounder/AI-JOB-PLAN-2026.md") return "🎯 AI Job Plan";
+          if (/(^|\/)COMMAND_CENTER\.md$/.test(rel)) return "⚡ Command Center";
+          if (rel === "horizon-os/docs/horizon-workspace-alpha.md") return "🧭 Vision";
+          if (rel === "horizon-os/docs/horizon-production-contract.md") return "📐 Production contract";
+          if (/^_cofounder\/.*(week|standup|sprint|today|plan).*\.md$/i.test(rel)) return "📋 This Week";
+          return null;
+        };
+        const groupFor = (rel) => {
+          const segs = rel.split("/");
+          if (segs.length === 1) return "workspace root";
+          if (/^\d\d-/.test(segs[0])) return `${segs[0]}/${segs[1]}`; // 01-revenue/photoselect
+          return segs[0];
+        };
         const out = [];
-        const walk = (dir, label, depth) => {
+        let scanned = 0;
+        const CAP = 2000;
+        const walk = (dir, depth) => {
+          if (out.length >= CAP) return;
           let entries = [];
           try {
             entries = readdirSync(dir, { withFileTypes: true });
@@ -2317,11 +2374,14 @@ const server = createServer(async (req, res) => {
             return;
           }
           for (const ent of entries) {
-            if (ent.name.startsWith(".") || ent.name === "node_modules") continue;
+            if (out.length >= CAP) return;
+            if (ent.name.startsWith(".") || EXCLUDE.has(ent.name)) continue;
             const abs = resolve(dir, ent.name);
             if (ent.isDirectory()) {
-              if (depth > 0) walk(abs, label, depth - 1);
+              if (depth > 0) walk(abs, depth - 1);
             } else if (/\.mdx?$/.test(ent.name)) {
+              scanned += 1;
+              const rel = abs.startsWith(`${wsRoot}/`) ? abs.slice(wsRoot.length + 1) : abs;
               let size = 0;
               let mtime = null;
               try {
@@ -2333,19 +2393,19 @@ const server = createServer(async (req, res) => {
               }
               let title = ent.name.replace(/\.mdx?$/, "");
               try {
-                const head = readFileSync(abs, "utf8").slice(0, 2000);
-                const m = /^\s*#\s+(.+)$/m.exec(head);
+                const m = /^\s*#\s+(.+)$/m.exec(readFileSync(abs, "utf8").slice(0, 1500));
                 if (m) title = m[1].trim();
               } catch {
                 /* keep filename */
               }
-              out.push({ path: abs, rel: abs.replace(`${repoRoot}/`, ""), title, group: label, size, mtime });
+              const pinLabel = pinFor(rel);
+              out.push({ path: abs, rel, title, group: groupFor(rel), size, mtime, pinned: !!pinLabel, pinLabel });
             }
           }
         };
-        for (const r of roots) walk(r.dir, r.label, r.recursive ? 4 : 0);
-        out.sort((a, b) => (b.mtime || "").localeCompare(a.mtime || ""));
-        return json(res, 200, { ok: true, docs: out, root: repoRoot });
+        walk(wsRoot, 7);
+        out.sort((a, b) => (a.group || "").localeCompare(b.group || "") || (a.title || "").localeCompare(b.title || ""));
+        return json(res, 200, { ok: true, docs: out, root: wsRoot, scanned });
       } catch (error) {
         return json(res, 500, { ok: false, error: String(error.message ?? error) });
       }
