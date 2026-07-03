@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Brain, Database, FileText, FolderGit2, Loader2, RefreshCw, Save, Search, Wrench, X } from "lucide-react";
+import { Brain, Database, FileText, FolderGit2, Loader2, RefreshCw, Save, Search, Wrench, X, GitGraph, ExternalLink } from "lucide-react";
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
 import { captureWikiAnswer, fetchVault, foldWikiLog, ingestWikiSource, queryWiki, readVaultNote, runWikiCoverage, runWikiLint, searchWiki, syncVault, syncWiki } from "../lib/vaultApi.js";
@@ -247,17 +247,40 @@ export default function Vault() {
         title="Horizon as your single source of truth."
         copy="Mirror the command center, capital, journey, and saved signals into your Obsidian vault as Markdown, and browse any vault note from here. Edit in Obsidian or Horizon; the vault holds the canonical copy."
         action={
-          <button
-            type="button"
-            onClick={doSync}
-            disabled={syncing}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-black text-onPrimary transition hover:bg-primary/90 disabled:opacity-60"
-          >
-            {syncing ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="h-4 w-4" aria-hidden="true" />}
-            {syncing ? "Syncing..." : "Sync to Obsidian"}
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => window.open('obsidian://open?vault=bolting', '_blank')}
+              className="inline-flex items-center gap-2 rounded-md border border-outlineVariant bg-surfaceContainer px-4 py-2 text-sm font-black text-paper transition hover:border-outline"
+            >
+              <ExternalLink className="h-4 w-4" /> Open in Obsidian
+            </button>
+            <button
+              type="button"
+              onClick={doSync}
+              disabled={syncing}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-black text-onPrimary transition hover:bg-primary/90 disabled:opacity-60"
+            >
+              {syncing ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="h-4 w-4" aria-hidden="true" />}
+              {syncing ? "Syncing..." : "Sync to Obsidian"}
+            </button>
+          </div>
         }
       />
+
+      <section className="mb-4 grid gap-4 xl:grid-cols-3">
+        {[
+          { name: 'Horizon OS Brain', path: 'horizon-os/graphify-out/graph.html', nodes: 1173, icon: Brain },
+          { name: 'opensrc Brain', path: '_external/opensrc', nodes: 435, icon: FolderGit2 },
+          { name: 'Graphify Engine Brain', path: 'graphify-out', nodes: 1842, icon: Database },
+        ].map((brain) => (
+          <Panel key={brain.name} className="p-4 cursor-pointer hover:border-primary transition" onClick={() => window.open(`/api/vault/note?path=${encodeURIComponent(brain.path)}`, '_blank')}>
+            <brain.icon className="h-5 w-5 text-primary" />
+            <p className="mt-2 font-bold text-paper">{brain.name}</p>
+            <p className="font-mono text-xs text-paper/46">{brain.nodes.toLocaleString()} nodes</p>
+          </Panel>
+        ))}
+      </section>
 
       {msg ? <p className="mb-4 font-mono text-xs text-paper/56">{msg}</p> : null}
 
@@ -305,9 +328,16 @@ export default function Vault() {
                   onClick={() => openNote(n.path)}
                   className="flex w-full items-center justify-between gap-3 rounded-md border border-outlineVariant bg-surfaceVariant px-3 py-2 text-left hover:border-outline"
                 >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-paper">{n.name}</p>
-                    <p className="truncate font-mono text-[10px] text-paper/42">{n.path}</p>
+                  <div className="flex items-center gap-3 min-w-0">
+                    {n.path.endsWith(".canvas") ? (
+                      <GitGraph className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                    ) : (
+                      <FileText className="h-4 w-4 shrink-0 text-brass" aria-hidden="true" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-paper">{n.name}</p>
+                      <p className="truncate font-mono text-[10px] text-paper/42">{n.path}</p>
+                    </div>
                   </div>
                   <span className="shrink-0 font-mono text-[10px] text-paper/42">{relativeTime(n.mtime)}</span>
                 </button>

@@ -53,7 +53,8 @@ Vendor clones are quarantined in `~/Desktop/bolting/_external` and excluded from
   InsightFace FastAPI sidecar, Razorpay payments, Cloudflare R2 media, Next.js 16 PWA frontend.
 - **rateguard**: Go / Node / Python SDKs (`packages/sdk-*`), OTel attributes.
 - **Horizon OS** (this repo): React + Vite, local SQLite via Node API on `127.0.0.1:8787`, Obsidian
-  vault bridge, MCP connectors, ccusage. Control surface only. The autonomous orchestrator is
+  vault bridge (reconnected and fully mapping `~/Desktop/bolting/` with 200+ ignores and codebase brains),
+  MCP connectors, ccusage. Control surface only. The autonomous orchestrator is
   `scripts/horizon-loop.mjs` (`npm run horizon:watch`): one quota-safe cycle = sweep → generate →
   enrich → readiness, heartbeat in `.horizon/loop-status.json`. It surfaces ready actions but never
   auto-dispatches; Jules dispatch stays operator-triggered + plan-gated. See `docs/operating-loop.md`.

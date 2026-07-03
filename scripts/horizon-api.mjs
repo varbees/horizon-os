@@ -925,7 +925,12 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/vault/note") {
       const path = url.searchParams.get("path");
       try {
-        return json(res, 200, { ok: true, ...readNote(path) });
+        const note = readNote(path);
+        if (path.endsWith(".html") || note.content.trim().startsWith("<!doctype html")) {
+          res.writeHead(200, { "content-type": "text/html" });
+          return res.end(note.content);
+        }
+        return json(res, 200, { ok: true, ...note });
       } catch (error) {
         return json(res, 400, { ok: false, error: String(error.message ?? error) });
       }
