@@ -42,6 +42,7 @@ import { startRun, stopRun, subscribe, unsubscribe, getRun, listRuns } from "./e
 import { getJobPlan, patchDay as patchJobPlanDay, setStartDate as setJobPlanStart } from "./job-plan.mjs";
 import { graphContextBlock, graphSummary, graphQuery, graphAffected } from "./graph-context.mjs";
 import { readProfile, writeProfile, profileContextBlock, profileConfigured } from "./agent-profile.mjs";
+import { composeAgentContext } from "./agent-context.mjs";
 import { listDeps, indexDep, opensrcHome } from "./deps.mjs";
 import { webSearch, webFetch, listFeeds, RESEARCH_FEEDS, internetContextBlock } from "./internet.mjs";
 import { listPrompts, renderLanePrompt } from "./content-prompts.mjs";
@@ -632,38 +633,6 @@ function packageForBrief(brief, assets = []) {
       "Manual publish link captured after posting",
     ]),
   };
-}
-
-// Lessons the operator graded — injected so future runs learn from graded outcomes.
-function recentLessonsBlock() {
-  try {
-    const rows = db
-      .prepare("SELECT grade, title, note FROM agent_grades WHERE COALESCE(note,'') != '' ORDER BY graded_at DESC LIMIT 6")
-      .all();
-    if (!rows.length) return "";
-    return ["## Lessons from graded runs (apply these; don't repeat mistakes)", ...rows.map((r) => `- [${r.grade}] ${r.title}: ${r.note}`)].join("\n");
-  } catch {
-    return "";
-  }
-}
-
-// The full grounding an agent gets before it runs: durable memory + operator profile
-// + graded lessons + a budgeted codebase-graph block. `internet` adds fresh web
-// results (on for live deploys, off for spec enrichment to keep enrich fast).
-async function composeAgentContext(action, { internet = false } = {}) {
-  const base = formatPreflightContext(buildPreflightContext(db, action));
-  const profile = profileContextBlock();
-  const lessons = recentLessonsBlock();
-  const graph = graphContextBlock(action.project_path, action.title, 600);
-  let net = "";
-  if (internet) {
-    try {
-      net = await internetContextBlock(action.title, 400);
-    } catch {
-      net = "";
-    }
-  }
-  return [base, profile, lessons, graph, net].filter(Boolean).join("\n\n");
 }
 
 const server = createServer(async (req, res) => {
@@ -1635,7 +1604,7 @@ const server = createServer(async (req, res) => {
           limit: Number(body.limit) || undefined,
           provider: body.provider,
           model: body.model,
-          composeContext: (a) => composeAgentContext(a, { internet: false }),
+          composeContext: (a) => composeAgentContext(db, a, { internet: false }),
         });
         return json(res, 200, result);
       } catch (error) {
@@ -1732,7 +1701,7 @@ const server = createServer(async (req, res) => {
       try {
         // Ground the enrichment too: the derived spec should reflect the operator's
         // profile, graded lessons, and the codebase graph — not just the raw title.
-        action._groundingContext = await composeAgentContext(action, { internet: false });
+        action._groundingContext = await composeAgentContext(db, action, { internet: false });
         const { fields, provider, model } = await enrichActionWithAvailableProvider(action, {
           provider: body.provider,
           model: body.model,
@@ -1768,7 +1737,7 @@ const server = createServer(async (req, res) => {
       // Compose the agent's context: durable memory + operator profile (cofounder
       // continuity) + a budgeted codebase-graph block scoped to this project, so the
       // agent queries the graph and knows the goals instead of starting cold.
-      const memoryContext = await composeAgentContext(action, { internet: true });
+      const memoryContext = await composeAgentContext(db, action, { internet: true });
       const contents = buildRunnableSpec(action, { stamp, memoryContext });
       writeFileSync(filePath, contents, "utf8");
       // mirror into the Obsidian vault as durable memory (control surface -> memory)

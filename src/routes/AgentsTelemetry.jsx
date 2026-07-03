@@ -6,6 +6,7 @@ import {
   CircleDot,
   Cpu,
   FolderOpen,
+  Lightbulb,
   Loader2,
   RefreshCw,
   Rocket,
@@ -167,6 +168,24 @@ export default function AgentsTelemetry() {
                 <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${p.available ? "bg-signal" : p.configured ? "bg-brass" : "bg-outlineVariant"}`} />
                 <span className="truncate text-sm font-black text-paper">{p.label}</span>
                 <span className="ml-auto shrink-0 font-mono text-[10px] uppercase tracking-[0.12em] text-paper/44">{p.models?.length ?? 0} models</span>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      ) : null}
+
+      {lessons.lessons?.some((l) => l.note) ? (
+        <Panel className="mt-4 p-5">
+          <p className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.24em] text-brass"><Lightbulb className="h-4 w-4" /> What the workforce has learned</p>
+          <p className="mt-1 text-xs text-paper/50">Graded outcomes — injected into every future deploy so agents don't repeat mistakes.</p>
+          <div className="mt-3 space-y-1.5">
+            {lessons.lessons.filter((l) => l.note).slice(0, 8).map((l) => (
+              <div key={l.id} className="flex items-start gap-2 rounded-md border border-outlineVariant bg-surfaceVariant px-3 py-2">
+                <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-[0.1em] ${l.grade === "good" ? "bg-signal/12 text-signal" : l.grade === "bad" ? "bg-rust/12 text-rust" : "bg-brass/12 text-brass"}`}>{l.grade}</span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-paper">{l.title}</p>
+                  <p className="text-xs leading-5 text-paper/62">{l.note}</p>
+                </div>
               </div>
             ))}
           </div>

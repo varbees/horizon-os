@@ -26,6 +26,7 @@ import { openHorizonDb } from "./horizon-db.mjs";
 import { runProjectSweep } from "./project-sweep.mjs";
 import { generateRevenueActions } from "./revenue-actions.mjs";
 import { autoEnrich, llmAvailable } from "./auto-enrich.mjs";
+import { composeAgentContext } from "./agent-context.mjs";
 import { reconcileDispatches } from "./reconcile.mjs";
 import { syncHorizonWiki } from "./wiki.mjs";
 import { runContentStage } from "./content-loop.mjs";
@@ -83,7 +84,8 @@ export async function runCycle({ db: providedDb, enrichLimit } = {}) {
   // 3. enrich (quota-safe, optional)
   if (llmAvailable()) {
     try {
-      const enr = await autoEnrich({ db, limit: enrichLimit });
+      // Ground the background enrich too, so sweep-generated specs aren't cold.
+      const enr = await autoEnrich({ db, limit: enrichLimit, composeContext: (a) => composeAgentContext(db, a, { internet: false }) });
       cycle.stages.enrich = {
         candidates: enr.candidates,
         enriched: enr.enriched,

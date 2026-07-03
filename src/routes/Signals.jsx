@@ -16,6 +16,7 @@ import {
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
 import ConnectorActionStrip from "../components/ConnectorActionStrip.jsx";
+import WebSearchPanel from "../components/WebSearchPanel.jsx";
 import SegmentedControl from "../components/ui/SegmentedControl.jsx";
 import { useUiStore } from "../store/uiStore.js";
 import {
@@ -184,6 +185,10 @@ export default function Signals() {
 
       <section className="mb-4">
         <ConnectorActionStrip surface="signals" />
+      </section>
+
+      <section className="mb-4">
+        <WebSearchPanel />
       </section>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
