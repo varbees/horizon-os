@@ -1,0 +1,202 @@
+/* Horizon UI kit — skeletons, drawer, command palette, and the markdown reader.
+   Everything here is styled into the existing Horizon token system (paper/brass/
+   signal/primary), so new primitives read as one system with the rest of the app. */
+
+/* ---------------------------------------------------------------- skeletons */
+@keyframes hz-shimmer {
+  0% { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
+}
+
+.hz-skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--hz-radius-sm);
+  background: color-mix(in srgb, var(--md-sys-color-surface-container) 78%, transparent);
+}
+.hz-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0,
+    rgba(37, 88, 216, 0.09) 42%,
+    rgba(37, 88, 216, 0.14) 50%,
+    rgba(37, 88, 216, 0.09) 58%,
+    transparent 100%
+  );
+  background-size: 600px 100%;
+  animation: hz-shimmer 1.35s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hz-skeleton::after { animation: none; }
+}
+
+/* --------------------------------------------------------- inspector drawer */
+.hz-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--md-sys-color-outline) 60%, transparent) transparent;
+}
+.hz-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.hz-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--md-sys-color-outline) 46%, transparent);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+.hz-scroll::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--md-sys-color-outline) 70%, transparent);
+  background-clip: content-box;
+}
+
+/* ---------------------------------------------------------- command palette */
+[cmdk-root] { width: 100%; }
+[cmdk-input] {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.95rem;
+  color: var(--hz-app-fg);
+}
+[cmdk-input]::placeholder { color: color-mix(in srgb, var(--hz-app-fg) 42%, transparent); }
+[cmdk-item] {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--hz-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--hz-app-fg) 74%, transparent);
+  cursor: pointer;
+  scroll-margin: 0.5rem;
+}
+[cmdk-item][data-selected="true"] {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+[cmdk-item] svg { width: 1rem; height: 1rem; flex-shrink: 0; }
+[cmdk-group-heading] {
+  padding: 0.75rem 0.7rem 0.35rem;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--md-sys-color-tertiary);
+}
+[cmdk-empty] {
+  padding: 1.4rem 0.7rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--hz-app-fg) 48%, transparent);
+}
+
+/* ----------------------------------------------------- markdown reader prose */
+.prose-hz {
+  color: color-mix(in srgb, var(--hz-app-fg) 88%, transparent);
+  font-size: 0.97rem;
+  line-height: 1.75;
+  overflow-wrap: break-word;
+}
+.prose-hz > :first-child { margin-top: 0; }
+.prose-hz h1, .prose-hz h2, .prose-hz h3, .prose-hz h4 {
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 700;
+  color: var(--hz-app-fg);
+  line-height: 1.2;
+  scroll-margin-top: 6rem;
+}
+.prose-hz h1 { font-size: 1.9rem; margin: 0 0 1rem; }
+.prose-hz h2 {
+  font-size: 1.4rem;
+  margin: 2.2rem 0 0.9rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+.prose-hz h3 { font-size: 1.14rem; margin: 1.7rem 0 0.6rem; }
+.prose-hz h4 { font-size: 1rem; margin: 1.4rem 0 0.5rem; }
+.prose-hz p { margin: 0 0 1rem; }
+.prose-hz a {
+  color: var(--md-sys-color-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: color-mix(in srgb, var(--md-sys-color-primary) 40%, transparent);
+}
+.prose-hz a:hover { text-decoration-color: var(--md-sys-color-primary); }
+.prose-hz ul, .prose-hz ol { margin: 0 0 1rem; padding-left: 1.35rem; }
+.prose-hz li { margin: 0.3rem 0; }
+.prose-hz li::marker { color: var(--md-sys-color-tertiary); }
+.prose-hz blockquote {
+  margin: 1.2rem 0;
+  padding: 0.2rem 1rem;
+  border-left: 3px solid var(--md-sys-color-primary);
+  background: color-mix(in srgb, var(--md-sys-color-primary-container) 40%, transparent);
+  border-radius: 0 var(--hz-radius-sm) var(--hz-radius-sm) 0;
+  color: color-mix(in srgb, var(--hz-app-fg) 78%, transparent);
+}
+.prose-hz code {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.85em;
+  padding: 0.12em 0.4em;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--md-sys-color-surface-container) 80%, transparent);
+  border: 1px solid var(--md-sys-color-outline-variant);
+}
+.prose-hz pre {
+  margin: 1.2rem 0;
+  padding: 1rem 1.1rem;
+  border-radius: var(--hz-radius-md);
+  background: #0f1a15;
+  color: #e7f1e8;
+  overflow-x: auto;
+  border: 1px solid rgba(37, 88, 216, 0.25);
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+.prose-hz pre code { background: transparent; border: none; padding: 0; font-size: inherit; color: inherit; }
+.prose-hz table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.2rem 0;
+  font-size: 0.88rem;
+  display: block;
+  overflow-x: auto;
+}
+.prose-hz th, .prose-hz td {
+  border: 1px solid var(--md-sys-color-outline-variant);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+.prose-hz th {
+  background: var(--md-sys-color-surface-container);
+  font-weight: 700;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.prose-hz hr { margin: 2rem 0; border: none; border-top: 1px solid var(--md-sys-color-outline-variant); }
+.prose-hz img { max-width: 100%; border-radius: var(--hz-radius-sm); }
+.prose-hz .hz-anchor {
+  opacity: 0;
+  margin-left: 0.35rem;
+  font-weight: 400;
+  color: var(--md-sys-color-outline);
+  text-decoration: none;
+}
+.prose-hz h1:hover .hz-anchor,
+.prose-hz h2:hover .hz-anchor,
+.prose-hz h3:hover .hz-anchor,
+.prose-hz h4:hover .hz-anchor { opacity: 1; }
+
+/* minimal light syntax highlight (rehype-highlight tokens) */
+.prose-hz .hljs-keyword, .prose-hz .hljs-selector-tag, .prose-hz .hljs-built_in { color: #8ab4ff; }
+.prose-hz .hljs-string, .prose-hz .hljs-attr { color: #8fe3c0; }
+.prose-hz .hljs-number, .prose-hz .hljs-literal { color: #ffcf80; }
+.prose-hz .hljs-comment, .prose-hz .hljs-quote { color: #6f8479; font-style: italic; }
+.prose-hz .hljs-title, .prose-hz .hljs-function .hljs-title { color: #ffd9b0; }
+.prose-hz .hljs-tag, .prose-hz .hljs-name { color: #8ab4ff; }

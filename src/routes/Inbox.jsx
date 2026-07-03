@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
+import AgentDeployer from "../components/AgentDeployer.jsx";
+import { useUiStore } from "../store/uiStore.js";
 import {
   addResource,
   addSocialPost,
@@ -17,6 +19,40 @@ import {
   updateSocialPost,
 } from "../lib/inboxApi.js";
 import { resourceSeeds, socialPostSeeds, socialSkillCatalog } from "../data/horizon.js";
+
+function resourceToEntity(r) {
+  return {
+    type: "resource",
+    id: r.id,
+    title: r.title,
+    subtitle: r.note || r.next_action || "",
+    source: r.source,
+    project_id: r.project_id,
+    body: [r.note, r.next_action ? `**Next action:** ${r.next_action}` : ""].filter(Boolean).join("\n\n"),
+    tags: [r.kind, r.status].filter(Boolean),
+    meta: [
+      { label: "Status", value: r.status },
+      r.project_id ? { label: "Project", value: r.project_id } : null,
+    ].filter(Boolean),
+    suggestedActions: ["research"],
+  };
+}
+
+function postToEntity(p) {
+  return {
+    type: "post",
+    id: p.id,
+    title: p.hook,
+    subtitle: `${p.platform} · ${p.format}`,
+    body: p.body,
+    tags: [p.platform, p.status, p.skill_id].filter(Boolean),
+    meta: [
+      { label: "Platform", value: p.platform },
+      { label: "Status", value: p.status },
+    ],
+    suggestedActions: ["draft"],
+  };
+}
 
 const RESOURCE_STATUSES = ["inbox", "assigned", "actioned", "archived"];
 const POST_STATUSES = ["idea", "draft", "scheduled", "published"];
@@ -72,6 +108,7 @@ function nextStatus(list, current) {
 export default function Inbox() {
   const [data, setData] = useState(seedState);
   const [source, setSource] = useState("seed");
+  const openInspector = useUiStore((s) => s.openInspector);
 
   useEffect(() => {
     let active = true;
@@ -158,15 +195,21 @@ export default function Inbox() {
           <ResourceForm onCapture={captureResource} />
           <div className="mt-4 space-y-3">
             {data.resources.map((r) => (
-              <article key={r.id} className="rounded-md border border-outlineVariant bg-surfaceVariant p-4">
+              <article
+                key={r.id}
+                onClick={() => openInspector(resourceToEntity(r))}
+                className="group cursor-pointer rounded-md border border-outlineVariant bg-surfaceVariant p-4 transition hover:border-primary/40 hover:bg-surface"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="text-base font-black text-paper">{r.title}</h3>
-                    <p className="mt-0.5 break-words font-mono text-[11px] text-paper/44">{r.source}</p>
+                    <h3 className="text-base font-black text-paper group-hover:text-primary">{r.title}</h3>
+                    {r.source ? (
+                      <p className="mt-0.5 break-words font-mono text-[11px] text-paper/44" title={r.source}>{r.source}</p>
+                    ) : null}
                   </div>
                   <button
                     type="button"
-                    onClick={() => cycleResource(r.id)}
+                    onClick={(e) => { e.stopPropagation(); cycleResource(r.id); }}
                     title="advance status"
                     className={`shrink-0 rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-black uppercase tracking-[0.14em] transition ${statusTone[r.status] ?? statusTone.inbox}`}
                   >
@@ -175,9 +218,12 @@ export default function Inbox() {
                 </div>
                 {r.note ? <p className="mt-2 text-sm leading-6 text-paper/60">{r.note}</p> : null}
                 {r.next_action ? <p className="mt-2 text-sm font-bold leading-6 text-signal">{r.next_action}</p> : null}
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {r.kind ? <span className="rounded-md border border-outlineVariant bg-white/60 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-paper/52">{r.kind}</span> : null}
-                  {r.project_id ? <span className="rounded-md bg-primary/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-primary">{r.project_id}</span> : null}
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-outlineVariant/70 pt-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {r.kind ? <span className="rounded-md border border-outlineVariant bg-white/60 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-paper/52">{r.kind}</span> : null}
+                    {r.project_id ? <span className="rounded-md bg-primary/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-primary">{r.project_id}</span> : null}
+                  </div>
+                  <AgentDeployer entity={resourceToEntity(r)} variant="compact" defaultAgent="deepseek" defaultAction="research" />
                 </div>
               </article>
             ))}
@@ -195,7 +241,11 @@ export default function Inbox() {
           <PostForm onCapture={capturePost} skills={data.skills} />
           <div className="mt-4 space-y-3">
             {data.posts.map((p) => (
-              <article key={p.id} className="rounded-md border border-outlineVariant bg-surfaceVariant p-4">
+              <article
+                key={p.id}
+                onClick={() => openInspector(postToEntity(p))}
+                className="group cursor-pointer rounded-md border border-outlineVariant bg-surfaceVariant p-4 transition hover:border-primary/40 hover:bg-surface"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-md border border-outlineVariant bg-white/60 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-paper/52">{p.platform}</span>
@@ -203,20 +253,23 @@ export default function Inbox() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => cyclePost(p.id)}
+                    onClick={(e) => { e.stopPropagation(); cyclePost(p.id); }}
                     title="advance status"
                     className={`shrink-0 rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-black uppercase tracking-[0.14em] transition ${statusTone[p.status] ?? statusTone.idea}`}
                   >
                     {p.status}
                   </button>
                 </div>
-                <p className="mt-2 text-sm font-black leading-6 text-paper">{p.hook}</p>
+                <p className="mt-2 text-sm font-black leading-6 text-paper group-hover:text-primary">{p.hook}</p>
                 {p.body ? <p className="mt-1 text-sm leading-6 text-paper/58">{p.body}</p> : null}
-                {p.skill_id ? (
-                  <p className="mt-2 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.14em] text-primary">
-                    <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> {p.skill_id}
-                  </p>
-                ) : null}
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-outlineVariant/70 pt-3">
+                  {p.skill_id ? (
+                    <p className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.14em] text-primary">
+                      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> {p.skill_id}
+                    </p>
+                  ) : <span />}
+                  <AgentDeployer entity={postToEntity(p)} variant="compact" defaultAgent="deepseek" defaultAction="draft" />
+                </div>
               </article>
             ))}
           </div>

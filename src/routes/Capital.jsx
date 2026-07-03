@@ -5,15 +5,21 @@ import {
   ArrowUpRight,
   Banknote,
   CalendarClock,
+  CheckCircle2,
+  Circle,
   Gauge,
   IndianRupee,
+  Lightbulb,
   Plus,
   Repeat,
   Target,
   TrendingUp,
+  X,
 } from "lucide-react";
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
+import AgentDeployer from "../components/AgentDeployer.jsx";
+import { useUiStore } from "../store/uiStore.js";
 import {
   addLedgerEntry,
   fetchCapital,
@@ -86,9 +92,73 @@ function runwayLabel(months) {
   return `${months.toFixed(1)} mo`;
 }
 
+function pipelineToEntity(p) {
+  return {
+    type: "pipeline deal",
+    id: p.id,
+    title: p.buyer,
+    subtitle: p.offer,
+    project_id: "",
+    body: [p.offer, p.next_action ? `**Next action:** ${p.next_action}` : ""].filter(Boolean).join("\n\n"),
+    tags: [p.stage, Number(p.recurring) > 0 ? "recurring" : "one-time"].filter(Boolean),
+    meta: [
+      { label: "Value", value: compactInr(Number(p.value_inr)) },
+      { label: "Stage", value: p.stage },
+    ],
+    impact: "revenue",
+    suggestedActions: ["outreach"],
+  };
+}
+
+// The financial-analyst read: what a CFO would actually say about these numbers.
+function financialRead(math) {
+  const points = [];
+  let tone = "signal";
+  let headline = "On the line for February 2027.";
+
+  if (math.needsBurn) {
+    tone = "brass";
+    headline = "Set your burn — runway is still a guess.";
+    points.push("Enter monthly burn below so runway months become real, not assumed.");
+  } else if (math.runwayMonthsNet !== Infinity && math.runwayMonthsNet < 3) {
+    tone = "rust";
+    headline = `Runway under 3 months (${math.runwayMonthsNet.toFixed(1)} mo). Sign income now.`;
+    points.push("This is the number that ends the plan. Prioritise the nearest-to-cash pipeline deal today.");
+  } else if (math.runwayMonthsNet !== Infinity && math.runwayMonthsNet < 6) {
+    tone = "brass";
+    headline = `${math.runwayMonthsNet.toFixed(1)} months of runway — comfortable, not safe.`;
+  } else if (math.runwayMonthsNet === Infinity) {
+    headline = "MRR covers burn — every signed rupee now compounds toward the target.";
+  }
+
+  const shortfall = Math.round(math.requiredWeekly - math.weekIn);
+  if (shortfall > 0) {
+    if (tone === "signal") tone = "brass";
+    points.push(`Behind this week by ${compactInr(shortfall)}. That is the gap between logged income and the ${compactInr(Math.round(math.requiredWeekly))}/wk pace.`);
+  } else if (math.requiredWeekly > 0) {
+    points.push(`This week's income already clears the ${compactInr(Math.round(math.requiredWeekly))}/wk pace. Bank it and push the next deal.`);
+  }
+
+  if (math.pipelineWeighted < math.gap) {
+    points.push(`Weighted pipeline (${compactInr(Math.round(math.pipelineWeighted))}) is below the gap (${compactInr(math.gap)}). Add or advance offers to cover it.`);
+  }
+
+  return { tone, headline, points };
+}
+
+const READ_TONE = {
+  signal: { border: "border-signal/40", bg: "bg-signal/8", text: "text-signal", chip: "on track" },
+  brass: { border: "border-brass/40", bg: "bg-brass/10", text: "text-brass", chip: "watch" },
+  rust: { border: "border-rust/45", bg: "bg-rust/10", text: "text-rust", chip: "act now" },
+};
+
 export default function Capital() {
   const [data, setData] = useState(seedState);
   const [source, setSource] = useState("seed");
+  const openInspector = useUiStore((s) => s.openInspector);
+  const [onboardDismissed, setOnboardDismissed] = useState(() => {
+    try { return localStorage.getItem("horizon.capital.onboardDone") === "1"; } catch { return false; }
+  });
 
   useEffect(() => {
     let active = true;
@@ -110,6 +180,23 @@ export default function Capital() {
   }, []);
 
   const math = useMemo(() => computeCapitalMath(data), [data]);
+  const read = useMemo(() => financialRead(math), [math]);
+  const onboardSteps = useMemo(
+    () => [
+      { id: "burn", label: "Set your monthly burn", done: math.burn > 0 },
+      { id: "cash", label: "Enter current cash", done: math.cash > 0 },
+      { id: "income", label: "Log your first income", done: data.ledger.some((r) => r.direction === "in" && Number(r.amount_inr) > 0) },
+      { id: "pipeline", label: "Add a buyer to the pipeline", done: data.pipeline.length > 0 },
+      { id: "target", label: "Fund a February 2027 target", done: data.targets.some((t) => Number(t.saved_inr) > 0) },
+    ],
+    [math, data],
+  );
+  const onboardComplete = onboardSteps.every((s) => s.done);
+
+  function dismissOnboard() {
+    setOnboardDismissed(true);
+    try { localStorage.setItem("horizon.capital.onboardDone", "1"); } catch { /* ignore */ }
+  }
 
   function patchRunway(field, value) {
     setData((prev) => ({ ...prev, runway: { ...prev.runway, [field]: value } }));
@@ -146,18 +233,13 @@ export default function Capital() {
         copy="The first operating number is not a SaaS dream. It is signed service income. This screen tracks the gap, the runway, the offer pipeline, and the exact amount that must be earned this week and this month."
       />
 
-      {math.needsBurn ? (
-        <div className="mb-4 flex items-start gap-3 rounded-[var(--hz-radius-md)] border border-brass/40 bg-brass/10 p-4">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-brass" aria-hidden="true" />
-          <p className="text-sm leading-6 text-paper/76">
-            <span className="font-black text-paper">Set monthly burn</span> to see runway months. Cash ({compactInr(math.cash)})
-            and MRR ({compactInr(math.mrr)}) are recorded; the required weekly/monthly income already works from the gap.
-            {source === "seed" ? " Run npm run dev:full to persist edits." : ""}
-          </p>
-        </div>
+      {!onboardComplete && !onboardDismissed ? (
+        <OnboardingChecklist steps={onboardSteps} source={source} onDismiss={dismissOnboard} />
       ) : null}
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <AdvisoryCard read={read} math={math} />
+
+      <section className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Metric icon={Banknote} tone="text-signal" label="Current cash" value={compactInr(math.cash)} sub={`MRR ${compactInr(math.mrr)} / mo`} />
         <Metric icon={Gauge} tone="text-rust" label="Net runway" value={runwayLabel(math.runwayMonthsNet)} sub={`burn ${compactInr(math.burn)} / mo`} />
         <Metric icon={Target} tone="text-primary" label="Gap to Feb 2027" value={compactInr(math.gap)} sub={`${math.progressPct}% of ${compactInr(math.totalTarget)} logged`} />
@@ -253,10 +335,14 @@ export default function Capital() {
           </div>
           <div className="mt-5 space-y-3">
             {data.pipeline.map((p) => (
-              <article key={p.id} className="rounded-md border border-outlineVariant bg-surfaceVariant p-4">
+              <article
+                key={p.id}
+                onClick={() => openInspector(pipelineToEntity(p))}
+                className="group cursor-pointer rounded-md border border-outlineVariant bg-surfaceVariant p-4 transition hover:border-primary/40 hover:bg-surface"
+              >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <h3 className="text-base font-black text-paper">{p.buyer}</h3>
+                    <h3 className="text-base font-black text-paper group-hover:text-primary">{p.buyer}</h3>
                     <p className="text-sm leading-5 text-paper/60">{p.offer}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
@@ -269,7 +355,7 @@ export default function Capital() {
                     <button
                       key={s.id}
                       type="button"
-                      onClick={() => patchStage(p.id, s.id)}
+                      onClick={(e) => { e.stopPropagation(); patchStage(p.id, s.id); }}
                       className={[
                         "rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-black uppercase tracking-[0.14em] transition",
                         p.stage === s.id
@@ -282,6 +368,9 @@ export default function Capital() {
                   ))}
                 </div>
                 {p.next_action ? <p className="mt-3 text-sm font-bold leading-6 text-paper/72">{p.next_action}</p> : null}
+                <div className="mt-3 flex justify-end border-t border-outlineVariant/70 pt-3">
+                  <AgentDeployer entity={pipelineToEntity(p)} variant="compact" defaultAgent="deepseek" defaultAction="outreach" />
+                </div>
               </article>
             ))}
           </div>
@@ -318,6 +407,73 @@ export default function Capital() {
           </div>
         </Panel>
       </section>
+    </div>
+  );
+}
+
+function AdvisoryCard({ read, math }) {
+  const t = READ_TONE[read.tone] ?? READ_TONE.signal;
+  return (
+    <div className={`mt-4 rounded-[var(--hz-radius-md)] border ${t.border} ${t.bg} p-5`}>
+      <div className="flex items-start gap-3">
+        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-[var(--hz-radius-sm)] border ${t.border} bg-surface`}>
+          <Lightbulb className={`h-5 w-5 ${t.text}`} aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-paper/46">Analyst read</p>
+            <span className={`rounded-full border ${t.border} px-2 py-0.5 font-mono text-[9px] font-black uppercase tracking-[0.14em] ${t.text}`}>{t.chip}</span>
+          </div>
+          <h3 className="mt-1 font-display text-lg font-bold leading-snug text-paper">{read.headline}</h3>
+          {read.points.length ? (
+            <ul className="mt-2 space-y-1.5">
+              {read.points.map((p, i) => (
+                <li key={i} className="flex gap-2 text-sm leading-6 text-paper/72">
+                  <span className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${t.text.replace("text-", "bg-")}`} />
+                  <span className="min-w-0">{p}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-paper/40">
+            {math.monthsRemaining.toFixed(1)} months to Feb 2027 · {compactInr(math.gap)} gap · {math.progressPct}% funded
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OnboardingChecklist({ steps, source, onDismiss }) {
+  const done = steps.filter((s) => s.done).length;
+  const pct = Math.round((done / steps.length) * 100);
+  return (
+    <div className="mb-4 rounded-[var(--hz-radius-md)] border border-primary/30 bg-primaryContainer/40 p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-brass">Set up your money base</p>
+          <h3 className="mt-1 font-display text-lg font-bold text-paper">{done}/{steps.length} — get Capital reading the truth</h3>
+        </div>
+        <button type="button" onClick={onDismiss} className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-outlineVariant text-paper/50 hover:text-paper" aria-label="Dismiss setup">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface">
+        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+      </div>
+      <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
+        {steps.map((s) => (
+          <div key={s.id} className="flex items-center gap-2 text-sm">
+            {s.done ? <CheckCircle2 className="h-4 w-4 shrink-0 text-signal" aria-hidden="true" /> : <Circle className="h-4 w-4 shrink-0 text-paper/30" aria-hidden="true" />}
+            <span className={s.done ? "text-paper/50 line-through" : "font-bold text-paper/78"}>{s.label}</span>
+          </div>
+        ))}
+      </div>
+      {source === "seed" ? (
+        <p className="mt-3 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-paper/44">
+          <AlertTriangle className="h-3 w-3" /> Showing seed data — run npm run dev:full to persist your real numbers.
+        </p>
+      ) : null}
     </div>
   );
 }

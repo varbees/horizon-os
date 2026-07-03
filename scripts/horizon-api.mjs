@@ -120,6 +120,9 @@ function syncVaultSnapshots() {
 const port = Number(process.env.HORIZON_API_PORT ?? 8787);
 const db = openHorizonDb();
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+// The bolting workspace root (parent of this repo). Doc-reader + reveal paths are
+// confined to this subtree so the API can never read or open arbitrary files.
+const workspaceRoot = resolve(repoRoot, "..");
 const queueDir = resolve(repoRoot, ".horizon", "queue");
 
 function json(res, status, body) {
@@ -2078,6 +2081,98 @@ const server = createServer(async (req, res) => {
         id,
       );
       return json(res, 200, { ok: true, id });
+    }
+
+    // ---------------------------------------------------------------- docs reader
+    // List real markdown docs from the repo (docs/, root *.md, public/documents/),
+    // read one by absolute path, and reveal a path in the OS file manager. Every
+    // path is resolved and confined to the bolting workspace before use.
+    if (req.method === "GET" && url.pathname === "/api/docs") {
+      try {
+        const { readdirSync, statSync, readFileSync } = await import("node:fs");
+        const roots = [
+          { dir: repoRoot, label: "Repo root", recursive: false },
+          { dir: resolve(repoRoot, "docs"), label: "docs", recursive: true },
+          { dir: resolve(repoRoot, "public/documents"), label: "documents", recursive: true },
+        ];
+        const out = [];
+        const walk = (dir, label, depth) => {
+          let entries = [];
+          try {
+            entries = readdirSync(dir, { withFileTypes: true });
+          } catch {
+            return;
+          }
+          for (const ent of entries) {
+            if (ent.name.startsWith(".") || ent.name === "node_modules") continue;
+            const abs = resolve(dir, ent.name);
+            if (ent.isDirectory()) {
+              if (depth > 0) walk(abs, label, depth - 1);
+            } else if (/\.mdx?$/.test(ent.name)) {
+              let size = 0;
+              let mtime = null;
+              try {
+                const st = statSync(abs);
+                size = st.size;
+                mtime = st.mtime.toISOString();
+              } catch {
+                /* skip */
+              }
+              let title = ent.name.replace(/\.mdx?$/, "");
+              try {
+                const head = readFileSync(abs, "utf8").slice(0, 2000);
+                const m = /^\s*#\s+(.+)$/m.exec(head);
+                if (m) title = m[1].trim();
+              } catch {
+                /* keep filename */
+              }
+              out.push({ path: abs, rel: abs.replace(`${repoRoot}/`, ""), title, group: label, size, mtime });
+            }
+          }
+        };
+        for (const r of roots) walk(r.dir, r.label, r.recursive ? 4 : 0);
+        out.sort((a, b) => (b.mtime || "").localeCompare(a.mtime || ""));
+        return json(res, 200, { ok: true, docs: out, root: repoRoot });
+      } catch (error) {
+        return json(res, 500, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/docs/read") {
+      const raw = url.searchParams.get("path") ?? "";
+      const abs = resolve(raw);
+      if (!abs.startsWith(workspaceRoot) || !/\.mdx?$/.test(abs)) {
+        return json(res, 400, { ok: false, error: "path_not_allowed" });
+      }
+      try {
+        const { readFileSync } = await import("node:fs");
+        const content = readFileSync(abs, "utf8").slice(0, 500_000);
+        const m = /^\s*#\s+(.+)$/m.exec(content.slice(0, 2000));
+        return json(res, 200, { ok: true, path: abs, rel: abs.replace(`${repoRoot}/`, ""), title: m ? m[1].trim() : abs.split("/").pop(), content });
+      } catch (error) {
+        return json(res, 404, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/reveal") {
+      const raw = url.searchParams.get("path") ?? (await readJson(req)).path ?? "";
+      const abs = resolve(String(raw));
+      if (!abs.startsWith(workspaceRoot)) {
+        return json(res, 400, { ok: false, error: "path_not_allowed" });
+      }
+      try {
+        const { existsSync, statSync } = await import("node:fs");
+        if (!existsSync(abs)) return json(res, 404, { ok: false, error: "path_not_found" });
+        const target = statSync(abs).isDirectory() ? abs : dirname(abs);
+        const { spawn } = await import("node:child_process");
+        const opener = process.platform === "darwin" ? "open" : process.platform === "win32" ? "explorer" : "xdg-open";
+        const child = spawn(opener, [target], { detached: true, stdio: "ignore" });
+        child.on("error", () => {});
+        child.unref();
+        return json(res, 200, { ok: true, path: abs, opened: target });
+      } catch (error) {
+        return json(res, 500, { ok: false, error: String(error.message ?? error) });
+      }
     }
 
     return json(res, 404, { ok: false, error: "not_found" });

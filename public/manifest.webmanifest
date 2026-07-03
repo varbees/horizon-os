@@ -1,0 +1,15 @@
+{
+  "name": "Horizon OS — Command Deck",
+  "short_name": "Horizon OS",
+  "description": "Local-first agentic command center: control, deploy, track and evaluate your agent workforce across every lane.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fbfff9",
+  "theme_color": "#fbfff9",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

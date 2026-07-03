@@ -1,4 +1,5 @@
 @import "./styles/horizon-tokens.css";
+@import "./styles/horizon-ui.css";
 
 @tailwind base;
 @tailwind components;
