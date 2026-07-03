@@ -38,6 +38,7 @@ import {
 } from "./jules.mjs";
 import { runClaudeCode, claudeCodeHealth } from "./executors/claude-code.mjs";
 import { codexHealth } from "./executors/codex.mjs";
+import { startRun, stopRun, subscribe, unsubscribe, getRun, listRuns } from "./executors/run-manager.mjs";
 import { listPrompts, renderLanePrompt } from "./content-prompts.mjs";
 import { runContentStage, advanceBrief } from "./content-loop.mjs";
 
@@ -2081,6 +2082,76 @@ const server = createServer(async (req, res) => {
         id,
       );
       return json(res, 200, { ok: true, id });
+    }
+
+    // -------------------------------------------------------------- live runs (Phase 3)
+    // Start a streaming run of an action's spec, stream it over SSE, stop it. The
+    // "demo" runner streams a harmless synthetic log so the console is verifiable
+    // without spawning a real repo-writing agent; claude/codex are opt-in.
+    if (req.method === "POST" && url.pathname.startsWith("/api/action-queue/") && url.pathname.endsWith("/run")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/action-queue/", "").replace("/run", ""));
+      const action = db.prepare("SELECT * FROM action_queue WHERE id = ?").get(id);
+      if (!action) return json(res, 404, { ok: false, error: "action_not_found" });
+      const body = await readJson(req);
+      const requested = body.runner;
+      const runner = ["claude", "codex", "demo"].includes(requested)
+        ? requested
+        : action.agent === "codex" ? "codex" : action.agent === "claude" ? "claude" : "demo";
+      // confine cwd to the workspace
+      let cwd = action.cwd || action.project_path || repoRoot;
+      try {
+        const r = resolve(cwd);
+        cwd = r.startsWith(workspaceRoot) ? r : repoRoot;
+      } catch {
+        cwd = repoRoot;
+      }
+      const input = action.prompt || action.goal || action.title || "";
+      let spec;
+      if (runner === "claude") {
+        spec = { command: process.env.HORIZON_CLAUDE_CMD ?? "claude", args: ["-p", "--output-format", "stream-json", "--verbose"], input, cwd };
+      } else if (runner === "codex") {
+        spec = { command: process.env.HORIZON_CODEX_CMD ?? "codex", args: ["exec"], input, cwd };
+      } else {
+        const safe = String(action.title || "run").replace(/["`$\\\n]/g, " ").slice(0, 80);
+        spec = { command: "bash", args: ["-lc", `for i in $(seq 1 6); do echo "[demo] ${safe} — step $i/6"; sleep 0.5; done; echo "[demo] complete — this was a safe synthetic run"`], input: "", cwd };
+      }
+      const run = startRun({ actionId: id, agent: runner, title: action.title, ...spec });
+      return json(res, 201, { ok: true, run });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/runs") {
+      return json(res, 200, { ok: true, runs: listRuns() });
+    }
+
+    if (req.method === "GET" && url.pathname.startsWith("/api/runs/") && url.pathname.endsWith("/stream")) {
+      const runId = decodeURIComponent(url.pathname.replace("/api/runs/", "").replace("/stream", ""));
+      res.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
+      });
+      res.write(": open\n\n");
+      const ok = subscribe(runId, res);
+      if (!ok) {
+        res.write(`event: error\ndata: ${JSON.stringify({ error: "run_not_found" })}\n\n`);
+        res.end();
+        return;
+      }
+      req.on("close", () => unsubscribe(runId, res));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname.startsWith("/api/runs/") && url.pathname.endsWith("/stop")) {
+      const runId = decodeURIComponent(url.pathname.replace("/api/runs/", "").replace("/stop", ""));
+      return json(res, 200, stopRun(runId));
+    }
+
+    if (req.method === "GET" && url.pathname.startsWith("/api/runs/")) {
+      const runId = decodeURIComponent(url.pathname.replace("/api/runs/", ""));
+      const run = getRun(runId);
+      if (!run) return json(res, 404, { ok: false, error: "run_not_found" });
+      return json(res, 200, { ok: true, run });
     }
 
     // ---------------------------------------------------------------- docs reader

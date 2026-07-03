@@ -16,6 +16,8 @@ import Panel from "../components/Panel.jsx";
 import { SkeletonGrid } from "../components/ui/Skeleton.jsx";
 import { fetchActionQueue, deployAction, updateAction } from "../lib/actionQueueApi.js";
 import { revealPath } from "../lib/docsApi.js";
+import { startLiveRun } from "../lib/runsApi.js";
+import LiveConsole from "../components/LiveConsole.jsx";
 import { useUiStore } from "../store/uiStore.js";
 
 // Agent telemetry — control, track, evaluate the workforce across every screen.
@@ -51,6 +53,19 @@ export default function AgentsTelemetry() {
   const [usage, setUsage] = useState(null);
   const [busy, setBusy] = useState("");
   const [offline, setOffline] = useState(false);
+  const [activeRun, setActiveRun] = useState(null);
+
+  async function runLive(actionId, runner, title) {
+    setBusy(`${actionId}:run`);
+    try {
+      const run = await startLiveRun(actionId, runner);
+      setActiveRun({ ...run, title: run.title || title });
+    } catch (e) {
+      pushToast({ tone: "error", title: "Could not start run", message: e.message });
+    } finally {
+      setBusy("");
+    }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -166,17 +181,20 @@ export default function AgentsTelemetry() {
         ) : (
           <div className="grid gap-3 lg:grid-cols-2">
             {runs.map((r) => (
-              <RunCard key={r.id} run={r} busy={busy} onRedeploy={() => redeploy(r.id)} onStop={() => stop(r.id)} onOpenSpec={openSpec} />
+              <RunCard key={r.id} run={r} busy={busy} onRedeploy={() => redeploy(r.id)} onStop={() => stop(r.id)} onOpenSpec={openSpec} onRunLive={(runner) => runLive(r.id, runner, r.title)} />
             ))}
           </div>
         )}
       </section>
+
+      {activeRun ? <LiveConsole run={activeRun} onClose={() => { setActiveRun(null); load(); }} /> : null}
     </div>
   );
 }
 
-function RunCard({ run, busy, onRedeploy, onStop, onOpenSpec }) {
+function RunCard({ run, busy, onRedeploy, onStop, onOpenSpec, onRunLive }) {
   const [showSpec, setShowSpec] = useState(false);
+  const [runner, setRunner] = useState("demo");
   const specPath = run.spec_path || run.deployed_path;
   const active = ["deployed", "dispatched"].includes(run.status);
   return (
@@ -215,6 +233,27 @@ function RunCard({ run, busy, onRedeploy, onStop, onOpenSpec }) {
       ) : null}
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-outlineVariant pt-3">
+        <div className="inline-flex items-center overflow-hidden rounded-md border border-primary/30">
+          <select
+            value={runner}
+            onChange={(e) => setRunner(e.target.value)}
+            aria-label="Live runner"
+            title={runner === "demo" ? "Safe synthetic run — no real agent" : "Runs the real local CLI (may write the repo)"}
+            className="appearance-none bg-primary/8 py-1 pl-2 pr-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-primary outline-none"
+          >
+            <option value="demo">demo</option>
+            <option value="claude">claude</option>
+            <option value="codex">codex</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => onRunLive(runner)}
+            disabled={busy === `${run.id}:run`}
+            className="inline-flex items-center gap-1 bg-primary px-2 py-1 text-[11px] font-black text-onPrimary hover:brightness-110 disabled:opacity-50"
+          >
+            {busy === `${run.id}:run` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Rocket className="h-3.5 w-3.5" />} Run live
+          </button>
+        </div>
         {specPath ? (
           <button type="button" onClick={() => onOpenSpec(specPath)} className="inline-flex items-center gap-1 rounded-md border border-outlineVariant bg-surface px-2 py-1 text-[11px] font-black text-paper/64 hover:text-paper">
             <FolderOpen className="h-3.5 w-3.5" /> Open spec
