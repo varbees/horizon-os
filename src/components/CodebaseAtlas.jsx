@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Network, GitBranch, AlertCircle } from "lucide-react";
+import { Network, GitBranch, AlertCircle, Loader2 } from "lucide-react";
 import Panel from "./Panel.jsx";
 import { SkeletonText } from "./ui/Skeleton.jsx";
-import { fetchGraphSummary } from "../lib/agentProfileApi.js";
+import { fetchGraphSummary, fetchAffected } from "../lib/agentProfileApi.js";
 
 // Codebase atlas — the "god nodes" (most-depended-on files) parsed from a project's
 // Graphify graph.json. Shows what everything hangs off, so onboarding + deploys are
@@ -11,16 +11,29 @@ import { fetchGraphSummary } from "../lib/agentProfileApi.js";
 export default function CodebaseAtlas({ path, compact = false }) {
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState("");
+  const [openNode, setOpenNode] = useState(null); // { id, loading, text }
 
   useEffect(() => {
     let active = true;
     setSummary(null);
     setError("");
+    setOpenNode(null);
     fetchGraphSummary(path)
       .then((s) => active && setSummary(s))
       .catch((e) => active && setError(e.message));
     return () => { active = false; };
   }, [path]);
+
+  async function showImpact(n) {
+    if (openNode?.id === n.id) { setOpenNode(null); return; }
+    setOpenNode({ id: n.id, loading: true, text: "" });
+    try {
+      const r = await fetchAffected(summary.graph ? path : path, n.label, 2);
+      setOpenNode({ id: n.id, loading: false, text: r.available ? r.affected : "No dependents found." });
+    } catch (e) {
+      setOpenNode({ id: n.id, loading: false, text: e.message });
+    }
+  }
 
   if (summary === null && !error) return <Panel className="p-4"><SkeletonText lines={compact ? 4 : 6} /></Panel>;
 
@@ -43,19 +56,26 @@ export default function CodebaseAtlas({ path, compact = false }) {
         <p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-brass"><Network className="h-3.5 w-3.5" /> Codebase atlas · god nodes</p>
         <span className="font-mono text-[10px] text-paper/44">{summary.nodes} nodes · {summary.edges} edges · {summary.communities} communities</span>
       </div>
-      <div className="mt-3 space-y-1.5">
+      <div className="mt-3 space-y-1">
         {(summary.godNodes || []).slice(0, compact ? 6 : 10).map((n) => (
-          <div key={n.id} className="flex items-center gap-2">
-            <GitBranch className="h-3 w-3 shrink-0 text-primary/70" aria-hidden="true" />
-            <span className="w-40 shrink-0 truncate text-[13px] font-black text-paper" title={n.src || n.label}>{n.label}</span>
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surfaceVariant">
-              <div className="h-full rounded-full bg-primary" style={{ width: `${Math.round((n.degree / max) * 100)}%` }} />
-            </div>
-            <span className="w-8 shrink-0 text-right font-mono text-[10px] text-paper/48">{n.degree}</span>
+          <div key={n.id}>
+            <button type="button" onClick={() => showImpact(n)} className="flex w-full items-center gap-2 rounded-md px-1 py-1 text-left transition hover:bg-surfaceContainer" title={`${n.src || n.label} — click for impact radius`}>
+              <GitBranch className="h-3 w-3 shrink-0 text-primary/70" aria-hidden="true" />
+              <span className="w-40 shrink-0 truncate text-[13px] font-black text-paper">{n.label}</span>
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surfaceVariant">
+                <div className="h-full rounded-full bg-primary" style={{ width: `${Math.round((n.degree / max) * 100)}%` }} />
+              </div>
+              <span className="w-8 shrink-0 text-right font-mono text-[10px] text-paper/48">{n.degree}</span>
+            </button>
+            {openNode?.id === n.id ? (
+              <div className="ml-5 mt-1 rounded-md border border-outlineVariant bg-surfaceVariant p-2 font-mono text-[10px] leading-4 text-paper/64">
+                {openNode.loading ? <span className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> impact radius…</span> : <pre className="max-h-32 overflow-auto whitespace-pre-wrap">{openNode.text}</pre>}
+              </div>
+            ) : null}
           </div>
         ))}
       </div>
-      <p className="mt-3 text-[11px] leading-5 text-paper/46">Highest-connected files — change these carefully; everything depends on them.</p>
+      <p className="mt-3 text-[11px] leading-5 text-paper/46">Highest-connected files — click one for its impact radius (what breaks if you change it).</p>
     </Panel>
   );
 }

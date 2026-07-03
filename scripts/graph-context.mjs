@@ -57,6 +57,27 @@ export function graphContextBlock(projectPath, question, budget = 600) {
   ].join("\n");
 }
 
+// Impact radius — "what breaks if I change X". Reverse-traverses the graph from a
+// node to the things that depend on it. Returns compact text, or null.
+export function graphAffected(projectPath, node, depth = 2) {
+  const graph = graphPathFor(projectPath);
+  if (!graph) return null;
+  const n = String(node || "").replace(/[^\w\s().-]/g, " ").trim().slice(0, 120);
+  if (!n) return null;
+  try {
+    const out = spawnSync(GRAPHIFY, ["affected", n, "--depth", String(depth), "--graph", graph], {
+      cwd: projectPath,
+      encoding: "utf8",
+      timeout: 20000,
+      env: { ...process.env, GRAPHIFY_OUT: resolve(projectPath, "graphify-out") },
+    });
+    if (out.error || out.status !== 0) return null;
+    return (out.stdout || "").trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 // Cheap god-nodes + health summary straight from graph.json — powers the atlas panel.
 export function graphSummary(projectPath) {
   const graph = graphPathFor(projectPath);

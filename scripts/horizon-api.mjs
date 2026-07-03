@@ -1,8 +1,8 @@
 import "./env.mjs";
 
 import { createServer } from "node:http";
-import { randomUUID } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { randomUUID, createHash, timingSafeEqual } from "node:crypto";
+import { mkdirSync, writeFileSync, readFileSync, existsSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openHorizonDb } from "./horizon-db.mjs";
@@ -40,8 +40,9 @@ import { runClaudeCode, claudeCodeHealth } from "./executors/claude-code.mjs";
 import { codexHealth } from "./executors/codex.mjs";
 import { startRun, stopRun, subscribe, unsubscribe, getRun, listRuns } from "./executors/run-manager.mjs";
 import { getJobPlan, patchDay as patchJobPlanDay, setStartDate as setJobPlanStart } from "./job-plan.mjs";
-import { graphContextBlock, graphSummary, graphQuery } from "./graph-context.mjs";
+import { graphContextBlock, graphSummary, graphQuery, graphAffected } from "./graph-context.mjs";
 import { readProfile, writeProfile, profileContextBlock, profileConfigured } from "./agent-profile.mjs";
+import { listDeps, indexDep, opensrcHome } from "./deps.mjs";
 import { listPrompts, renderLanePrompt } from "./content-prompts.mjs";
 import { runContentStage, advanceBrief } from "./content-loop.mjs";
 
@@ -243,6 +244,70 @@ function workspaceRootFor(db) {
 
 function pathAllowed(abs, db) {
   return abs.startsWith(workspaceRootFor(db)) || abs.startsWith(repoRoot);
+}
+
+// ---- HTTP Basic Auth (for exposing over Tailscale). Enabled only when both
+// HORIZON_AUTH_USER and HORIZON_AUTH_PASS_SHA256 are set in the git-ignored .env.
+// The password is never stored in plaintext — we compare SHA-256 hashes.
+const AUTH_USER = process.env.HORIZON_AUTH_USER || "";
+const AUTH_HASH = (process.env.HORIZON_AUTH_PASS_SHA256 || "").toLowerCase();
+const AUTH_ON = !!(AUTH_USER && AUTH_HASH);
+
+function sha256Hex(s) {
+  return createHash("sha256").update(String(s), "utf8").digest("hex");
+}
+function safeEqHex(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  } catch {
+    return false;
+  }
+}
+function checkAuth(req) {
+  if (!AUTH_ON) return true;
+  const m = /^Basic\s+(.+)$/i.exec(req.headers.authorization || "");
+  if (!m) return false;
+  let decoded = "";
+  try {
+    decoded = Buffer.from(m[1], "base64").toString("utf8");
+  } catch {
+    return false;
+  }
+  const i = decoded.indexOf(":");
+  if (i < 0) return false;
+  const user = decoded.slice(0, i);
+  const pass = decoded.slice(i + 1);
+  return user === AUTH_USER && safeEqHex(sha256Hex(pass), AUTH_HASH);
+}
+
+// ---- Serve the built SPA (dist/) so the whole app + API live on one origin
+// behind the auth gate — clean for `tailscale serve` (no dev-server websockets).
+const distDir = resolve(repoRoot, "dist");
+const MIME = {
+  html: "text/html; charset=utf-8", js: "text/javascript", mjs: "text/javascript",
+  css: "text/css", json: "application/json", svg: "image/svg+xml", png: "image/png",
+  jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", ico: "image/x-icon",
+  webmanifest: "application/manifest+json", woff2: "font/woff2", woff: "font/woff",
+  txt: "text/plain", map: "application/json", ics: "text/calendar",
+};
+function serveStatic(res, pathname) {
+  if (!existsSync(distDir)) return false;
+  let rel = decodeURIComponent(pathname).replace(/^\/+/, "");
+  if (!rel) rel = "index.html";
+  let filePath = resolve(distDir, rel);
+  // traversal guard + SPA fallback
+  if (!filePath.startsWith(distDir) || !existsSync(filePath) || statSync(filePath).isDirectory()) {
+    filePath = resolve(distDir, "index.html");
+  }
+  if (!existsSync(filePath)) return false;
+  const ext = filePath.split(".").pop().toLowerCase();
+  res.writeHead(200, {
+    "Content-Type": MIME[ext] || "application/octet-stream",
+    "Cache-Control": ext === "html" ? "no-cache" : "public, max-age=3600",
+  });
+  res.end(readFileSync(filePath));
+  return true;
 }
 
 function json(res, status, body) {
@@ -536,6 +601,15 @@ const server = createServer(async (req, res) => {
   try {
     if (req.method === "OPTIONS") return json(res, 204, {});
     const url = new URL(req.url, `http://${req.headers.host}`);
+
+    // Gate everything behind Basic Auth when enabled (Tailscale exposure).
+    if (!checkAuth(req)) {
+      res.writeHead(401, {
+        "WWW-Authenticate": 'Basic realm="Horizon OS", charset="UTF-8"',
+        "Content-Type": "text/plain",
+      });
+      return res.end("Authentication required");
+    }
 
     if (req.method === "GET" && url.pathname === "/api/health") {
       return json(res, 200, { ok: true, service: "horizon-api" });
@@ -2238,20 +2312,32 @@ const server = createServer(async (req, res) => {
     }
 
     // ---------------------------------------------------------------- codebase graph
+    // graph paths may live in the workspace/repo OR the opensrc dependency cache
+    const graphAllowed = (abs) => pathAllowed(abs, db) || abs.startsWith(opensrcHome());
     if (req.method === "GET" && url.pathname === "/api/graph/summary") {
-      const raw = url.searchParams.get("path") || repoRoot;
-      const abs = resolve(raw);
-      if (!pathAllowed(abs, db)) return json(res, 400, { ok: false, error: "path_not_allowed" });
+      const abs = resolve(url.searchParams.get("path") || repoRoot);
+      if (!graphAllowed(abs)) return json(res, 400, { ok: false, error: "path_not_allowed" });
       return json(res, 200, { ok: true, ...graphSummary(abs) });
     }
     if (req.method === "GET" && url.pathname === "/api/graph/query") {
-      const raw = url.searchParams.get("path") || repoRoot;
-      const abs = resolve(raw);
-      if (!pathAllowed(abs, db)) return json(res, 400, { ok: false, error: "path_not_allowed" });
-      const q = url.searchParams.get("q") || "";
-      const budget = Number(url.searchParams.get("budget")) || 600;
-      const context = graphQuery(abs, q, budget);
+      const abs = resolve(url.searchParams.get("path") || repoRoot);
+      if (!graphAllowed(abs)) return json(res, 400, { ok: false, error: "path_not_allowed" });
+      const context = graphQuery(abs, url.searchParams.get("q") || "", Number(url.searchParams.get("budget")) || 600);
       return json(res, 200, { ok: true, available: !!context, context: context || "" });
+    }
+    if (req.method === "GET" && url.pathname === "/api/graph/affected") {
+      const abs = resolve(url.searchParams.get("path") || repoRoot);
+      if (!graphAllowed(abs)) return json(res, 400, { ok: false, error: "path_not_allowed" });
+      const affected = graphAffected(abs, url.searchParams.get("node") || "", Number(url.searchParams.get("depth")) || 2);
+      return json(res, 200, { ok: true, available: !!affected, affected: affected || "" });
+    }
+    if (req.method === "GET" && url.pathname === "/api/deps") {
+      return json(res, 200, { ok: true, ...listDeps() });
+    }
+    if (req.method === "POST" && url.pathname === "/api/deps/index") {
+      const body = await readJson(req);
+      if (!body.name) return json(res, 400, { ok: false, error: "name_required" });
+      return json(res, 200, indexDep(String(body.name)));
     }
 
     // ---------------------------------------------------------------- AI job plan
@@ -2503,6 +2589,11 @@ const server = createServer(async (req, res) => {
       } catch (error) {
         return json(res, 500, { ok: false, error: String(error.message ?? error) });
       }
+    }
+
+    // Non-API GET → serve the built SPA (so one origin serves app + API behind auth).
+    if (req.method === "GET" && !url.pathname.startsWith("/api")) {
+      if (serveStatic(res, url.pathname)) return;
     }
 
     return json(res, 404, { ok: false, error: "not_found" });

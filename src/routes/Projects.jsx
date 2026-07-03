@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
 import AgentDeployer from "../components/AgentDeployer.jsx";
+import CodebaseAtlas from "../components/CodebaseAtlas.jsx";
 import {
   monetizationResearchRules,
   orchestrationRules,
@@ -297,6 +298,11 @@ export default function Projects() {
           <div className="mt-5 border-t border-outlineVariant pt-4">
             <AgentDeployer entity={projectToEntity(selectedProject, selectedLive)} variant="full" defaultAgent="claude-code" defaultAction="implement" />
           </div>
+          {selectedProject.path ? (
+            <div className="mt-4">
+              <CodebaseAtlas path={selectedProject.path} compact />
+            </div>
+          ) : null}
         </Panel>
 
         <Panel className="p-5">

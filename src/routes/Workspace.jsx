@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { FolderGit2, Loader2, Check, AlertTriangle, HardDriveDownload } from "lucide-react";
 import SectionHeader from "../components/SectionHeader.jsx";
 import Panel from "../components/Panel.jsx";
+import DependenciesPanel from "../components/DependenciesPanel.jsx";
+import CodebaseAtlas from "../components/CodebaseAtlas.jsx";
 import { fetchWorkspace, setWorkspace } from "../lib/workspaceApi.js";
 import { useUiStore } from "../store/uiStore.js";
 
@@ -54,7 +56,7 @@ export default function Workspace() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-5xl">
       <SectionHeader
         eyebrow="Workspace · Open source"
         title="Load your workspace."
@@ -126,6 +128,11 @@ export default function Workspace() {
           The path is confined server-side: the doc reader and file-open only reach inside this workspace (plus Horizon's own repo). Nothing outside it is readable.
         </p>
       </Panel>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <DependenciesPanel />
+        <CodebaseAtlas path={info?.root || undefined} />
+      </div>
     </div>
   );
 }
