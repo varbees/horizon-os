@@ -16,6 +16,7 @@ import Panel from "../components/Panel.jsx";
 import { SkeletonGrid } from "../components/ui/Skeleton.jsx";
 import { fetchActionQueue, deployAction, updateAction } from "../lib/actionQueueApi.js";
 import { revealPath } from "../lib/docsApi.js";
+import { gradeRun, fetchLessons } from "../lib/agentProfileApi.js";
 import { startLiveRun } from "../lib/runsApi.js";
 import LiveConsole from "../components/LiveConsole.jsx";
 import { useUiStore } from "../store/uiStore.js";
@@ -54,6 +55,17 @@ export default function AgentsTelemetry() {
   const [busy, setBusy] = useState("");
   const [offline, setOffline] = useState(false);
   const [activeRun, setActiveRun] = useState(null);
+  const [lessons, setLessons] = useState({ counts: { good: 0, partial: 0, bad: 0 } });
+
+  async function grade(actionId, g, note) {
+    try {
+      await gradeRun(actionId, g, note);
+      pushToast({ tone: "success", title: `Graded ${g}`, message: note ? "Lesson saved — future runs will see it." : "Recorded." });
+      fetchLessons().then(setLessons).catch(() => {});
+    } catch (e) {
+      pushToast({ tone: "error", title: "Grade failed", message: e.message });
+    }
+  }
 
   async function runLive(actionId, runner, title) {
     setBusy(`${actionId}:run`);
@@ -78,6 +90,7 @@ export default function AgentsTelemetry() {
     }
     fetch("/api/ai-models").then((r) => r.json()).then(setModels).catch(() => {});
     fetch("/api/usage").then((r) => r.json()).then(setUsage).catch(() => setUsage({ available: false }));
+    fetchLessons().then(setLessons).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -162,7 +175,14 @@ export default function AgentsTelemetry() {
 
       <section className="mt-5">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-display text-2xl font-bold text-paper">Runs</h2>
+          <div className="flex items-baseline gap-3">
+            <h2 className="font-display text-2xl font-bold text-paper">Runs</h2>
+            {lessons.counts && (lessons.counts.good + lessons.counts.partial + lessons.counts.bad) > 0 ? (
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-paper/44">
+                lessons: <span className="text-signal">{lessons.counts.good}✓</span> · <span className="text-brass">{lessons.counts.partial}~</span> · <span className="text-rust">{lessons.counts.bad}✗</span>
+              </span>
+            ) : null}
+          </div>
           <button type="button" onClick={load} className="inline-flex items-center gap-1.5 rounded-md border border-outlineVariant bg-surface px-3 py-1.5 text-xs font-black text-paper/64 hover:text-paper">
             <RefreshCw className="h-3.5 w-3.5" /> Refresh
           </button>
@@ -181,7 +201,7 @@ export default function AgentsTelemetry() {
         ) : (
           <div className="grid gap-3 lg:grid-cols-2">
             {runs.map((r) => (
-              <RunCard key={r.id} run={r} busy={busy} onRedeploy={() => redeploy(r.id)} onStop={() => stop(r.id)} onOpenSpec={openSpec} onRunLive={(runner) => runLive(r.id, runner, r.title)} />
+              <RunCard key={r.id} run={r} busy={busy} onRedeploy={() => redeploy(r.id)} onStop={() => stop(r.id)} onOpenSpec={openSpec} onRunLive={(runner) => runLive(r.id, runner, r.title)} onGrade={(g, note) => grade(r.id, g, note)} />
             ))}
           </div>
         )}
@@ -192,11 +212,19 @@ export default function AgentsTelemetry() {
   );
 }
 
-function RunCard({ run, busy, onRedeploy, onStop, onOpenSpec, onRunLive }) {
+function RunCard({ run, busy, onRedeploy, onStop, onOpenSpec, onRunLive, onGrade }) {
   const [showSpec, setShowSpec] = useState(false);
   const [runner, setRunner] = useState("demo");
+  const [gradeNote, setGradeNote] = useState("");
+  const [graded, setGraded] = useState(run.outcome_code || "");
   const specPath = run.spec_path || run.deployed_path;
   const active = ["deployed", "dispatched"].includes(run.status);
+  const GRADE_TONE = { good: "border-signal/40 bg-signal/10 text-signal", partial: "border-brass/40 bg-brass/10 text-brass", bad: "border-rust/40 bg-rust/10 text-rust" };
+  function submitGrade(g) {
+    onGrade(g, gradeNote.trim());
+    setGraded(g);
+    setGradeNote("");
+  }
   return (
     <Panel className="p-4">
       <div className="flex items-start justify-between gap-3">
@@ -267,7 +295,27 @@ function RunCard({ run, busy, onRedeploy, onStop, onOpenSpec, onRunLive }) {
             Stop
           </button>
         ) : null}
-        {run.outcome_code ? <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.12em] text-signal"><CheckCircle2 className="h-3.5 w-3.5" /> {run.outcome_code}</span> : null}
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-paper/40">Grade</span>
+        <input
+          value={gradeNote}
+          onChange={(e) => setGradeNote(e.target.value)}
+          placeholder="what to learn (becomes a lesson for future runs)"
+          className="min-w-0 flex-1 rounded-md border border-outlineVariant bg-surface px-2 py-1 text-[11px] text-paper outline-none placeholder:text-paper/36"
+        />
+        {["good", "partial", "bad"].map((g) => (
+          <button
+            key={g}
+            type="button"
+            onClick={() => submitGrade(g)}
+            className={`rounded-md border px-2 py-1 font-mono text-[10px] font-black uppercase tracking-[0.1em] transition ${graded === g ? GRADE_TONE[g] : "border-outlineVariant text-paper/50 hover:text-paper"}`}
+          >
+            {g}
+          </button>
+        ))}
+        {graded ? <CheckCircle2 className="h-3.5 w-3.5 text-signal" aria-label="graded" /> : null}
       </div>
     </Panel>
   );

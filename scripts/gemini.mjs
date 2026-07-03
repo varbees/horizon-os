@@ -92,6 +92,9 @@ export function buildActionEnrichmentRequest(action) {
     "Turn a rough action into a precise, runnable agent task. Bias every output toward producing money, proof, or distribution. " +
     "Reply with ONLY a JSON object, no prose.";
   const prompt = [
+    // Grounding (operator profile + graded lessons + codebase graph) so the derived
+    // spec fits the mission and the real code, not just the title. Empty when unset.
+    ...(action._groundingContext ? [action._groundingContext, ""] : []),
     "Action title: " + (action.title ?? ""),
     "Summary: " + (action.summary ?? ""),
     "Project: " + (action.project_id ?? "") + " at " + (action.project_path ?? ""),

@@ -30,7 +30,7 @@ export async function enrichActionWithAvailableProvider(action, selection = {}) 
   return enrichWithProvider(action, selection);
 }
 
-export async function autoEnrich({ limit = LIMIT, db: providedDb, delayMs = DELAY_MS, provider, model } = {}) {
+export async function autoEnrich({ limit = LIMIT, db: providedDb, delayMs = DELAY_MS, provider, model, composeContext } = {}) {
   const providerCounts = providerCountsSeed();
   if (!llmAvailable()) return { ok: false, reason: "no_llm_keys", enriched: 0, providerCounts };
   const db = providedDb ?? openHorizonDb();
@@ -42,6 +42,9 @@ export async function autoEnrich({ limit = LIMIT, db: providedDb, delayMs = DELA
   const errors = [];
   for (const action of rows) {
     try {
+      if (composeContext) {
+        try { action._groundingContext = await composeContext(action); } catch { /* grounding optional */ }
+      }
       const { fields: f, provider: usedProvider } = await enrichActionWithAvailableProvider(action, { provider, model });
       db.prepare(
         `UPDATE action_queue SET goal = ?, constraints = ?, done_criteria = ?, tools = ?, prompt = ?,

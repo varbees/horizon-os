@@ -47,3 +47,32 @@ export async function indexDependency(name) {
   if (!res.ok) throw new Error(data.error || `index failed: ${res.status}`);
   return data;
 }
+
+// Grade a run's result → stored as a lesson that feeds future agent context.
+export async function gradeRun(actionId, grade, note = "") {
+  const res = await fetch(`/api/action-queue/${encodeURIComponent(actionId)}/grade`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ grade, note }),
+  });
+  const data = await res.json().catch(() => ({ ok: false }));
+  if (!res.ok) throw new Error(data.error || `grade failed: ${res.status}`);
+  return data;
+}
+
+export async function fetchLessons() {
+  const res = await fetch("/api/lessons");
+  const data = await res.json().catch(() => ({ ok: false, lessons: [] }));
+  return data;
+}
+
+export async function buildGraph(path) {
+  const res = await fetch("/api/graph/build", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ path }),
+  });
+  const data = await res.json().catch(() => ({ ok: false }));
+  if (!res.ok) throw new Error(data.error || `build failed: ${res.status}`);
+  return data;
+}

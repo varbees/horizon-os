@@ -220,6 +220,13 @@ function syncVaultSnapshots() {
 
 const port = Number(process.env.HORIZON_API_PORT ?? 8787);
 const db = openHorizonDb();
+// Graded-run store — the operator's verdict on a deploy, fed back into future
+// agent context so the workforce learns what worked instead of repeating mistakes.
+db.exec(`CREATE TABLE IF NOT EXISTS agent_grades (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  action_id TEXT, title TEXT, agent TEXT, project_id TEXT,
+  grade TEXT, note TEXT, graded_at TEXT DEFAULT (datetime('now'))
+);`);
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 // The bolting workspace root (parent of this repo). Doc-reader + reveal paths are
 // confined to this subtree so the API can never read or open arbitrary files.
@@ -625,6 +632,38 @@ function packageForBrief(brief, assets = []) {
       "Manual publish link captured after posting",
     ]),
   };
+}
+
+// Lessons the operator graded — injected so future runs learn from graded outcomes.
+function recentLessonsBlock() {
+  try {
+    const rows = db
+      .prepare("SELECT grade, title, note FROM agent_grades WHERE COALESCE(note,'') != '' ORDER BY graded_at DESC LIMIT 6")
+      .all();
+    if (!rows.length) return "";
+    return ["## Lessons from graded runs (apply these; don't repeat mistakes)", ...rows.map((r) => `- [${r.grade}] ${r.title}: ${r.note}`)].join("\n");
+  } catch {
+    return "";
+  }
+}
+
+// The full grounding an agent gets before it runs: durable memory + operator profile
+// + graded lessons + a budgeted codebase-graph block. `internet` adds fresh web
+// results (on for live deploys, off for spec enrichment to keep enrich fast).
+async function composeAgentContext(action, { internet = false } = {}) {
+  const base = formatPreflightContext(buildPreflightContext(db, action));
+  const profile = profileContextBlock();
+  const lessons = recentLessonsBlock();
+  const graph = graphContextBlock(action.project_path, action.title, 600);
+  let net = "";
+  if (internet) {
+    try {
+      net = await internetContextBlock(action.title, 400);
+    } catch {
+      net = "";
+    }
+  }
+  return [base, profile, lessons, graph, net].filter(Boolean).join("\n\n");
 }
 
 const server = createServer(async (req, res) => {
@@ -1471,7 +1510,9 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true, id });
     }
 
-    if (req.method === "GET" && url.pathname === "/api/search") {
+    // Web search lives under /api/web to avoid shadowing the pre-existing
+    // context/wiki full-text search at /api/search.
+    if (req.method === "GET" && url.pathname === "/api/web/search") {
       const query = url.searchParams.get("q") || "";
       const maxResults = parseInt(url.searchParams.get("limit") || "10", 10);
       const result = await webSearch(query, maxResults);
@@ -1594,6 +1635,7 @@ const server = createServer(async (req, res) => {
           limit: Number(body.limit) || undefined,
           provider: body.provider,
           model: body.model,
+          composeContext: (a) => composeAgentContext(a, { internet: false }),
         });
         return json(res, 200, result);
       } catch (error) {
@@ -1688,6 +1730,9 @@ const server = createServer(async (req, res) => {
       if (!llmAvailable()) return json(res, 503, { ok: false, error: "llm_key_missing" });
       const body = await readJson(req);
       try {
+        // Ground the enrichment too: the derived spec should reflect the operator's
+        // profile, graded lessons, and the codebase graph — not just the raw title.
+        action._groundingContext = await composeAgentContext(action, { internet: false });
         const { fields, provider, model } = await enrichActionWithAvailableProvider(action, {
           provider: body.provider,
           model: body.model,
@@ -1723,11 +1768,7 @@ const server = createServer(async (req, res) => {
       // Compose the agent's context: durable memory + operator profile (cofounder
       // continuity) + a budgeted codebase-graph block scoped to this project, so the
       // agent queries the graph and knows the goals instead of starting cold.
-      const baseContext = formatPreflightContext(buildPreflightContext(db, action));
-      const profileBlock = profileContextBlock();
-      const graphBlock = graphContextBlock(action.project_path, action.title, 600);
-      const internetBlock = await internetContextBlock(action.title, 400);
-      const memoryContext = [baseContext, profileBlock, graphBlock, internetBlock].filter(Boolean).join("\n\n");
+      const memoryContext = await composeAgentContext(action, { internet: true });
       const contents = buildRunnableSpec(action, { stamp, memoryContext });
       writeFileSync(filePath, contents, "utf8");
       // mirror into the Obsidian vault as durable memory (control surface -> memory)
@@ -2399,6 +2440,46 @@ const server = createServer(async (req, res) => {
       const affected = graphAffected(abs, url.searchParams.get("node") || "", Number(url.searchParams.get("depth")) || 2);
       return json(res, 200, { ok: true, available: !!affected, affected: affected || "" });
     }
+    // Build a Graphify graph for a project on demand (background) — so "load a repo →
+    // graph it" is one click, not a manual CLI step. DeepSeek backend handles docs.
+    if (req.method === "POST" && url.pathname === "/api/graph/build") {
+      const abs = resolve((await readJson(req)).path || repoRoot);
+      if (!graphAllowed(abs)) return json(res, 400, { ok: false, error: "path_not_allowed" });
+      try {
+        const { existsSync } = await import("node:fs");
+        if (!existsSync(abs)) return json(res, 404, { ok: false, error: "path_not_found" });
+        const { spawn } = await import("node:child_process");
+        const child = spawn(process.env.HORIZON_GRAPHIFY_CMD || "graphify", [abs, "--backend", "deepseek"], {
+          cwd: abs, detached: true, stdio: "ignore", env: process.env,
+        });
+        child.on("error", () => {});
+        child.unref();
+        return json(res, 200, { ok: true, started: true, path: abs });
+      } catch (error) {
+        return json(res, 500, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+
+    // Grade a deploy's result → stored as a lesson that feeds future agent context.
+    if (req.method === "POST" && url.pathname.startsWith("/api/action-queue/") && url.pathname.endsWith("/grade")) {
+      const id = decodeURIComponent(url.pathname.replace("/api/action-queue/", "").replace("/grade", ""));
+      const action = db.prepare("SELECT * FROM action_queue WHERE id = ?").get(id);
+      if (!action) return json(res, 404, { ok: false, error: "action_not_found" });
+      const body = await readJson(req);
+      const grade = ["good", "partial", "bad"].includes(body.grade) ? body.grade : "partial";
+      const note = String(body.note ?? "").slice(0, 500);
+      db.prepare("INSERT INTO agent_grades (action_id, title, agent, project_id, grade, note) VALUES (?,?,?,?,?,?)").run(id, action.title, action.agent, action.project_id, grade, note);
+      db.prepare("UPDATE action_queue SET outcome_code = ?, verified_at = datetime('now'), updated_at = datetime('now') WHERE id = ?").run(grade, id);
+      return json(res, 200, { ok: true, id, grade });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/lessons") {
+      const rows = db.prepare("SELECT id, action_id, title, agent, project_id, grade, note, graded_at FROM agent_grades ORDER BY graded_at DESC LIMIT 40").all();
+      const counts = { good: 0, partial: 0, bad: 0 };
+      for (const r of rows) counts[r.grade] = (counts[r.grade] || 0) + 1;
+      return json(res, 200, { ok: true, lessons: rows, counts });
+    }
+
     if (req.method === "GET" && url.pathname === "/api/deps") {
       return json(res, 200, { ok: true, ...listDeps() });
     }

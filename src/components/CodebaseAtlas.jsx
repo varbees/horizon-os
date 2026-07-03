@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Network, GitBranch, AlertCircle, Loader2 } from "lucide-react";
 import Panel from "./Panel.jsx";
 import { SkeletonText } from "./ui/Skeleton.jsx";
-import { fetchGraphSummary, fetchAffected } from "../lib/agentProfileApi.js";
+import { fetchGraphSummary, fetchAffected, buildGraph } from "../lib/agentProfileApi.js";
 
 // Codebase atlas — the "god nodes" (most-depended-on files) parsed from a project's
 // Graphify graph.json. Shows what everything hangs off, so onboarding + deploys are
@@ -12,6 +12,17 @@ export default function CodebaseAtlas({ path, compact = false }) {
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState("");
   const [openNode, setOpenNode] = useState(null); // { id, loading, text }
+  const [building, setBuilding] = useState(false);
+
+  async function build() {
+    if (!path) return;
+    setBuilding(true);
+    try {
+      await buildGraph(path);
+    } catch {
+      /* surfaced below */
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -42,8 +53,19 @@ export default function CodebaseAtlas({ path, compact = false }) {
       <Panel className="p-4">
         <p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-brass"><Network className="h-3.5 w-3.5" /> Codebase atlas</p>
         <p className="mt-2 flex items-center gap-1.5 text-xs text-paper/54">
-          <AlertCircle className="h-3.5 w-3.5" /> No graph for this repo yet. Run <code className="mx-1 rounded bg-surfaceVariant px-1">graphify .</code> in it.
+          <AlertCircle className="h-3.5 w-3.5" /> No graph for this repo yet.
         </p>
+        {path ? (
+          <button
+            type="button"
+            onClick={build}
+            disabled={building}
+            className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-[11px] font-black text-onPrimary transition hover:brightness-110 disabled:opacity-50"
+          >
+            {building ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Network className="h-3.5 w-3.5" />}
+            {building ? "Building graph… (refresh in ~1 min)" : "Build graph"}
+          </button>
+        ) : null}
       </Panel>
     );
   }
