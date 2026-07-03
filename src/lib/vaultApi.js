@@ -1,5 +1,6 @@
-export async function fetchVault() {
-  const response = await fetch("/api/vault");
+export async function fetchVault(options = {}) {
+  const params = new URLSearchParams(options);
+  const response = await fetch(`/api/vault?${params.toString()}`);
   if (!response.ok) throw new Error(`vault unavailable: ${response.status}`);
   return response.json();
 }

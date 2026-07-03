@@ -67,7 +67,11 @@ function syncVaultSnapshots() {
     "# Command Center\n",
     `Operator status: **${inQueue} suggestions in queue**, ${actions.filter((a) => a.status === "deployed").length} deployed.\n`,
     "## Action queue\n",
-    ...actions.map((a) => `- [${a.status === "done" ? "x" : " "}] **${a.title}** (${a.agent} → ${a.project_id}) — ${a.summary}`),
+    ...actions.map((a) => {
+      const p = portfolioProjects.find(p => p.id === a.project_id);
+      const projLink = p ? `[[${p.name}]]` : a.project_id;
+      return `- [${a.status === "done" ? "x" : " "}] **${a.title}** (${a.agent} → ${projLink}) — ${a.summary}`;
+    }),
     "",
   ].join("\n");
   put("Horizon/Command Center.md", cmd);
@@ -106,7 +110,7 @@ function syncVaultSnapshots() {
   put("Horizon/Journey.md", journey);
 
   // Saved signals
-  const saved = all("SELECT * FROM signals WHERE status = 'saved' ORDER BY coalesce(published_at, fetched_at) DESC LIMIT 100");
+  const saved = all("SELECT * FROM signals WHERE status = 'saved' ORDER BY coalesce(published_at, fetched_at) DESC LIMIT 1000");
   const sig = [
     frontmatter({ title: "Signals - Saved", source: "horizon-os", synced: stamp, tags: "horizon/signals" }),
     "# Saved Signals\n",
@@ -114,6 +118,54 @@ function syncVaultSnapshots() {
     "",
   ].join("\n");
   put("Horizon/Signals - Saved.md", sig);
+
+  // Projects
+  portfolioProjects.forEach(p => {
+    const projMd = [
+      frontmatter({ title: p.name, source: "horizon-os", synced: stamp, tags: `horizon/project, horizon/lane/${p.lane.replace(/\s+/g, '')}` }),
+      `# ${p.name}\n`,
+      `**Status:** ${p.status} · **Verdict:** ${p.verdict} · **Score:** ${p.score}\n`,
+      `## Strategy\n`,
+      `- **Role:** ${p.role}`,
+      `- **Evidence:** ${p.evidence}`,
+      `- **Monetization:** ${p.monetization}`,
+      `- **First Move:** ${p.firstMove}`,
+      `- **Next:** ${p.next}`,
+      `- **Reopen When:** ${p.reopenWhen}`,
+      "",
+    ].join("\n");
+    put(`Horizon/Projects/${p.name}.md`, projMd);
+  });
+
+  // Calendar Events
+  try {
+    const events = all("SELECT * FROM calendar_events ORDER BY start_at DESC LIMIT 200");
+    const cal = [
+      frontmatter({ title: "Calendar", source: "horizon-os", synced: stamp, tags: "horizon/calendar" }),
+      "# Calendar Events\n",
+      ...events.map(e => {
+        const link = e.lane ? `[[${portfolioProjects.find(p => p.id === e.lane)?.name || e.lane}]]` : "";
+        return `- **${e.title}** (${e.time_label}) ${link ? `— ${link}` : ""}\n  - ${e.output_contract || 'No output contract'}`;
+      }),
+      "",
+    ].join("\n");
+    put("Horizon/Calendar.md", cal);
+  } catch(e) {}
+
+  // Tasks
+  try {
+    const taskRows = all("SELECT * FROM tasks ORDER BY status, due_at");
+    const tasksMd = [
+      frontmatter({ title: "Tasks", source: "horizon-os", synced: stamp, tags: "horizon/tasks" }),
+      "# Tasks\n",
+      ...taskRows.map(t => {
+        const projLink = t.project_id ? `[[${portfolioProjects.find(p => p.id === t.project_id)?.name || t.project_id}]]` : "";
+        return `- [${t.status === 'done' ? 'x' : ' '}] **${t.title}** ${projLink ? `(${projLink})` : ""}`;
+      }),
+      "",
+    ].join("\n");
+    put("Horizon/Tasks.md", tasksMd);
+  } catch(e) {}
 
   return { synced: stamp, files: written };
 }
@@ -919,7 +971,20 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && url.pathname === "/api/vault") {
-      return json(res, 200, { ...vaultInfo(), notes: listNotes().slice(0, 80), wiki: wikiStatus(db) });
+      const offset = Number(url.searchParams.get("offset") ?? 0);
+      const limit = Number(url.searchParams.get("limit") ?? 80);
+      const search = (url.searchParams.get("search") ?? "").toLowerCase();
+      const folder = url.searchParams.get("folder") ?? "";
+
+      let notes = listNotes();
+      
+      if (folder) notes = notes.filter(n => n.path.startsWith(folder));
+      if (search) notes = notes.filter(n => n.name.toLowerCase().includes(search) || n.path.toLowerCase().includes(search));
+      
+      const total = notes.length;
+      notes = notes.slice(offset, offset + limit);
+      
+      return json(res, 200, { ...vaultInfo(), notes, total, offset, limit, wiki: wikiStatus(db) });
     }
 
     if (req.method === "GET" && url.pathname === "/api/vault/note") {

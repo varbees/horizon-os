@@ -36,9 +36,11 @@ export default function Vault() {
   const [wikiResults, setWikiResults] = useState([]);
   const [note, setNote] = useState(null);
   const [msg, setMsg] = useState(null);
+  const [noteOffset, setNoteOffset] = useState(0);
+  const [noteSearch, setNoteSearch] = useState("");
 
-  function load() {
-    return fetchVault()
+  function load(offset = noteOffset, search = noteSearch) {
+    return fetchVault({ offset, search })
       .then((data) => {
         setInfo(data);
         setLive(true);
@@ -270,9 +272,9 @@ export default function Vault() {
 
       <section className="mb-4 grid gap-4 xl:grid-cols-3">
         {[
-          { name: 'Horizon OS Brain', path: 'horizon-os/graphify-out/graph.html', nodes: 1173, icon: Brain },
-          { name: 'opensrc Brain', path: '_external/opensrc', nodes: 435, icon: FolderGit2 },
-          { name: 'Graphify Engine Brain', path: 'graphify-out', nodes: 1842, icon: Database },
+          { name: 'Horizon OS Brain', path: 'horizon-os/graphify-out/graph.html', nodes: info?.brains?.["horizon-os"] ?? 0, icon: Brain },
+          { name: 'opensrc Brain', path: '_external/opensrc', nodes: info?.brains?.["opensrc"] ?? 0, icon: FolderGit2 },
+          { name: 'Graphify Engine Brain', path: 'graphify-out', nodes: info?.brains?.["graphify"] ?? 0, icon: Database },
         ].map((brain) => (
           <Panel key={brain.name} className="p-4 cursor-pointer hover:border-primary transition" onClick={() => window.open(`/api/vault/note?path=${encodeURIComponent(brain.path)}`, '_blank')}>
             <brain.icon className="h-5 w-5 text-primary" />
@@ -314,12 +316,25 @@ export default function Vault() {
           )}
         </Panel>
 
-        <Panel className="p-5">
-          <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-brass" aria-hidden="true" />
-            <h2 className="font-display text-2xl font-bold">Notes</h2>
+        <Panel className="p-5 flex flex-col h-[34rem]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between shrink-0">
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-brass" aria-hidden="true" />
+              <h2 className="font-display text-2xl font-bold">Notes</h2>
+            </div>
+            <input
+              type="text"
+              placeholder="Search notes..."
+              value={noteSearch}
+              onChange={(e) => {
+                setNoteSearch(e.target.value);
+                setNoteOffset(0);
+                load(0, e.target.value);
+              }}
+              className="rounded-md border border-outlineVariant bg-surface px-3 py-1.5 text-sm font-bold text-paper outline-none transition placeholder:text-paper/32 focus:border-primary"
+            />
           </div>
-          <div className="mt-4 max-h-[28rem] space-y-1.5 overflow-y-auto">
+          <div className="mt-4 flex-1 space-y-1.5 overflow-y-auto min-h-0 pr-1">
             {info?.notes?.length ? (
               info.notes.map((n) => (
                 <button
@@ -346,6 +361,37 @@ export default function Vault() {
               <p className="text-sm text-paper/48">No notes yet. Sync to create the first ones.</p>
             )}
           </div>
+          {info?.total > (info?.limit || 80) && (
+            <div className="mt-4 flex items-center justify-between shrink-0 border-t border-outlineVariant pt-4">
+              <p className="font-mono text-[10px] text-paper/56">
+                Showing {info.offset + 1}-{Math.min(info.offset + info.limit, info.total)} of {info.total}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  disabled={info.offset === 0}
+                  onClick={() => {
+                    const newOff = Math.max(0, info.offset - info.limit);
+                    setNoteOffset(newOff);
+                    load(newOff, noteSearch);
+                  }}
+                  className="rounded border border-outlineVariant px-2 py-1 text-xs text-paper disabled:opacity-30"
+                >
+                  Prev
+                </button>
+                <button
+                  disabled={info.offset + info.limit >= info.total}
+                  onClick={() => {
+                    const newOff = info.offset + info.limit;
+                    setNoteOffset(newOff);
+                    load(newOff, noteSearch);
+                  }}
+                  className="rounded border border-outlineVariant px-2 py-1 text-xs text-paper disabled:opacity-30"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </Panel>
       </section>
 
