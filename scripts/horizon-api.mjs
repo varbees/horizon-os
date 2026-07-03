@@ -40,6 +40,8 @@ import { runClaudeCode, claudeCodeHealth } from "./executors/claude-code.mjs";
 import { codexHealth } from "./executors/codex.mjs";
 import { startRun, stopRun, subscribe, unsubscribe, getRun, listRuns } from "./executors/run-manager.mjs";
 import { getJobPlan, patchDay as patchJobPlanDay, setStartDate as setJobPlanStart } from "./job-plan.mjs";
+import { graphContextBlock, graphSummary, graphQuery } from "./graph-context.mjs";
+import { readProfile, writeProfile, profileContextBlock, profileConfigured } from "./agent-profile.mjs";
 import { listPrompts, renderLanePrompt } from "./content-prompts.mjs";
 import { runContentStage, advanceBrief } from "./content-loop.mjs";
 
@@ -1577,7 +1579,13 @@ const server = createServer(async (req, res) => {
       const filename = `${id}.md`;
       const filePath = resolve(queueDir, filename);
       syncHorizonWiki(db);
-      const memoryContext = formatPreflightContext(buildPreflightContext(db, action));
+      // Compose the agent's context: durable memory + operator profile (cofounder
+      // continuity) + a budgeted codebase-graph block scoped to this project, so the
+      // agent queries the graph and knows the goals instead of starting cold.
+      const baseContext = formatPreflightContext(buildPreflightContext(db, action));
+      const profileBlock = profileContextBlock();
+      const graphBlock = graphContextBlock(action.project_path, action.title, 600);
+      const memoryContext = [baseContext, profileBlock, graphBlock].filter(Boolean).join("\n\n");
       const contents = buildRunnableSpec(action, { stamp, memoryContext });
       writeFileSync(filePath, contents, "utf8");
       // mirror into the Obsidian vault as durable memory (control surface -> memory)
@@ -2217,6 +2225,33 @@ const server = createServer(async (req, res) => {
         id,
       );
       return json(res, 200, { ok: true, id });
+    }
+
+    // ---------------------------------------------------------------- cofounder profile
+    if (req.method === "GET" && url.pathname === "/api/agent-profile") {
+      return json(res, 200, { ok: true, profile: readProfile(), configured: profileConfigured() });
+    }
+    if ((req.method === "PUT" || req.method === "POST") && url.pathname === "/api/agent-profile") {
+      const body = await readJson(req);
+      const profile = writeProfile(body.profile ?? body ?? {});
+      return json(res, 200, { ok: true, profile, configured: profileConfigured() });
+    }
+
+    // ---------------------------------------------------------------- codebase graph
+    if (req.method === "GET" && url.pathname === "/api/graph/summary") {
+      const raw = url.searchParams.get("path") || repoRoot;
+      const abs = resolve(raw);
+      if (!pathAllowed(abs, db)) return json(res, 400, { ok: false, error: "path_not_allowed" });
+      return json(res, 200, { ok: true, ...graphSummary(abs) });
+    }
+    if (req.method === "GET" && url.pathname === "/api/graph/query") {
+      const raw = url.searchParams.get("path") || repoRoot;
+      const abs = resolve(raw);
+      if (!pathAllowed(abs, db)) return json(res, 400, { ok: false, error: "path_not_allowed" });
+      const q = url.searchParams.get("q") || "";
+      const budget = Number(url.searchParams.get("budget")) || 600;
+      const context = graphQuery(abs, q, budget);
+      return json(res, 200, { ok: true, available: !!context, context: context || "" });
     }
 
     // ---------------------------------------------------------------- AI job plan
