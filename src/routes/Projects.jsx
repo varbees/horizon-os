@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
+import AgentDeployer from "../components/AgentDeployer.jsx";
 import {
   monetizationResearchRules,
   orchestrationRules,
@@ -12,6 +13,28 @@ import {
   weeklyOperatingSystem,
 } from "../data/portfolio.js";
 import { fetchProjects, runProjectSweep } from "../lib/projectsApi.js";
+
+function projectToEntity(project, live) {
+  return {
+    type: "project",
+    id: project.id,
+    title: project.name,
+    subtitle: project.verdict || project.role || "",
+    source: project.path,
+    project_id: project.id,
+    projectPath: project.path,
+    body: [project.role, project.next ? `**Next action:** ${project.next}` : ""].filter(Boolean).join("\n\n"),
+    tags: [project.lane, project.status, project.verdict].filter(Boolean),
+    meta: [
+      { label: "Lane", value: project.lane || "—" },
+      { label: "Status", value: project.status || "—" },
+      live?.git_branch ? { label: "Branch", value: live.git_branch } : null,
+      live && live.git_dirty_count != null ? { label: "Dirty files", value: String(live.git_dirty_count) } : null,
+    ].filter(Boolean),
+    impact: "revenue",
+    suggestedActions: ["implement"],
+  };
+}
 
 export default function Projects() {
   const [activeLane, setActiveLane] = useState("All");
@@ -270,6 +293,9 @@ export default function Projects() {
             {selectedProject.firstMove ? <DossierRow label="First move" value={selectedProject.firstMove} /> : null}
             {selectedProject.reopenWhen ? <DossierRow label="Reopen when" value={selectedProject.reopenWhen} /> : null}
             <DossierRow label="Cadence" value={selectedProject.cadence} />
+          </div>
+          <div className="mt-5 border-t border-outlineVariant pt-4">
+            <AgentDeployer entity={projectToEntity(selectedProject, selectedLive)} variant="full" defaultAgent="claude-code" defaultAction="implement" />
           </div>
         </Panel>
 

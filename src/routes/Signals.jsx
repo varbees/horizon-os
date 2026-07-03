@@ -7,6 +7,7 @@ import {
   List as ListIcon,
   Plus,
   RefreshCw,
+  Rocket,
   Rss,
   Settings2,
   Trash2,
@@ -16,6 +17,7 @@ import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
 import ConnectorActionStrip from "../components/ConnectorActionStrip.jsx";
 import SegmentedControl from "../components/ui/SegmentedControl.jsx";
+import { useUiStore } from "../store/uiStore.js";
 import {
   addSignalSource,
   deleteSignalSource,
@@ -47,6 +49,23 @@ const seedState = {
     status: "new",
   })),
 };
+
+function signalToEntity(s) {
+  return {
+    type: "signal",
+    id: s.id,
+    title: s.title,
+    subtitle: s.source_name,
+    source: s.url,
+    body: s.summary,
+    tags: [s.category, s.kind].filter(Boolean),
+    meta: [
+      { label: "Source", value: s.source_name },
+      { label: "Category", value: s.category },
+    ],
+    suggestedActions: ["summarize"],
+  };
+}
 
 function relativeTime(value) {
   if (!value) return "";
@@ -269,6 +288,7 @@ export default function Signals() {
 }
 
 function SignalCard({ signal, onSave, onDismiss }) {
+  const openInspector = useUiStore((s) => s.openInspector);
   return (
     <article className="flex flex-col overflow-hidden rounded-[var(--hz-radius-md)] border border-outlineVariant bg-surface">
       {signal.thumbnail ? (
@@ -288,6 +308,7 @@ function SignalCard({ signal, onSave, onDismiss }) {
         <div className="mt-3 flex items-center gap-2 border-t border-outlineVariant pt-3">
           <span className="rounded-md bg-surfaceVariant px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-paper/46">{signal.category}</span>
           <div className="ml-auto flex items-center gap-1">
+            <IconBtn onClick={() => openInspector(signalToEntity(signal))} label="Deploy an agent"><Rocket className="h-4 w-4" aria-hidden="true" /></IconBtn>
             <IconBtn onClick={onSave} active={signal.status === "saved"} label="Save">
               {signal.status === "saved" ? <BookmarkCheck className="h-4 w-4" aria-hidden="true" /> : <Bookmark className="h-4 w-4" aria-hidden="true" />}
             </IconBtn>
@@ -305,6 +326,7 @@ function SignalCard({ signal, onSave, onDismiss }) {
 }
 
 function SignalRow({ signal, onSave, onDismiss }) {
+  const openInspector = useUiStore((s) => s.openInspector);
   return (
     <article className="flex items-center gap-3 rounded-md border border-outlineVariant bg-surface p-3">
       {signal.thumbnail ? (
@@ -320,6 +342,7 @@ function SignalRow({ signal, onSave, onDismiss }) {
         <a href={signal.url || undefined} target="_blank" rel="noreferrer" className="block truncate text-sm font-black text-paper hover:text-primary">{signal.title}</a>
       </div>
       <div className="flex shrink-0 items-center gap-1">
+        <IconBtn onClick={() => openInspector(signalToEntity(signal))} label="Deploy an agent"><Rocket className="h-4 w-4" aria-hidden="true" /></IconBtn>
         <IconBtn onClick={onSave} active={signal.status === "saved"} label="Save">
           {signal.status === "saved" ? <BookmarkCheck className="h-4 w-4" aria-hidden="true" /> : <Bookmark className="h-4 w-4" aria-hidden="true" />}
         </IconBtn>

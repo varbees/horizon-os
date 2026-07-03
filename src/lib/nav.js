@@ -13,6 +13,7 @@ import {
   FolderGit2,
   FileText,
   Wand2,
+  Bot,
 } from "lucide-react";
 
 // Single source of truth for navigation. The sidebar, the mobile bar, and the
@@ -48,6 +49,7 @@ export const NAV_GROUPS = [
   {
     label: "System",
     items: [
+      { to: "/agents", label: "Agents", detail: "Runs + telemetry", icon: Bot, keywords: "agent runs telemetry deploy track evaluate cost usage" },
       { to: "/connectors", label: "Connectors", detail: "Agents + MCP", icon: Cable, keywords: "mcp tools providers keys" },
       { to: "/vault", label: "Vault", detail: "Obsidian + wiki", icon: FolderGit2, keywords: "obsidian memory wiki notes" },
       { to: "/documents", label: "Docs", detail: "Runbooks", icon: FileText, keywords: "documents markdown reader runbooks" },

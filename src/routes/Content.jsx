@@ -16,6 +16,8 @@ import {
 import Panel from "../components/Panel.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
 import ConnectorActionStrip from "../components/ConnectorActionStrip.jsx";
+import AgentDeployer from "../components/AgentDeployer.jsx";
+import { useUiStore } from "../store/uiStore.js";
 import {
   addContentAsset,
   advanceContentBrief,
@@ -403,7 +405,26 @@ const claimTone = {
   not_buildable_from_current_stack: "border-rust/30 bg-rust/10 text-rust",
 };
 
+function briefToEntity(brief) {
+  const channels = parseArray(brief.channels_json);
+  return {
+    type: "content brief",
+    id: brief.id,
+    title: brief.title,
+    subtitle: brief.hook || brief.source_artifact || "",
+    source: brief.source_artifact || "",
+    body: brief.hook || "",
+    tags: [brief.engine, brief.status, ...channels].filter(Boolean),
+    meta: [
+      { label: "Engine", value: engineLabel[brief.engine] ?? brief.engine },
+      { label: "Status", value: brief.status },
+    ],
+    suggestedActions: ["draft"],
+  };
+}
+
 function BriefRow({ brief, details, busy, onAdvance, onAutomate, onAsset, onPackage, onPublish }) {
+  const openInspector = useUiStore((s) => s.openInspector);
   const channels = parseArray(brief.channels_json);
   const assets = details?.assets ?? [];
   const pkg = details?.package ?? null;
@@ -434,7 +455,9 @@ function BriefRow({ brief, details, busy, onAdvance, onAutomate, onAsset, onPack
               </span>
             ) : null}
           </div>
-          <h3 className="mt-2 text-xl font-black leading-tight text-paper">{brief.title}</h3>
+          <button type="button" onClick={() => openInspector(briefToEntity(brief))} className="mt-2 block text-left text-xl font-black leading-tight text-paper transition hover:text-primary">
+            {brief.title}
+          </button>
           {brief.hook ? <p className="mt-2 text-sm font-bold leading-6 text-paper/72">{brief.hook}</p> : null}
           <p className="mt-1 text-sm leading-6 text-paper/58">{brief.source_artifact || "No source artifact attached yet."}</p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -454,6 +477,9 @@ function BriefRow({ brief, details, busy, onAdvance, onAutomate, onAsset, onPack
           <ActionButton icon={ImagePlus} busy={assetBusy} onClick={() => onAsset(brief)}>Plan still</ActionButton>
           <ActionButton icon={PackageCheck} busy={packageBusy} onClick={() => onPackage(brief)}>Template package</ActionButton>
           <ActionButton icon={Send} busy={publishBusy} onClick={() => onPublish(brief)}>Mark published</ActionButton>
+          <div className="w-full lg:w-auto lg:border-l lg:border-outlineVariant lg:pl-2">
+            <AgentDeployer entity={briefToEntity(brief)} variant="compact" defaultAgent="deepseek" defaultAction="draft" />
+          </div>
         </div>
       </div>
 
