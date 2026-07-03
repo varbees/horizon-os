@@ -126,6 +126,27 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const workspaceRoot = resolve(repoRoot, "..");
 const queueDir = resolve(repoRoot, ".horizon", "queue");
 
+// The active workspace root — settings-backed so anyone can point Horizon at their
+// own repo folder (the open-source "load any workspace" story). Falls back to the
+// folder this repo lives in. A path is allowed if it is inside the workspace OR
+// inside this app's own repo (so the app's runbooks stay readable either way).
+function workspaceRootFor(db) {
+  try {
+    const row = db.prepare("SELECT value FROM app_settings WHERE key = 'workspace.root'").get();
+    if (row?.value) {
+      const raw = row.value.startsWith("~/") ? resolve(process.env.HOME || "", row.value.slice(2)) : row.value;
+      return resolve(raw);
+    }
+  } catch {
+    /* settings unavailable — use default */
+  }
+  return workspaceRoot;
+}
+
+function pathAllowed(abs, db) {
+  return abs.startsWith(workspaceRootFor(db)) || abs.startsWith(repoRoot);
+}
+
 function json(res, status, body) {
   res.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
@@ -2084,6 +2105,51 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true, id });
     }
 
+    // ---------------------------------------------------------------- workspace loader
+    // Point Horizon at any folder of repos. Persists to settings + sources.json and
+    // sweeps it immediately — the open-source "load your own workspace" story.
+    if (req.method === "GET" && url.pathname === "/api/workspace") {
+      const { existsSync, statSync } = await import("node:fs");
+      const root = workspaceRootFor(db);
+      const configured = !!db.prepare("SELECT value FROM app_settings WHERE key = 'workspace.root'").get()?.value;
+      let exists = false;
+      try { exists = existsSync(root) && statSync(root).isDirectory(); } catch { /* noop */ }
+      return json(res, 200, { ok: true, root, default: workspaceRoot, configured, exists });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/workspace") {
+      const body = await readJson(req);
+      const { existsSync, statSync, readFileSync, writeFileSync } = await import("node:fs");
+      let root = String(body.root ?? "").trim();
+      if (!root) return json(res, 400, { ok: false, error: "path_required" });
+      if (root.startsWith("~/")) root = resolve(process.env.HOME || "", root.slice(2));
+      root = resolve(root);
+      if (!existsSync(root) || !statSync(root).isDirectory()) {
+        return json(res, 400, { ok: false, error: "not_a_directory" });
+      }
+      db.prepare(
+        "INSERT INTO app_settings (key, value) VALUES ('workspace.root', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')",
+      ).run(root);
+      // mirror into sources.json so a fresh start also scans it
+      try {
+        const sp = resolve(repoRoot, ".horizon", "sources.json");
+        const cfg = existsSync(sp) ? JSON.parse(readFileSync(sp, "utf8")) : { roots: [], priorities: {} };
+        const roots = (cfg.roots ?? []).filter((r) => r.id !== "workspace");
+        roots.unshift({ id: "workspace", type: "fs-glob", path: root, lane: "experiment", weight: 10, enabled: true });
+        cfg.roots = roots;
+        writeFileSync(sp, `${JSON.stringify(cfg, null, 2)}\n`);
+      } catch {
+        /* sources.json optional */
+      }
+      let sweep = null;
+      try {
+        sweep = runProjectSweep(db, { roots: [root] });
+      } catch (error) {
+        sweep = { ok: false, error: String(error.message ?? error) };
+      }
+      return json(res, 200, { ok: true, root, sweep });
+    }
+
     // -------------------------------------------------------------- live runs (Phase 3)
     // Start a streaming run of an action's spec, stream it over SSE, stop it. The
     // "demo" runner streams a harmless synthetic log so the console is verifiable
@@ -2101,7 +2167,7 @@ const server = createServer(async (req, res) => {
       let cwd = action.cwd || action.project_path || repoRoot;
       try {
         const r = resolve(cwd);
-        cwd = r.startsWith(workspaceRoot) ? r : repoRoot;
+        cwd = pathAllowed(r, db) ? r : repoRoot;
       } catch {
         cwd = repoRoot;
       }
@@ -2161,11 +2227,17 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/docs") {
       try {
         const { readdirSync, statSync, readFileSync } = await import("node:fs");
+        const wsRoot = workspaceRootFor(db);
         const roots = [
           { dir: repoRoot, label: "Repo root", recursive: false },
           { dir: resolve(repoRoot, "docs"), label: "docs", recursive: true },
           { dir: resolve(repoRoot, "public/documents"), label: "documents", recursive: true },
         ];
+        if (wsRoot && wsRoot !== resolve(repoRoot, "..") && wsRoot !== repoRoot) {
+          // a user-loaded workspace — surface its top-level docs shallowly
+          roots.push({ dir: wsRoot, label: "Workspace", recursive: false });
+          roots.push({ dir: resolve(wsRoot, "docs"), label: "Workspace docs", recursive: true });
+        }
         const out = [];
         const walk = (dir, label, depth) => {
           let entries = [];
@@ -2212,7 +2284,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/docs/read") {
       const raw = url.searchParams.get("path") ?? "";
       const abs = resolve(raw);
-      if (!abs.startsWith(workspaceRoot) || !/\.mdx?$/.test(abs)) {
+      if (!pathAllowed(abs, db) || !/\.mdx?$/.test(abs)) {
         return json(res, 400, { ok: false, error: "path_not_allowed" });
       }
       try {
@@ -2228,7 +2300,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/reveal") {
       const raw = url.searchParams.get("path") ?? (await readJson(req)).path ?? "";
       const abs = resolve(String(raw));
-      if (!abs.startsWith(workspaceRoot)) {
+      if (!pathAllowed(abs, db)) {
         return json(res, 400, { ok: false, error: "path_not_allowed" });
       }
       try {

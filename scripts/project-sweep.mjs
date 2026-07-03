@@ -365,7 +365,7 @@ function markdown(snapshot) {
   return lines.join("\n");
 }
 
-function buildCandidates() {
+function buildCandidates(roots = scanRoots) {
   const map = new Map();
   for (const project of portfolioProjects) {
     splitPaths(project.path).forEach((path, index) => {
@@ -405,7 +405,7 @@ function buildCandidates() {
     source: "known-asset",
   });
 
-  scanRoots.forEach((root) => {
+  roots.forEach((root) => {
     scanDirectories(root, map);
     scanIdeaFiles(root, map);
   });
@@ -438,20 +438,24 @@ export function latestProjectSweep(db) {
   };
 }
 
-export function runProjectSweep(db = openHorizonDb()) {
+export function runProjectSweep(db = openHorizonDb(), { roots } = {}) {
   const runId = randomUUID();
   const started = new Date().toISOString();
   cleanIndex();
+
+  // Allow a caller (the /api/workspace loader) to sweep an explicit workspace root
+  // without a restart; default to the config/env-declared roots.
+  const activeRoots = roots && roots.length ? roots.map((r) => resolve(r)).filter(existsSync) : scanRoots;
 
   syncSourcesToDb(db, sourcesConfig.roots); // mirror declared roots into the registry table
 
   db.prepare(`
     INSERT INTO project_sweep_runs (id, root_paths_json, index_root, status, started_at)
     VALUES (?, ?, ?, 'running', ?)
-  `).run(runId, JSON.stringify(scanRoots), indexRoot, started);
+  `).run(runId, JSON.stringify(activeRoots), indexRoot, started);
 
   try {
-    const projects = buildCandidates()
+    const projects = buildCandidates(activeRoots)
       .map((candidate) => {
         const category = categoryFor(candidate);
         const stack = stackClues(candidate.path, candidate.kind);
@@ -547,7 +551,7 @@ export function runProjectSweep(db = openHorizonDb()) {
 
     const snapshot = {
       ok: true,
-      run: { id: runId, started_at: started, finished_at: finished, index_root: indexRoot, root_paths: scanRoots },
+      run: { id: runId, started_at: started, finished_at: finished, index_root: indexRoot, root_paths: activeRoots },
       summary,
       projects,
     };

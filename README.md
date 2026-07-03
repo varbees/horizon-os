@@ -1,6 +1,24 @@
 # Horizon OS Command Center
 
-Local revenue command center for the Antharmaya foundry: PhotoSelect as the primary revenue engine, varbees open-core products as the fast-cash lane, Horizon/Obsidian as the execution memory, and body/attention/spec as the backbone.
+A local-first, agentic command center for your whole workspace: point it at a folder of repos and it becomes a control plane where you **deploy, watch, stop, and grade an AI agent workforce** across every project. Built by Antharmaya Labs; MIT-licensed.
+
+Reference deployment: the Antharmaya foundry (PhotoSelect as the primary revenue engine, varbees open-core as the fast-cash lane, Obsidian as execution memory) — but the app runs over **any** workspace.
+
+## Load your workspace (open source)
+
+Nothing is hardwired to one machine. Set your workspace root and Horizon sweeps it into the Hub, and the doc reader + file-open follow the same root.
+
+- In-app: **Workspace** (System nav) → paste an absolute path (or `~/…`) → **Load & sweep**.
+- Or config: `.horizon/sources.json` `roots[]`, or the `HORIZON_PROJECT_SWEEP_ROOTS` env var.
+
+Path access is confined server-side to your workspace (plus Horizon's own repo) — nothing outside it is readable or openable.
+
+### Control the agent workforce
+- **Deploy** any card (Inbox / Capital / Docs / Hub / Signals / Content) to a chosen agent + model — Claude Code, Codex, Jules, or an API provider (DeepSeek/Gemini/NIM) — via the action deployer.
+- **Agents** screen: live telemetry of every run (state, derived spec, cost) with a streaming **live console** (watch output, stop). Local runners execute on your own CLI auth — no keys leave the machine.
+- Bring your own models under **Connectors** → keys are stored in a git-ignored local `.env`.
+
+The seed data under `src/data/` is the reference (Antharmaya) portfolio — replace it, or just load your own workspace and let the sweep populate the Hub.
 
 ## Run
 

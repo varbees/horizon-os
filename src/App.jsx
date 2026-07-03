@@ -8,6 +8,7 @@ import SystemMap from "./routes/SystemMap.jsx";
 import Documents from "./routes/Documents.jsx";
 import DocsReader from "./routes/DocsReader.jsx";
 import AgentsTelemetry from "./routes/AgentsTelemetry.jsx";
+import Workspace from "./routes/Workspace.jsx";
 import HskgLaunch from "./routes/HskgLaunch.jsx";
 import JourneyLog from "./routes/JourneyLog.jsx";
 import Capital from "./routes/Capital.jsx";
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="/content" element={<Content />} />
           <Route path="/signals" element={<Signals />} />
           <Route path="/agents" element={<AgentsTelemetry />} />
+          <Route path="/workspace" element={<Workspace />} />
           <Route path="/connectors" element={<Connectors />} />
           <Route path="/vault" element={<Vault />} />
           <Route path="/map" element={<SystemMap />} />
