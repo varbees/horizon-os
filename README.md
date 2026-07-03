@@ -2,6 +2,8 @@
 
 A local-first, agentic command center for your whole workspace: point it at a folder of repos and it becomes a control plane where you **deploy, watch, stop, and grade an AI agent workforce** across every project. Built by Antharmaya Labs; MIT-licensed.
 
+**[github.com/varbees/horizon-os](https://github.com/varbees/horizon-os)**
+
 Reference deployment: the Antharmaya foundry (PhotoSelect as the primary revenue engine, varbees open-core as the fast-cash lane, Obsidian as execution memory) — but the app runs over **any** workspace.
 
 ## Load your workspace (open source)
@@ -67,22 +69,25 @@ npm run build
 
 ## Main Screens
 
-- `/` - control tower and daily anchors
-- `/command` - command center: operator hero, live status, and the deployable Action Queue
+- `/` - control tower and daily anchors + **AI Job Plan "today" tracker**: current day, tasks with checkboxes, streak counter
+- `/command` - command center: operator hero, live status, and the deployable Action Queue. Deploys carry **graph-as-context** (Graphify knowledge graph injected into every agent dispatch) + **_cofounder profile** for goal-aligned execution
 - `/calendar` - recurring Foundry Week calendar matrix
-- `/projects` - portfolio hub for `~/Desktop/bolting/*`
+- `/projects` - portfolio hub for `~/Desktop/bolting/*` with project sweep, categorization, and impact radius
 - `/journey` - Obsidian-grade trek ledger with GPS, elevation, and branching alleys/valleys
 - `/capital` - Capital & Runway OS: targets, cash ledger, offer pipeline, and weekly income math
 - `/inbox` - Resource & Content Inbox: link capture, content backlog, and the social skills catalog
 - `/signals` - News & Signals: local RSS feed with category counts, filters, and prunable sources
 - `/connectors` - MCP Connectors: connect to MCP servers with browser OAuth, list and call tools
-- `/vault` - Obsidian vault bridge plus compound wiki memory: snapshots, schema, hot cache, graph pages, and wiki search
-- `/map` - fluid command graph (React Flow: animated revenue path, minimap, dagre auto-layout, click-to-center) + AI Job Plan routine rail with DeepSeek daily brief, backed by local SQLite API
-- `/documents` - docs and connector artifacts
+- `/vault` - **Obsidian vault bridge** connected to `~/Desktop/bolting/`: two-way sync (read/write), codebase brain detection (Graphify outputs), compound wiki memory with search/ingest/capture/lint, `.canvas` file support, "Open in Obsidian" launcher
+- `/map` - fluid command graph (React Flow: animated revenue path, minimap, dagre auto-layout, click-to-center) + AI Job Plan routine rail with DeepSeek daily brief
+- `/documents` - **workspace-wide doc reader**: folder-grouped sidebar, full-screen markdown rendering, "God Nodes" panel (most-depended-on files via Graphify), file reveal in system explorer
 
 ## Canonical Docs
 
+- `docs/horizon-workspace-alpha.md` — v1–v5 slice roadmap (command graph → agent console → steering → codebase atlas → onboarding)
+- `docs/horizon-production-contract.md` — production-grade gap audit + release ladder (v0.9 → v1.0)
 - `docs/horizon-build-plan.md` (master vertical-slice execution contract)
+- `docs/context-architecture.md` — graph-as-context, opensrc dependency graphs, _cofounder profile injection
 - `docs/command-center-plan.md` (10x command center: reel teardown + slice plan)
 - `docs/revenue-engine-reset.md` (money-first operating model and agent roles)
 - `docs/project-sweep-os.md` (local project inventory and hourly sweep loop)
