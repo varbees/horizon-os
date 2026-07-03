@@ -39,6 +39,7 @@ import {
 import { runClaudeCode, claudeCodeHealth } from "./executors/claude-code.mjs";
 import { codexHealth } from "./executors/codex.mjs";
 import { startRun, stopRun, subscribe, unsubscribe, getRun, listRuns } from "./executors/run-manager.mjs";
+import { getJobPlan, patchDay as patchJobPlanDay, setStartDate as setJobPlanStart } from "./job-plan.mjs";
 import { listPrompts, renderLanePrompt } from "./content-prompts.mjs";
 import { runContentStage, advanceBrief } from "./content-loop.mjs";
 
@@ -2216,6 +2217,27 @@ const server = createServer(async (req, res) => {
         id,
       );
       return json(res, 200, { ok: true, id });
+    }
+
+    // ---------------------------------------------------------------- AI job plan
+    if (req.method === "GET" && url.pathname === "/api/job-plan") {
+      try {
+        return json(res, 200, { ok: true, ...getJobPlan() });
+      } catch (error) {
+        return json(res, 500, { ok: false, error: String(error.message ?? error) });
+      }
+    }
+    if (req.method === "PATCH" && url.pathname === "/api/job-plan/state") {
+      const body = await readJson(req);
+      if (body.day == null) return json(res, 400, { ok: false, error: "day_required" });
+      patchJobPlanDay(body.day, body.patch ?? {});
+      return json(res, 200, { ok: true, ...getJobPlan() });
+    }
+    if (req.method === "PATCH" && url.pathname === "/api/job-plan/start") {
+      const body = await readJson(req);
+      if (!body.startDate) return json(res, 400, { ok: false, error: "startDate_required" });
+      setJobPlanStart(String(body.startDate));
+      return json(res, 200, { ok: true, ...getJobPlan() });
     }
 
     // ---------------------------------------------------------------- workspace loader

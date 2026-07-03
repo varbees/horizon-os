@@ -3,6 +3,7 @@ import { Activity, ArrowRight, Banknote, ShieldCheck, WifiOff, Zap } from "lucid
 import { Link } from "react-router-dom";
 import { anchors, phaseGates, projects } from "../data/horizon.js";
 import ActionBoard from "../components/ActionBoard.jsx";
+import JobPlanToday from "../components/JobPlanToday.jsx";
 import MetricCard from "../components/MetricCard.jsx";
 import Panel from "../components/Panel.jsx";
 import PrimaryButton from "../components/PrimaryButton.jsx";
@@ -79,6 +80,10 @@ export default function Overview() {
           Local API offline at 127.0.0.1:8787 — finance figures unavailable. Start npm run dev:full.
         </div>
       ) : null}
+
+      <section className="mb-4" aria-label="AI job plan today">
+        <JobPlanToday />
+      </section>
 
       <section className="grid gap-4 md:grid-cols-3" aria-label="Core metrics">
         <MetricCard
