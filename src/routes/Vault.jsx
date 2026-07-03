@@ -271,15 +271,11 @@ export default function Vault() {
       />
 
       <section className="mb-4 grid gap-4 xl:grid-cols-3">
-        {[
-          { name: 'Horizon OS Brain', path: 'horizon-os/graphify-out/graph.html', nodes: info?.brains?.["horizon-os"] ?? 0, icon: Brain },
-          { name: 'opensrc Brain', path: '_external/opensrc', nodes: info?.brains?.["opensrc"] ?? 0, icon: FolderGit2 },
-          { name: 'Graphify Engine Brain', path: 'graphify-out', nodes: info?.brains?.["graphify"] ?? 0, icon: Database },
-        ].map((brain) => (
-          <Panel key={brain.name} className="p-4 cursor-pointer hover:border-primary transition" onClick={() => window.open(`/api/vault/note?path=${encodeURIComponent(brain.path)}`, '_blank')}>
-            <brain.icon className="h-5 w-5 text-primary" />
-            <p className="mt-2 font-bold text-paper">{brain.name}</p>
-            <p className="font-mono text-xs text-paper/46">{brain.nodes.toLocaleString()} nodes</p>
+        {Object.entries(info?.brains || {}).map(([brainName, count]) => (
+          <Panel key={brainName} className="p-4">
+            <Brain className="h-5 w-5 text-primary" />
+            <p className="mt-2 font-bold text-paper">{brainName} Brain</p>
+            <p className="font-mono text-xs text-paper/46">{count.toLocaleString()} nodes</p>
           </Panel>
         ))}
       </section>

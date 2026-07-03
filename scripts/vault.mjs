@@ -63,16 +63,16 @@ export function vaultInfo() {
   const exists = existsSync(root);
   const notes = exists ? walk(root, root, []) : [];
   
-  const brains = {
-    "horizon-os": 0,
-    "opensrc": 0,
-    "graphify": 0
-  };
+  const brains = {};
   
   for (const n of notes) {
-    if (n.path.startsWith("brains/horizon-os/")) brains["horizon-os"]++;
-    else if (n.path.startsWith("brains/opensrc/")) brains["opensrc"]++;
-    else if (n.path.startsWith("brains/graphify/")) brains["graphify"]++;
+    if (n.path.startsWith("brains/")) {
+      const parts = n.path.split("/");
+      if (parts.length >= 2) {
+        const brainName = parts[1];
+        brains[brainName] = (brains[brainName] || 0) + 1;
+      }
+    }
   }
 
   return { path: root, exists, noteCount: notes.length, brains };
