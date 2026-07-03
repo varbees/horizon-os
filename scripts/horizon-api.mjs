@@ -43,6 +43,7 @@ import { getJobPlan, patchDay as patchJobPlanDay, setStartDate as setJobPlanStar
 import { graphContextBlock, graphSummary, graphQuery, graphAffected } from "./graph-context.mjs";
 import { readProfile, writeProfile, profileContextBlock, profileConfigured } from "./agent-profile.mjs";
 import { listDeps, indexDep, opensrcHome } from "./deps.mjs";
+import { webSearch, webFetch, listFeeds, RESEARCH_FEEDS, internetContextBlock } from "./internet.mjs";
 import { listPrompts, renderLanePrompt } from "./content-prompts.mjs";
 import { runContentStage, advanceBrief } from "./content-loop.mjs";
 
@@ -1432,6 +1433,34 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true, id });
     }
 
+    if (req.method === "GET" && url.pathname === "/api/search") {
+      const query = url.searchParams.get("q") || "";
+      const maxResults = parseInt(url.searchParams.get("limit") || "10", 10);
+      const result = await webSearch(query, maxResults);
+      return json(res, result.ok ? 200 : 500, result);
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/fetch") {
+      const body = await readJson(req);
+      const result = await webFetch(body.url, body.maxChars || 3000);
+      return json(res, result.ok ? 200 : 500, result);
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/feeds") {
+      return json(res, 200, { feeds: listFeeds() });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/feeds/add") {
+      const body = await readJson(req);
+      const id = body.id || `feed-${Date.now()}`;
+      const feedConfig = RESEARCH_FEEDS[body.feedKey];
+      if (!feedConfig) return json(res, 400, { ok: false, error: "unknown_feed_key", available: Object.keys(RESEARCH_FEEDS) });
+      db.prepare(`INSERT INTO signal_sources (id, name, url, kind, category) VALUES (?, ?, ?, 'rss', ?)`).run(
+        id, feedConfig.name, feedConfig.url, feedConfig.category || "general"
+      );
+      return json(res, 201, { ok: true, id, feed: feedConfig });
+    }
+
     if (req.method === "GET" && url.pathname === "/api/action-queue") {
       return json(res, 200, {
         actions: actionRows(),
@@ -1659,7 +1688,8 @@ const server = createServer(async (req, res) => {
       const baseContext = formatPreflightContext(buildPreflightContext(db, action));
       const profileBlock = profileContextBlock();
       const graphBlock = graphContextBlock(action.project_path, action.title, 600);
-      const memoryContext = [baseContext, profileBlock, graphBlock].filter(Boolean).join("\n\n");
+      const internetBlock = await internetContextBlock(action.title, 400);
+      const memoryContext = [baseContext, profileBlock, graphBlock, internetBlock].filter(Boolean).join("\n\n");
       const contents = buildRunnableSpec(action, { stamp, memoryContext });
       writeFileSync(filePath, contents, "utf8");
       // mirror into the Obsidian vault as durable memory (control surface -> memory)
